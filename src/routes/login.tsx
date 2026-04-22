@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 
 export const Route = createFileRoute("/login")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -44,12 +44,12 @@ function LoginPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Sign in</CardTitle>
-          <CardDescription>Enter your credentials to access the dashboard.</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div className="w-full max-w-md">
+        <div className="mb-6 text-center">
+          <h1 className="font-display text-4xl font-bold text-primary">KinetiMap</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Sign in to your clinic dashboard</p>
+        </div>
+        <Card>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -74,7 +74,7 @@ function LoginPage() {
               />
             </div>
             {error && (
-              <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 {error}
               </p>
             )}
@@ -82,8 +82,8 @@ function LoginPage() {
               {submitting ? "Signing in..." : "Sign in"}
             </Button>
           </form>
-        </CardContent>
-      </Card>
+        </Card>
+      </div>
     </main>
   );
 }
