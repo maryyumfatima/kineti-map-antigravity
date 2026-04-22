@@ -30,13 +30,10 @@ function AuthenticatedLayout() {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full">
+      <div className="flex min-h-screen w-full bg-background">
         <AppSidebar />
         <div className="flex flex-1 flex-col">
-          <header className="flex h-12 items-center border-b px-2">
-            <SidebarTrigger />
-          </header>
-          <main className="flex-1 p-6">
+          <main className="flex-1 p-8">
             <Outlet />
           </main>
         </div>
