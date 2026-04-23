@@ -123,18 +123,29 @@ function PublicBookingPage() {
 
   useEffect(() => {
     let active = true;
-    const normalizedSlug = (slug ?? "").trim().toLowerCase();
-    console.log("Slug from URL:", normalizedSlug);
     (async () => {
       setLoadingClinic(true);
       setNotFound(false);
       setClinic(null);
+
+      if (!slug) {
+        console.log("Slug is undefined");
+        setNotFound(true);
+        setLoadingClinic(false);
+        return;
+      }
+
+      const normalizedSlug = slug.trim().toLowerCase();
+      console.log("Slug from URL:", normalizedSlug);
+
       const { data, error } = await supabase
         .from("clinics")
         .select("*")
-        .ilike("slug", normalizedSlug)
-        .maybeSingle();
+        .eq("slug", normalizedSlug)
+        .single();
+
       if (!active) return;
+
       if (error) {
         console.log("Clinic fetch error:", error.message);
       }
