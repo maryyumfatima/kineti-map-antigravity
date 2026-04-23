@@ -123,17 +123,26 @@ function PublicBookingPage() {
 
   useEffect(() => {
     let active = true;
+    const normalizedSlug = (slug ?? "").trim().toLowerCase();
+    console.log("Slug from URL:", normalizedSlug);
     (async () => {
       setLoadingClinic(true);
+      setNotFound(false);
+      setClinic(null);
       const { data, error } = await supabase
         .from("clinics")
-        .select("id,name,slug,logo_url,brand_color,bio,booking_page_mode,whatsapp_number")
-        .eq("slug", slug)
+        .select("*")
+        .ilike("slug", normalizedSlug)
         .maybeSingle();
       if (!active) return;
-      if (error || !data) {
+      if (error) {
+        console.log("Clinic fetch error:", error.message);
+      }
+      if (!data) {
+        console.log("No clinic found in DB");
         setNotFound(true);
       } else {
+        console.log("Clinic loaded:", data);
         setClinic(data as Clinic);
       }
       setLoadingClinic(false);
