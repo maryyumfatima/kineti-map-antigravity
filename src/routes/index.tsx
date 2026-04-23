@@ -26,7 +26,7 @@ function Index() {
         </p>
         <div className="mt-6 flex justify-center gap-3">
           <Button asChild>
-            <Link to="/login">Sign in</Link>
+            <Link to="/login" search={{ redirect: "/dashboard" }}>Sign in</Link>
           </Button>
         </div>
       </div>
