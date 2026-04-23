@@ -62,7 +62,7 @@ export function AppSidebar() {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate({ to: "/login" });
+    navigate({ to: "/login", search: { redirect: "/dashboard" } });
   };
 
   return (
