@@ -137,8 +137,13 @@ function PublicBookingPage() {
 
       const normalizedSlug = slug.trim().toLowerCase();
       console.log("Slug from URL:", normalizedSlug);
+      console.log(
+        "Querying Supabase: from('clinics').select('*').eq('slug', '" +
+          normalizedSlug +
+          "').single()",
+      );
 
-      const { data, error } = await supabase
+      const { data, error, status } = await supabase
         .from("clinics")
         .select("*")
         .eq("slug", normalizedSlug)
@@ -146,11 +151,13 @@ function PublicBookingPage() {
 
       if (!active) return;
 
-      if (error) {
+      console.log("Supabase response status:", status, "error:", error, "data:", data);
+
+      if (error && error.code !== "PGRST116") {
         console.log("Clinic fetch error:", error.message);
       }
       if (!data) {
-        console.log("No clinic found in DB");
+        console.log("No clinic found in DB for slug:", normalizedSlug);
         setNotFound(true);
       } else {
         console.log("Clinic loaded:", data);
