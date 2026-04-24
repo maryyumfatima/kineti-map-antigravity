@@ -50,6 +50,16 @@ function getFaceForScore(score: number) {
   return '😣'
 }
 
+const COUNTRY_CODES = [
+  { flag: '🇬🇧', code: '+44', name: 'United Kingdom' },
+  { flag: '🇦🇺', code: '+61', name: 'Australia' },
+  { flag: '🇩🇪', code: '+49', name: 'Germany' },
+  { flag: '🇫🇷', code: '+33', name: 'France' },
+  { flag: '🇳🇱', code: '+31', name: 'Netherlands' },
+  { flag: '🇵🇰', code: '+92', name: 'Pakistan' },
+  { flag: '🌍', code: '+', name: 'Other' }
+]
+
 // ─── Body Map Component ───────────────────────────────────────────────────────
 
 function BodySVG({ side }: { side: 'front' | 'back' }) {
@@ -81,10 +91,12 @@ function BookingPage() {
 
   // Step 1: Details
   const [fullName, setFullName] = useState('')
+  const [whatsappCode, setWhatsappCode] = useState('+44')
   const [whatsapp, setWhatsapp] = useState('')
   const [email, setEmail] = useState('')
   const [dob, setDob] = useState('')
   const [guardianName, setGuardianName] = useState('')
+  const [guardianWhatsappCode, setGuardianWhatsappCode] = useState('+44')
   const [guardianWhatsapp, setGuardianWhatsapp] = useState('')
 
   // Step 2: Where does it hurt?
@@ -177,11 +189,14 @@ function BookingPage() {
 
     setSaving(true)
     try {
+      const fullWhatsapp = `${whatsappCode}${whatsapp.trim()}`
+      const fullGuardianWhatsapp = isMinor ? `${guardianWhatsappCode}${guardianWhatsapp.trim()}` : null
+
       // 1. Check duplicate patient
       const { data: existing, error: existingErr } = await supabase
         .from('patients')
         .select('id')
-        .eq('phone_number', whatsapp)
+        .eq('phone_number', fullWhatsapp)
         .eq('clinic_id', clinic.id)
         .maybeSingle()
         
@@ -198,7 +213,7 @@ function BookingPage() {
       const { data: patient, error: patientErr } = await supabase.from('patients').insert({
         clinic_id: clinic.id,
         full_name: fullName,
-        phone_number: whatsapp,
+        phone_number: fullWhatsapp,
         email: email || null,
         date_of_birth: dob,
         gdpr_consent: true,
@@ -206,8 +221,8 @@ function BookingPage() {
         status_tag: 'active',
         primary_complaint: 'Online Booking',
         referral_source: 'Online Booking',
-        guardian_name: calculateAge(dob) < 16 ? guardianName : null,
-        guardian_whatsapp: calculateAge(dob) < 16 ? guardianWhatsapp : null,
+        guardian_name: isMinor ? guardianName : null,
+        guardian_whatsapp: fullGuardianWhatsapp,
       }).select().single()
 
       console.log("patient insert result:", patient, patientErr)
@@ -249,7 +264,7 @@ function BookingPage() {
       // 6. Generate OTP
       const code = Math.floor(100000 + Math.random() * 900000).toString()
       const { error: otpErr } = await supabase.from('otp_codes').insert({
-        phone_number: whatsapp,
+        phone_number: fullWhatsapp,
         code
       })
       if (otpErr) throw otpErr
@@ -345,8 +360,23 @@ function BookingPage() {
               
               <div>
                 <label className={labelClass}>WhatsApp number *</label>
-                <input required type="tel" value={whatsapp} onChange={e => setWhatsapp(e.target.value)} placeholder="+44 7700 900000" className={inputClass} style={{ outlineColor: brandColor }} />
-                <p className="text-xs text-gray-400 mt-1">Include country code</p>
+                <div className="flex w-full rounded-xl border border-gray-200 overflow-hidden focus-within:ring-2 bg-gray-50 transition-colors" style={{ outlineColor: brandColor, focusWithin: `ring-${brandColor}` }}>
+                  <select 
+                    value={whatsappCode} 
+                    onChange={e => setWhatsappCode(e.target.value)}
+                    className="w-[120px] px-3 py-3 bg-transparent border-r border-gray-200 outline-none text-sm text-gray-700 cursor-pointer appearance-none"
+                  >
+                    {COUNTRY_CODES.map(c => (
+                      <option key={c.name} value={c.code}>{c.flag} {c.code}</option>
+                    ))}
+                  </select>
+                  <input 
+                    required type="tel" value={whatsapp} 
+                    onChange={e => setWhatsapp(e.target.value)} 
+                    placeholder="7700 900000" 
+                    className="flex-1 px-4 py-3 bg-transparent outline-none text-sm" 
+                  />
+                </div>
               </div>
 
               <div>
@@ -368,7 +398,23 @@ function BookingPage() {
                   </div>
                   <div>
                     <label className={labelClass}>Guardian WhatsApp *</label>
-                    <input required type="tel" value={guardianWhatsapp} onChange={e => setGuardianWhatsapp(e.target.value)} className={inputClass} />
+                    <div className="flex w-full rounded-xl border border-gray-200 overflow-hidden focus-within:ring-2 bg-gray-50 transition-colors bg-white">
+                      <select 
+                        value={guardianWhatsappCode} 
+                        onChange={e => setGuardianWhatsappCode(e.target.value)}
+                        className="w-[120px] px-3 py-3 bg-transparent border-r border-gray-200 outline-none text-sm text-gray-700 cursor-pointer appearance-none"
+                      >
+                        {COUNTRY_CODES.map(c => (
+                          <option key={c.name} value={c.code}>{c.flag} {c.code}</option>
+                        ))}
+                      </select>
+                      <input 
+                        required type="tel" value={guardianWhatsapp} 
+                        onChange={e => setGuardianWhatsapp(e.target.value)} 
+                        placeholder="7700 900000" 
+                        className="flex-1 px-4 py-3 bg-transparent outline-none text-sm" 
+                      />
+                    </div>
                   </div>
                 </div>
               )}
