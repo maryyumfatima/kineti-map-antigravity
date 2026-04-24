@@ -66,6 +66,29 @@ const step1Schema = z.object({
     .email("Invalid email")
     .optional()
     .or(z.literal("")),
+  guardian_name: z.string().trim().optional(),
+  guardian_whatsapp: z.string().trim().optional(),
+}).superRefine((data, ctx) => {
+  if (data.date_of_birth) {
+    const dob = new Date(data.date_of_birth);
+    const age = (new Date().getTime() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+    if (age < 16) {
+      if (!data.guardian_name || data.guardian_name.length < 2) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["guardian_name"],
+          message: "Guardian name is required for patients under 16",
+        });
+      }
+      if (!data.guardian_whatsapp || data.guardian_whatsapp.length < 7) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["guardian_whatsapp"],
+          message: "Guardian WhatsApp is required for patients under 16",
+        });
+      }
+    }
+  }
 });
 
 type Step1 = z.infer<typeof step1Schema>;
@@ -114,6 +137,7 @@ function generateSlots(): { iso: string; label: string; day: string }[] {
 }
 
 function PublicBookingPage() {
+  console.log("PublicBookingPage is loading route /$slug");
   const { slug } = Route.useParams();
   const navigate = useNavigate();
 
@@ -140,14 +164,16 @@ function PublicBookingPage() {
       console.log(
         "Querying Supabase: from('clinics').select('*').eq('slug', '" +
           normalizedSlug +
-          "').single()",
+          "').maybeSingle()",
       );
 
       const { data, error, status } = await supabase
         .from("clinics")
         .select("*")
         .eq("slug", normalizedSlug)
-        .single();
+        .maybeSingle();
+
+      console.log("data:", data, "error:", error);
 
       if (!active) return;
 
@@ -230,7 +256,10 @@ function ClinicHeader({ clinic, brand }: { clinic: Clinic; brand: string }) {
           </div>
         )}
         <div className="min-w-0">
-          <h1 className="font-display text-2xl font-bold leading-tight tracking-tight">
+          <h1 
+            className="font-display text-2xl font-bold leading-tight tracking-tight"
+            style={{ color: brand }}
+          >
             {clinic.name ?? "Book your appointment"}
           </h1>
           {clinic.bio && (
@@ -281,6 +310,8 @@ function BookingFlow({ clinic, brand }: { clinic: Clinic; brand: string }) {
     whatsapp_number: "",
     date_of_birth: "",
     email: "",
+    guardian_name: "",
+    guardian_whatsapp: "",
   });
   const [identityErrors, setIdentityErrors] = useState<Partial<Record<keyof Step1, string>>>({});
   const [honeypot, setHoneypot] = useState("");
@@ -397,6 +428,8 @@ function BookingFlow({ clinic, brand }: { clinic: Clinic; brand: string }) {
             phone_number: phone,
             email: identity.email?.trim() || null,
             date_of_birth: identity.date_of_birth,
+            guardian_name: identity.guardian_name?.trim() || null,
+            guardian_whatsapp: identity.guardian_whatsapp?.trim() || null,
           },
           { onConflict: "phone_number,clinic_id" },
         )
@@ -601,6 +634,11 @@ function Step1Form({
   onHoneypot: (v: string) => void;
 }) {
   const update = <K extends keyof Step1>(k: K, v: Step1[K]) => onChange({ ...value, [k]: v });
+  
+  const dobDate = value.date_of_birth ? new Date(value.date_of_birth) : null;
+  const age = dobDate ? (new Date().getTime() - dobDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000) : null;
+  const isMinor = age !== null && age < 16;
+
   return (
     <div className="space-y-4">
       <h2 className="font-display text-xl font-bold">Your details</h2>
@@ -651,6 +689,36 @@ function Step1Form({
         />
         {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
       </div>
+
+      {isMinor && (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="guardian_name">Guardian's Full Name *</Label>
+            <Input
+              id="guardian_name"
+              autoComplete="name"
+              value={value.guardian_name || ""}
+              onChange={(e) => update("guardian_name", e.target.value)}
+            />
+            {errors.guardian_name && <p className="text-xs text-destructive">{errors.guardian_name}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="guardian_whatsapp">Guardian's WhatsApp *</Label>
+            <Input
+              id="guardian_whatsapp"
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder="+44 7..."
+              value={value.guardian_whatsapp || ""}
+              onChange={(e) => update("guardian_whatsapp", e.target.value)}
+            />
+            {errors.guardian_whatsapp && (
+              <p className="text-xs text-destructive">{errors.guardian_whatsapp}</p>
+            )}
+          </div>
+        </>
+      )}
+
       {/* honeypot — hidden from humans */}
       <div aria-hidden="true" style={{ position: "absolute", left: -10000, top: "auto" }}>
         <label>
@@ -811,6 +879,8 @@ function Step4Form({
   brand: string;
 }) {
   const set = (k: RedFlagKey, a: RedFlagAnswer) => onChange({ ...value, [k]: a });
+  const hasYes = Object.values(value).some((v) => v === "yes");
+
   return (
     <div className="space-y-4">
       <div>
@@ -819,6 +889,13 @@ function Step4Form({
           A short list to flag anything urgent for your physio.
         </p>
       </div>
+      
+      {hasYes && (
+        <div className="rounded-lg bg-destructive/10 p-3 text-sm font-medium text-destructive">
+          Your physio will follow up on this.
+        </div>
+      )}
+
       <div className="space-y-3">
         {RED_FLAGS.map((rf) => (
           <div key={rf.key} className="rounded-lg border border-border bg-background/40 p-3">
