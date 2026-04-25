@@ -87,6 +87,13 @@ function OnboardingPage() {
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
+  // CSV Import State
+  const [csvFile, setCsvFile] = useState<File | null>(null)
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([])
+  const [csvRows, setCsvRows] = useState<string[][]>([])
+  const [csvMapping, setCsvMapping] = useState<Record<string, string>>({})
+  const [importing, setImporting] = useState(false)
+
   // Step 2 Data
   const [schedule, setSchedule] = useState<WeeklySchedule>(DEFAULT_SCHEDULE)
 
@@ -163,6 +170,92 @@ function OnboardingPage() {
       setSaving(false)
     }
   }
+
+  const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const text = event.target?.result as string
+      if (!text) return
+      
+      const rows = text.split('\n').filter(r => r.trim()).map(r => r.split(',').map(c => c.trim().replace(/^"|"$/g, '')))
+      if (rows.length < 2) { toast.error('CSV must have headers and at least 1 row'); return }
+      
+      setCsvHeaders(rows[0])
+      setCsvRows(rows.slice(1))
+      setCsvFile(file)
+      
+      const initialMap: Record<string, string> = {}
+      rows[0].forEach((h) => {
+        const hl = h.toLowerCase()
+        if (hl.includes('name')) initialMap[h] = 'full_name'
+        else if (hl.includes('phone') || hl.includes('whatsapp') || hl.includes('number')) initialMap[h] = 'phone_number'
+        else if (hl.includes('email')) initialMap[h] = 'email'
+        else if (hl.includes('dob') || hl.includes('birth')) initialMap[h] = 'date_of_birth'
+        else if (hl.includes('complaint') || hl.includes('pain') || hl.includes('issue')) initialMap[h] = 'primary_complaint'
+        else initialMap[h] = 'skip'
+      })
+      setCsvMapping(initialMap)
+    }
+    reader.readAsText(file)
+  }
+
+  const handleImportCsv = async () => {
+    if (!clinicId) return
+    setImporting(true)
+    try {
+      const patientsToInsert = csvRows.map(row => {
+        const p: any = { clinic_id: clinicId, gdpr_consent: false, status_tag: 'active', referral_source: 'Import' }
+        csvHeaders.forEach((h, i) => {
+          const mapTo = csvMapping[h]
+          if (mapTo && mapTo !== 'skip') {
+            p[mapTo] = row[i]
+          }
+        })
+        return p
+      }).filter(p => p.full_name && p.phone_number)
+      
+      if (patientsToInsert.length === 0) {
+        toast.error('No valid patients found. Please map Name and Phone columns.')
+        setImporting(false)
+        return
+      }
+
+      let successCount = 0
+      for (const p of patientsToInsert) {
+        const { error } = await supabase.rpc('upsert_patient', { ...p, source: 'csv_import' })
+        if (error) {
+           const { data: inserted } = await supabase.from('patients').upsert(p, { onConflict: 'clinic_id,phone_number' }).select().single()
+           if (inserted) {
+             await supabase.from('patient_activity_log').insert({
+               patient_id: inserted.id, clinic_id: clinicId, action: 'created', source: 'csv_import'
+             })
+             successCount++
+           }
+        } else {
+          successCount++
+        }
+      }
+      
+      toast.success(`${successCount} patients imported successfully`)
+      setCsvFile(null)
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to import patients')
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  const KINETIMAP_FIELDS = [
+    { value: 'skip', label: 'Skip this column' },
+    { value: 'full_name', label: 'Full name' },
+    { value: 'phone_number', label: 'Phone number' },
+    { value: 'email', label: 'Email' },
+    { value: 'date_of_birth', label: 'Date of birth' },
+    { value: 'primary_complaint', label: 'Primary complaint' },
+  ]
 
   const toggleDay = (day: string) => setSchedule(prev => ({ ...prev, [day]: { ...prev[day], enabled: !prev[day].enabled } }))
   const updateDay = (day: string, field: 'start' | 'end', value: string) => setSchedule(prev => ({ ...prev, [day]: { ...prev[day], [field]: value } }))
@@ -298,6 +391,65 @@ function OnboardingPage() {
                 <button onClick={() => setStep(2)} className="text-text/50 text-sm font-medium hover:text-text transition-colors mx-auto px-4 py-2">
                   Skip for now
                 </button>
+              </div>
+
+              {/* IMPORT SECTION */}
+              <div className="mt-12 pt-8 border-t border-border">
+                <div className="mb-4">
+                  <h3 className="font-bricolage text-[20px] font-bold text-text mb-1">Import existing patients</h3>
+                  <p className="text-text/60 text-sm">Already have patient data? Import it now — takes 2 minutes</p>
+                </div>
+                
+                {!csvFile ? (
+                  <div className="border-2 border-dashed border-border rounded-xl p-8 text-center bg-gray-50/50">
+                    <Upload className="w-8 h-8 text-primary/40 mx-auto mb-3" />
+                    <input type="file" accept=".csv" onChange={handleCsvUpload} className="hidden" id="csv-upload" />
+                    <label htmlFor="csv-upload" className="cursor-pointer bg-white border border-border px-4 py-2 rounded-lg text-sm font-semibold text-text hover:bg-gray-50 transition-colors">
+                      Upload CSV
+                    </label>
+                  </div>
+                ) : (
+                  <div className="space-y-6 animate-in fade-in">
+                    <div className="bg-white border border-border rounded-xl overflow-hidden">
+                      <div className="p-4 border-b border-border bg-gray-50 flex justify-between items-center">
+                        <h4 className="font-semibold text-sm">Map Columns</h4>
+                        <button onClick={() => setCsvFile(null)} className="text-xs text-text/50 hover:text-text">Cancel</button>
+                      </div>
+                      <div className="divide-y divide-border max-h-[300px] overflow-y-auto">
+                        {csvHeaders.map((h) => (
+                          <div key={h} className="p-3 flex items-center justify-between gap-4">
+                            <span className="text-sm font-medium text-text truncate flex-1" title={h}>{h}</span>
+                            <select 
+                              value={csvMapping[h] || 'skip'} 
+                              onChange={(e) => setCsvMapping({...csvMapping, [h]: e.target.value})}
+                              className="w-[180px] text-sm border border-border rounded-md px-2 py-1.5 outline-none focus:border-primary"
+                            >
+                              {KINETIMAP_FIELDS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                            </select>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {importing && (
+                       <div className="w-full bg-gray-200 rounded-full h-2 mb-4 overflow-hidden">
+                         <div className="bg-primary h-2 rounded-full animate-pulse w-full"></div>
+                       </div>
+                    )}
+                    
+                    <button 
+                      onClick={handleImportCsv} 
+                      disabled={importing} 
+                      className="w-full bg-primary hover:bg-[#005560] text-white font-semibold py-3 rounded-xl transition-all disabled:opacity-60"
+                    >
+                      {importing ? 'Importing...' : `Import ${csvRows.length} patients`}
+                    </button>
+                    
+                    <div className="text-center">
+                      <button onClick={() => setCsvFile(null)} className="text-sm text-text/50 hover:text-text">Skip import</button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

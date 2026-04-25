@@ -33,12 +33,64 @@ function getScoreColor(score: number) {
   return '#C0392B'
 }
 
-function getRegionInfo(y: number, side: 'front' | 'back') {
-  if (y < 25) return side === 'front' ? { id: 'head_neck', name: 'Head/Neck' } : { id: 'back_head', name: 'Back of Head' }
-  if (y < 45) return side === 'front' ? { id: 'chest', name: 'Chest' } : { id: 'upper_back', name: 'Upper Back' }
-  if (y < 60) return side === 'front' ? { id: 'abdomen', name: 'Abdomen' } : { id: 'lower_back', name: 'Lower Back' }
-  return side === 'front' ? { id: 'legs_front', name: 'Legs (Front)' } : { id: 'legs_back', name: 'Legs (Back)' }
-}
+const frontRegions = [
+  { id: 'f_head', label: 'Head', type: 'circle', cx: 50, cy: 16, r: 12 },
+  { id: 'f_neck', label: 'Neck', type: 'rect', x: 45, y: 28, width: 10, height: 8 },
+  { id: 'f_chest', label: 'Chest', type: 'rect', x: 38, y: 36, width: 24, height: 20, rx: 4 },
+  { id: 'f_u_abd', label: 'Upper Abdomen', type: 'rect', x: 40, y: 56, width: 20, height: 16 },
+  { id: 'f_l_abd', label: 'Lower Abdomen', type: 'rect', x: 38, y: 72, width: 24, height: 16, rx: 4 },
+  { id: 'f_groin', label: 'Groin/Pelvis', type: 'rect', x: 44, y: 88, width: 12, height: 12, rx: 4 },
+  { id: 'f_r_shoulder', label: 'Right Shoulder', type: 'rect', x: 28, y: 36, width: 10, height: 12, rx: 4 },
+  { id: 'f_r_u_arm', label: 'Right Upper Arm', type: 'rect', x: 28, y: 48, width: 8, height: 24, rx: 4 },
+  { id: 'f_r_elbow', label: 'Right Elbow', type: 'circle', cx: 32, cy: 74, r: 5 },
+  { id: 'f_r_forearm', label: 'Right Forearm', type: 'rect', x: 29, y: 79, width: 6, height: 22, rx: 3 },
+  { id: 'f_r_hand', label: 'Right Hand', type: 'circle', cx: 32, cy: 105, r: 5 },
+  { id: 'f_r_hip', label: 'Right Hip', type: 'rect', x: 36, y: 88, width: 8, height: 16, rx: 3 },
+  { id: 'f_r_thigh', label: 'Right Thigh', type: 'rect', x: 38, y: 104, width: 10, height: 34, rx: 4 },
+  { id: 'f_r_knee', label: 'Right Knee', type: 'circle', cx: 43, cy: 140, r: 6 },
+  { id: 'f_r_shin', label: 'Right Shin', type: 'rect', x: 39, y: 146, width: 8, height: 30, rx: 3 },
+  { id: 'f_r_foot', label: 'Right Ankle & Foot', type: 'rect', x: 38, y: 176, width: 10, height: 12, rx: 4 },
+  { id: 'f_l_shoulder', label: 'Left Shoulder', type: 'rect', x: 62, y: 36, width: 10, height: 12, rx: 4 },
+  { id: 'f_l_u_arm', label: 'Left Upper Arm', type: 'rect', x: 64, y: 48, width: 8, height: 24, rx: 4 },
+  { id: 'f_l_elbow', label: 'Left Elbow', type: 'circle', cx: 68, cy: 74, r: 5 },
+  { id: 'f_l_forearm', label: 'Left Forearm', type: 'rect', x: 65, y: 79, width: 6, height: 22, rx: 3 },
+  { id: 'f_l_hand', label: 'Left Hand', type: 'circle', cx: 68, cy: 105, r: 5 },
+  { id: 'f_l_hip', label: 'Left Hip', type: 'rect', x: 56, y: 88, width: 8, height: 16, rx: 3 },
+  { id: 'f_l_thigh', label: 'Left Thigh', type: 'rect', x: 52, y: 104, width: 10, height: 34, rx: 4 },
+  { id: 'f_l_knee', label: 'Left Knee', type: 'circle', cx: 57, cy: 140, r: 6 },
+  { id: 'f_l_shin', label: 'Left Shin', type: 'rect', x: 53, y: 146, width: 8, height: 30, rx: 3 },
+  { id: 'f_l_foot', label: 'Left Ankle & Foot', type: 'rect', x: 52, y: 176, width: 10, height: 12, rx: 4 },
+]
+
+const backRegions = [
+  { id: 'b_head', label: 'Head (back)', type: 'circle', cx: 50, cy: 16, r: 12 },
+  { id: 'b_neck', label: 'Neck (back)', type: 'rect', x: 45, y: 28, width: 10, height: 8 },
+  { id: 'b_u_back', label: 'Upper Back', type: 'rect', x: 44, y: 36, width: 12, height: 16 },
+  { id: 'b_m_back', label: 'Mid Back', type: 'rect', x: 38, y: 52, width: 24, height: 16, rx: 2 },
+  { id: 'b_l_back', label: 'Lower Back', type: 'rect', x: 38, y: 68, width: 24, height: 20, rx: 2 },
+  { id: 'b_l_blade', label: 'Left Shoulder Blade', type: 'rect', x: 36, y: 36, width: 8, height: 16, rx: 2 },
+  { id: 'b_l_shoulder', label: 'Left Shoulder (back)', type: 'rect', x: 28, y: 36, width: 10, height: 12, rx: 4 },
+  { id: 'b_l_u_arm', label: 'Left Upper Arm (back)', type: 'rect', x: 28, y: 48, width: 8, height: 24, rx: 4 },
+  { id: 'b_l_elbow', label: 'Left Elbow (back)', type: 'circle', cx: 32, cy: 74, r: 5 },
+  { id: 'b_l_forearm', label: 'Left Forearm (back)', type: 'rect', x: 29, y: 79, width: 6, height: 22, rx: 3 },
+  { id: 'b_l_hand', label: 'Left Hand (back)', type: 'circle', cx: 32, cy: 105, r: 5 },
+  { id: 'b_l_glute', label: 'Left Glute', type: 'rect', x: 36, y: 88, width: 14, height: 16, rx: 4 },
+  { id: 'b_l_hamstring', label: 'Left Hamstring', type: 'rect', x: 38, y: 104, width: 10, height: 34, rx: 4 },
+  { id: 'b_l_knee', label: 'Left Knee (back)', type: 'circle', cx: 43, cy: 140, r: 6 },
+  { id: 'b_l_calf', label: 'Left Calf', type: 'rect', x: 39, y: 146, width: 8, height: 30, rx: 3 },
+  { id: 'b_l_foot', label: 'Left Heel & Foot', type: 'rect', x: 38, y: 176, width: 10, height: 12, rx: 4 },
+  { id: 'b_r_blade', label: 'Right Shoulder Blade', type: 'rect', x: 56, y: 36, width: 8, height: 16, rx: 2 },
+  { id: 'b_r_shoulder', label: 'Right Shoulder (back)', type: 'rect', x: 62, y: 36, width: 10, height: 12, rx: 4 },
+  { id: 'b_r_u_arm', label: 'Right Upper Arm (back)', type: 'rect', x: 64, y: 48, width: 8, height: 24, rx: 4 },
+  { id: 'b_r_elbow', label: 'Right Elbow (back)', type: 'circle', cx: 68, cy: 74, r: 5 },
+  { id: 'b_r_forearm', label: 'Right Forearm (back)', type: 'rect', x: 65, y: 79, width: 6, height: 22, rx: 3 },
+  { id: 'b_r_hand', label: 'Right Hand (back)', type: 'circle', cx: 68, cy: 105, r: 5 },
+  { id: 'b_r_glute', label: 'Right Glute', type: 'rect', x: 50, y: 88, width: 14, height: 16, rx: 4 },
+  { id: 'b_r_hamstring', label: 'Right Hamstring', type: 'rect', x: 52, y: 104, width: 10, height: 34, rx: 4 },
+  { id: 'b_r_knee', label: 'Right Knee (back)', type: 'circle', cx: 57, cy: 140, r: 6 },
+  { id: 'b_r_calf', label: 'Right Calf', type: 'rect', x: 53, y: 146, width: 8, height: 30, rx: 3 },
+  { id: 'b_r_foot', label: 'Right Heel & Foot', type: 'rect', x: 52, y: 176, width: 10, height: 12, rx: 4 },
+]
 
 
 
@@ -62,19 +114,26 @@ const COUNTRY_CODES = [
 
 // ─── Body Map Component ───────────────────────────────────────────────────────
 
-function BodySVG() {
+function BodySVG({ side }: { side: 'front' | 'back' }) {
+  const regions = side === 'front' ? frontRegions : backRegions
   return (
     <svg viewBox="0 0 100 200" className="w-full h-auto drop-shadow-sm">
-      {/* Head */}
-      <circle cx="50" cy="20" r="14" fill="#f8f9fa" stroke="#cbd5e1" strokeWidth="2" />
-      {/* Torso */}
-      <rect x="36" y="34" width="28" height="56" rx="8" fill="#f8f9fa" stroke="#cbd5e1" strokeWidth="2" />
-      {/* Arms */}
-      <line x1="36" y1="42" x2="18" y2="85" stroke="#cbd5e1" strokeWidth="10" strokeLinecap="round" />
-      <line x1="64" y1="42" x2="82" y2="85" stroke="#cbd5e1" strokeWidth="10" strokeLinecap="round" />
-      {/* Legs */}
-      <line x1="42" y1="90" x2="36" y2="165" stroke="#cbd5e1" strokeWidth="12" strokeLinecap="round" />
-      <line x1="58" y1="90" x2="64" y2="165" stroke="#cbd5e1" strokeWidth="12" strokeLinecap="round" />
+      {regions.map((r: any) => {
+        const props = {
+          key: r.id,
+          'data-id': r.id,
+          'data-label': r.label,
+          fill: '#f8f9fa',
+          stroke: '#cbd5e1',
+          strokeWidth: '1.5',
+          className: 'cursor-pointer hover:fill-slate-200 transition-colors',
+          ...r
+        }
+        if (r.type === 'circle') return <circle {...props} />
+        if (r.type === 'rect') return <rect {...props} />
+        if (r.type === 'path') return <path {...props} />
+        return null
+      })}
     </svg>
   )
 }
@@ -86,6 +145,7 @@ function BookingPage() {
   const [loading, setLoading] = useState(true)
   const [clinic, setClinic] = useState<any>(null)
   
+  const isDemo = slug === 'demo'
   const [step, setStep] = useState(1)
   const [saving, setSaving] = useState(false)
 
@@ -131,18 +191,28 @@ function BookingPage() {
   }, [])
 
   const fetchClinic = async () => {
-    console.log("slug from URL:", slug)
-    console.log("fetching clinic...")
+    if (isDemo) {
+      setClinic({ id: 'demo', name: 'KinetiMap Demo Clinic', brand_color: '#F5A623', bio: 'This is a sample clinic to help you explore KinetiMap.', booking_page_mode: 'open' })
+      setLoading(false)
+      setStep(7)
+      setFullName('Sarah Ahmed')
+      setWhatsappCode('+44')
+      setWhatsapp('7700 900000')
+      setDob('1990-01-01')
+      setDots([
+        { id: '1', x: 38, y: 68, side: 'back', score: 8, regionId: 'b_l_back', regionName: 'Lower Back' },
+        { id: '2', x: 57, y: 140, side: 'front', score: 6, regionId: 'f_l_knee', regionName: 'Left Knee' }
+      ])
+      return
+    }
+    
     try {
-      const { data: clinic, error } = await supabase
+      const { data: clinic } = await supabase
         .from('clinics')
         .select('*')
         .eq('slug', slug)
         .maybeSingle()
       
-      console.log("clinic data:", clinic)
-      console.log("error:", error)
-
       if (clinic) setClinic(clinic)
     } catch (e) {
       console.error(e)
@@ -153,11 +223,16 @@ function BookingPage() {
 
   const handleBodyClick = (e: React.MouseEvent<HTMLDivElement>, side: 'front' | 'back') => {
     e.stopPropagation()
+    const target = e.target as SVGElement
+    const id = target.getAttribute('data-id')
+    const label = target.getAttribute('data-label')
+    if (!id || !label) return
+    
     const rect = e.currentTarget.getBoundingClientRect()
     const x = ((e.clientX - rect.left) / rect.width) * 100
     const y = ((e.clientY - rect.top) / rect.height) * 100
-    const { id, name } = getRegionInfo(y, side)
-    setPendingDot({ x, y, side, regionId: id, regionName: name })
+    
+    setPendingDot({ x, y, side, regionId: id, regionName: label })
   }
 
   const saveDot = (score: number) => {
@@ -183,8 +258,14 @@ function BookingPage() {
     console.log("form data:", { fullName, whatsapp, dob, clinicId: clinic?.id, consent1, honeypot })
 
     if (honeypot) {
-      console.log("Honeypot blocked submission")
       return // reject silently
+    }
+
+    if (isDemo) {
+      toast.success('Demo booking successful! (No data saved)')
+      setStep(6)
+      setGeneratedOtp('123456')
+      return
     }
 
     setSaving(true)
@@ -326,6 +407,17 @@ function BookingPage() {
 
   return (
     <div className="min-h-screen bg-[#EDF6F9] py-12 px-4 sm:px-6 font-sans">
+      
+      {isDemo && (
+        <div className="max-w-[560px] mx-auto mb-6 bg-[#FFF8E6] border border-[#F5A623] rounded-xl p-4 flex items-start gap-3 relative animate-in fade-in slide-in-from-top-4">
+          <AlertCircle className="w-5 h-5 text-[#854F0B] shrink-0 mt-0.5" />
+          <div className="pr-6">
+            <h3 className="font-bold text-[#854F0B] text-sm mb-1">You are viewing a demo.</h3>
+            <p className="text-[#854F0B]/80 text-xs leading-relaxed">This is a sample clinic to help you explore KinetiMap.</p>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-[560px] mx-auto">
         
         {/* HEADER */}
@@ -439,7 +531,7 @@ function BookingPage() {
                 <div className="text-center">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Front</p>
                   <div className="relative inline-block w-full max-w-[160px] mx-auto cursor-pointer" onClick={e => handleBodyClick(e, 'front')}>
-                    <BodySVG />
+                    <BodySVG side="front" />
                     {dots.filter(d => d.side === 'front').map(d => (
                       <div key={d.id} className="absolute w-5 h-5 rounded-full border-2 border-white shadow-sm -translate-x-1/2 -translate-y-1/2 flex items-center justify-center text-[10px] text-white font-bold"
                            style={{ left: `${d.x}%`, top: `${d.y}%`, backgroundColor: getScoreColor(d.score) }}
@@ -452,7 +544,7 @@ function BookingPage() {
                 <div className="text-center">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Back</p>
                   <div className="relative inline-block w-full max-w-[160px] mx-auto cursor-pointer" onClick={e => handleBodyClick(e, 'back')}>
-                    <BodySVG />
+                    <BodySVG side="back" />
                     {dots.filter(d => d.side === 'back').map(d => (
                       <div key={d.id} className="absolute w-5 h-5 rounded-full border-2 border-white shadow-sm -translate-x-1/2 -translate-y-1/2 flex items-center justify-center text-[10px] text-white font-bold"
                            style={{ left: `${d.x}%`, top: `${d.y}%`, backgroundColor: getScoreColor(d.score) }}
@@ -643,6 +735,45 @@ function BookingPage() {
                 <p className="font-semibold" style={{ color: brandColor }}>{clinic.name}</p>
                 <p className="text-sm text-gray-500 mt-4 max-w-[250px] mx-auto">You'll receive a WhatsApp confirmation shortly.</p>
               </div>
+
+              {isDemo && (
+                <div className="mt-8 text-left bg-gray-50 p-6 rounded-xl border border-gray-200 animate-in fade-in zoom-in-95">
+                  <h3 className="font-bold text-lg mb-4 text-gray-800">Demo Patient Summary</h3>
+                  <div className="space-y-4 text-sm text-gray-600">
+                    <p><strong>Name:</strong> {fullName}</p>
+                    <p><strong>Status:</strong> All 5 steps completed</p>
+                    <div>
+                      <strong>Pain areas:</strong>
+                      <div className="flex justify-center gap-8 mt-4">
+                        <div className="w-24 relative">
+                          <BodySVG side="front" />
+                          {dots.filter(d => d.side === 'front').map(d => (
+                            <div key={d.id} className="absolute w-4 h-4 rounded-full border-2 border-white shadow-sm -translate-x-1/2 -translate-y-1/2 flex items-center justify-center text-[8px] text-white font-bold"
+                                 style={{ left: `${d.x}%`, top: `${d.y}%`, backgroundColor: getScoreColor(d.score) }}>
+                              {d.score}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="w-24 relative">
+                          <BodySVG side="back" />
+                          {dots.filter(d => d.side === 'back').map(d => (
+                            <div key={d.id} className="absolute w-4 h-4 rounded-full border-2 border-white shadow-sm -translate-x-1/2 -translate-y-1/2 flex items-center justify-center text-[8px] text-white font-bold"
+                                 style={{ left: `${d.x}%`, top: `${d.y}%`, backgroundColor: getScoreColor(d.score) }}>
+                              {d.score}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <button onClick={() => {
+                    setFullName(''); setWhatsapp(''); setDob(''); setDots([]); setStep(1);
+                  }} className="w-full mt-6 bg-white border-2 border-[#006D77] text-[#006D77] font-bold py-3 rounded-xl hover:bg-gray-50 transition-colors">
+                    Start fresh booking
+                  </button>
+                </div>
+              )}
+
               <div className="pt-8">
                 <a href="https://kinetimap.com" target="_blank" rel="noreferrer" className="text-[11px] font-semibold text-gray-400 hover:text-gray-600 tracking-wide uppercase">
                   Powered by KinetiMap

@@ -3,7 +3,7 @@ import { DashboardLayout } from '../components/DashboardLayout'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
-import { Search, Plus, Users, X } from 'lucide-react'
+import { Search, Plus, Users, X, Upload } from 'lucide-react'
 
 export const Route = createFileRoute('/patients')({
   component: PatientsPage,
@@ -39,6 +39,13 @@ function PatientsPage() {
     referral_source: 'Self-referred',
     gdpr_consent: false,
   })
+
+  // CSV Import State
+  const [isCsvModalOpen, setIsCsvModalOpen] = useState(false)
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([])
+  const [csvRows, setCsvRows] = useState<string[][]>([])
+  const [csvMapping, setCsvMapping] = useState<Record<string, string>>({})
+  const [importing, setImporting] = useState(false)
 
   useEffect(() => {
     fetchPatients()
@@ -114,6 +121,94 @@ function PatientsPage() {
     }
   }
 
+  const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const text = event.target?.result as string
+      if (!text) return
+      
+      const rows = text.split('\n').filter(r => r.trim()).map(r => r.split(',').map(c => c.trim().replace(/^"|"$/g, '')))
+      if (rows.length < 2) { toast.error('CSV must have headers and at least 1 row'); return }
+      
+      setCsvHeaders(rows[0])
+      setCsvRows(rows.slice(1))
+      setIsCsvModalOpen(true)
+      
+      const initialMap: Record<string, string> = {}
+      rows[0].forEach((h) => {
+        const hl = h.toLowerCase()
+        if (hl.includes('name')) initialMap[h] = 'full_name'
+        else if (hl.includes('phone') || hl.includes('whatsapp') || hl.includes('number')) initialMap[h] = 'phone_number'
+        else if (hl.includes('email')) initialMap[h] = 'email'
+        else if (hl.includes('dob') || hl.includes('birth')) initialMap[h] = 'date_of_birth'
+        else if (hl.includes('complaint') || hl.includes('pain') || hl.includes('issue')) initialMap[h] = 'primary_complaint'
+        else initialMap[h] = 'skip'
+      })
+      setCsvMapping(initialMap)
+    }
+    reader.readAsText(file)
+    e.target.value = '' // reset input
+  }
+
+  const handleImportCsv = async () => {
+    if (!clinicId) return
+    setImporting(true)
+    try {
+      const patientsToInsert = csvRows.map(row => {
+        const p: any = { clinic_id: clinicId, gdpr_consent: false, status_tag: 'active', referral_source: 'Import' }
+        csvHeaders.forEach((h, i) => {
+          const mapTo = csvMapping[h]
+          if (mapTo && mapTo !== 'skip') {
+            p[mapTo] = row[i]
+          }
+        })
+        return p
+      }).filter(p => p.full_name && p.phone_number)
+      
+      if (patientsToInsert.length === 0) {
+        toast.error('No valid patients found. Please map Name and Phone columns.')
+        setImporting(false)
+        return
+      }
+
+      let successCount = 0
+      for (const p of patientsToInsert) {
+        const { error } = await supabase.rpc('upsert_patient', { ...p, source: 'csv_import' })
+        if (error) {
+           const { data: inserted } = await supabase.from('patients').upsert(p, { onConflict: 'clinic_id,phone_number' }).select().single()
+           if (inserted) {
+             await supabase.from('patient_activity_log').insert({
+               patient_id: inserted.id, clinic_id: clinicId, action: 'created', source: 'csv_import'
+             })
+             successCount++
+           }
+        } else {
+          successCount++
+        }
+      }
+      
+      toast.success(`${successCount} patients imported successfully`)
+      setIsCsvModalOpen(false)
+      fetchPatients()
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to import patients')
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  const KINETIMAP_FIELDS = [
+    { value: 'skip', label: 'Skip this column' },
+    { value: 'full_name', label: 'Full name' },
+    { value: 'phone_number', label: 'Phone number' },
+    { value: 'email', label: 'Email' },
+    { value: 'date_of_birth', label: 'Date of birth' },
+    { value: 'primary_complaint', label: 'Primary complaint' },
+  ]
+
   const toggleConsent = async (id: string, current: boolean) => {
     try {
       const { error } = await supabase
@@ -152,13 +247,23 @@ function PatientsPage() {
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-[28px] font-bold text-primary font-bricolage">Patients</h1>
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="bg-primary hover:opacity-90 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            Add Patient
-          </button>
+          <div className="flex gap-3">
+            <button 
+              onClick={() => document.getElementById('csv-import-patients')?.click()}
+              className="bg-white border border-border hover:bg-gray-50 text-text px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
+            >
+              <Upload className="w-5 h-5" />
+              Import CSV
+            </button>
+            <input type="file" id="csv-import-patients" accept=".csv" className="hidden" onChange={handleCsvUpload} />
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="bg-primary hover:opacity-90 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
+            >
+              <Plus className="w-5 h-5" />
+              Add Patient
+            </button>
+          </div>
         </div>
 
         <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
@@ -307,6 +412,58 @@ function PatientsPage() {
               </button>
               <button type="submit" form="add-patient-form" disabled={isSaving} className="bg-primary hover:opacity-90 text-white px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-70">
                 {isSaving ? 'Saving...' : 'Save Patient'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isCsvModalOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-card w-full max-w-lg rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-border flex justify-between items-center bg-white sticky top-0 z-10">
+              <h2 className="text-xl font-bold text-primary font-bricolage">Import Patients</h2>
+              <button onClick={() => { setIsCsvModalOpen(false); }} className="text-text/50 hover:text-text">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto flex-1 bg-gray-50/30">
+              <p className="text-sm text-text/70 mb-4">Map your CSV columns to KinetiMap fields.</p>
+              
+              <div className="bg-white border border-border rounded-xl overflow-hidden">
+                <div className="p-4 border-b border-border bg-gray-50 flex justify-between items-center">
+                  <h4 className="font-semibold text-sm">Detected Columns</h4>
+                </div>
+                <div className="divide-y divide-border max-h-[300px] overflow-y-auto">
+                  {csvHeaders.map((h) => (
+                    <div key={h} className="p-3 flex items-center justify-between gap-4 hover:bg-gray-50/50 transition-colors">
+                      <span className="text-sm font-medium text-text truncate flex-1" title={h}>{h}</span>
+                      <select 
+                        value={csvMapping[h] || 'skip'} 
+                        onChange={(e) => setCsvMapping({...csvMapping, [h]: e.target.value})}
+                        className="w-[180px] text-sm border border-border rounded-md px-2 py-1.5 outline-none focus:border-primary bg-white"
+                      >
+                        {KINETIMAP_FIELDS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {importing && (
+                 <div className="w-full bg-gray-200 rounded-full h-2 mt-6 overflow-hidden">
+                   <div className="bg-primary h-2 rounded-full animate-pulse w-full"></div>
+                 </div>
+              )}
+            </div>
+            
+            <div className="p-6 border-t border-border bg-background sticky bottom-0 z-10 flex justify-end gap-3">
+              <button type="button" onClick={() => { setIsCsvModalOpen(false); }} className="px-4 py-2 rounded-lg font-medium text-text hover:bg-black/5 transition-colors">
+                Cancel
+              </button>
+              <button onClick={handleImportCsv} disabled={importing} className="bg-primary hover:opacity-90 text-white px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-70">
+                {importing ? 'Importing...' : `Import ${csvRows.length} patients`}
               </button>
             </div>
           </div>
