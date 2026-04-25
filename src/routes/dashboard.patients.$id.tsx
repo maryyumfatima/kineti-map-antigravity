@@ -306,7 +306,7 @@ function PatientDetailPage() {
                   {messages.map(msg => (
                     <div key={msg.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-border bg-background/30">
                       <div>
-                        <p className="text-xs font-semibold text-text uppercase tracking-tight">{msg.message_type.replace(/_/g, ' ')}</p>
+                        <p className="text-xs font-semibold text-text uppercase tracking-tight">{msg.message_type?.replace(/_/g, ' ') ?? ''}</p>
                         <p className="text-[10px] text-text/40 mt-0.5">{new Date(msg.scheduled_for).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</p>
                       </div>
                       <div>
@@ -353,7 +353,7 @@ function PatientDetailPage() {
                             </div>
                             <div>
                               <p className="text-sm font-bold text-text">{dt.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</p>
-                              <p className="text-xs text-text/40 mt-0.5">{dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {booking.appointment_type.replace('_', ' ').toUpperCase()}</p>
+                              <p className="text-xs text-text/40 mt-0.5">{dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {booking.appointment_type?.replace('_', ' ')?.toUpperCase() ?? ''}</p>
                             </div>
                           </div>
                           

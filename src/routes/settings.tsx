@@ -169,7 +169,7 @@ function SettingsPage() {
         name: clinicName,
         country,
         timezone,
-        num_practitioners: Number(numPractitioners.replace('+', '')) || 1,
+        num_practitioners: Number(numPractitioners?.replace('+', '') ?? '0') || 1,
       }).eq('id', clinicId)
       if (error) throw error
       toast.success('Clinic settings saved')

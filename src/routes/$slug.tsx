@@ -455,7 +455,7 @@ function BookingPage() {
                   </p>
                   {clinic.whatsapp_number && (
                     <a 
-                      href={`https://wa.me/${clinic.whatsapp_number.replace(/\D/g, '')}`}
+                      href={`https://wa.me/${clinic.whatsapp_number?.replace(/\D/g, '') ?? ''}`}
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-green-700 transition-colors"
@@ -664,7 +664,7 @@ function BookingPage() {
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Verify your number</h2>
               <p className="text-sm text-gray-500 mb-6 max-w-[280px] mx-auto">We sent a 6-digit code to <strong className="text-gray-800">{whatsapp}</strong>. Enter it below to confirm your booking.</p>
 
-              <input type="text" maxLength={6} value={otpCode} onChange={e => setOtpCode(e.target.value.replace(/\D/g, ''))} placeholder="000000" className="w-48 text-center text-3xl tracking-[0.25em] font-bold py-4 rounded-xl border-2 border-gray-200 focus:border-primary outline-none bg-gray-50 mx-auto block" style={{ outlineColor: brandColor }} />
+              <input type="text" maxLength={6} value={otpCode} onChange={e => setOtpCode(e.target.value?.replace(/\D/g, '') ?? '')} placeholder="000000" className="w-48 text-center text-3xl tracking-[0.25em] font-bold py-4 rounded-xl border-2 border-gray-200 focus:border-primary outline-none bg-gray-50 mx-auto block" style={{ outlineColor: brandColor }} />
 
               <button onClick={verifyOtp} disabled={otpCode.length !== 6} className="w-full text-white font-bold py-3.5 rounded-xl transition-transform active:scale-95 mt-6 disabled:opacity-50" style={{ backgroundColor: brandColor }}>
                 Verify

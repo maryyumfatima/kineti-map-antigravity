@@ -256,7 +256,7 @@ function Dashboard() {
                             <p className="font-bold text-text">{booking.patients?.full_name}</p>
                             <div className="flex items-center gap-2 mt-1">
                               <span className="text-[10px] font-bold bg-background border border-border px-2 py-0.5 rounded text-text/50 uppercase">
-                                {booking.appointment_type.replace('_', ' ')}
+                                {booking.appointment_type?.replace('_', ' ') ?? ''}
                               </span>
                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase border ${
                                 booking.status === 'completed' ? 'bg-green-50 border-green-100 text-green-600' :

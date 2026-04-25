@@ -129,7 +129,7 @@ function PatientsPage() {
       const text = event.target?.result as string
       if (!text) return
       
-      const rows = text.split('\n').filter(r => r.trim()).map(r => r.split(',').map(c => c.trim().replace(/^"|"$/g, '')))
+      const rows = text.split('\n').filter(r => r.trim()).map(r => r.split(',').map(c => c.trim()?.replace(/^"|"$/g, '') ?? ''))
       if (rows.length < 2) { toast.error('CSV must have headers and at least 1 row'); return }
       
       setCsvHeaders(rows[0])
