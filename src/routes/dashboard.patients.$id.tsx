@@ -9,7 +9,6 @@ import {
   CheckCircle, Clock, AlertCircle, ExternalLink,
   ChevronDown, ChevronUp
 } from 'lucide-react'
-import { BodyMap } from '../components/BodyMap'
 
 export const Route = createFileRoute('/dashboard/patients/$id')({
   component: PatientDetailPage,
@@ -202,8 +201,6 @@ function PatientDetailPage() {
     )
   }
 
-  const firstBooking = bookings[bookings.length - 1] // First booking is last in desc order
-
   return (
     <DashboardLayout>
       <div className="max-w-6xl mx-auto">
@@ -223,13 +220,13 @@ function PatientDetailPage() {
               <p className="text-sm text-text/50 mt-1">Patient ID: <span className="font-mono">{patient.id.slice(0, 8)}</span></p>
             </div>
           </div>
-          <button 
-            onClick={() => toast.info('Export Patient PDF Coming Soon')}
-            className="flex items-center justify-center gap-2 bg-white border border-border text-text text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-background transition-all shadow-sm active:scale-95"
+          <Link 
+            to="/patients" 
+            className="text-primary hover:underline text-sm font-medium flex items-center gap-1"
           >
-            <FileText className="w-4 h-4" />
-            Export Patient PDF
-          </button>
+            <ChevronRight className="w-4 h-4 rotate-180" />
+            Back to Patients
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -295,7 +292,7 @@ function PatientDetailPage() {
               </div>
             </div>
 
-            {/* 4. AUTOMATION STATUS */}
+            {/* 3. WHATSAPP MESSAGES STATUS (Automation Status) */}
             <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
               <div className="flex items-center gap-2 mb-6">
                 <MessageSquare className="w-4 h-4 text-primary" />
@@ -328,38 +325,7 @@ function PatientDetailPage() {
           {/* RIGHT COLUMN */}
           <div className="lg:col-span-2 space-y-6">
             
-            {/* 2. PAIN MAP */}
-            <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
-              <div className="flex items-center gap-2 mb-6">
-                <Calendar className="w-4 h-4 text-primary" />
-                <h2 className="font-bold text-text font-bricolage">Pain areas from first booking</h2>
-              </div>
-              
-              {!firstBooking || !firstBooking.pain_data || Object.keys(firstBooking.pain_data).length === 0 ? (
-                <div className="py-12 flex flex-col items-center justify-center text-text/30 border-2 border-dashed border-border rounded-xl">
-                  <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-3">
-                    <User className="w-6 h-6 opacity-20" />
-                  </div>
-                  <p className="text-sm font-medium">No pain data recorded for this patient.</p>
-                </div>
-              ) : (
-                <div className="bg-background/50 rounded-xl p-4">
-                  <BodyMap 
-                    mode="readonly" 
-                    initialData={firstBooking.pain_data} 
-                  />
-                  <div className="mt-6 flex flex-wrap gap-2 justify-center">
-                    {Object.entries(firstBooking.pain_data).map(([area, score]) => (
-                      <span key={area} className="px-3 py-1 rounded-full bg-white border border-border text-[11px] font-bold text-text/60 shadow-sm">
-                        {area.replace(/[f|b]_/g, '').replace(/_/g, ' ').toUpperCase()}: <span className="text-primary">{score}</span>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* 3. SESSION HISTORY */}
+            {/* 2. SESSION HISTORY */}
             <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
               <div className="p-6 border-b border-border flex items-center gap-2">
                 <History className="w-4 h-4 text-primary" />
@@ -435,6 +401,27 @@ function PatientDetailPage() {
                   })}
                 </div>
               )}
+            </div>
+
+            {/* 4. DATA EXPORT (Export PDF Button) */}
+            <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-6">
+                <FileText className="w-4 h-4 text-primary" />
+                <h2 className="font-bold text-text font-bricolage">Data Export</h2>
+              </div>
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-text">Export full patient history</p>
+                  <p className="text-xs text-text/40 mt-1">Download a PDF summary of all sessions, notes, and pain data.</p>
+                </div>
+                <button 
+                  onClick={() => toast.info('Export Patient PDF Coming Soon')}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white border border-border text-text text-sm font-semibold px-6 py-3 rounded-xl hover:bg-background transition-all shadow-sm active:scale-95 whitespace-nowrap"
+                >
+                  <FileText className="w-4 h-4" />
+                  Export Patient PDF
+                </button>
+              </div>
             </div>
 
           </div>
