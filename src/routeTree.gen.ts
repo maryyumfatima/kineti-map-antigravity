@@ -23,6 +23,7 @@ import { Route as BillingRouteImport } from './routes/billing'
 import { Route as AvailabilityRouteImport } from './routes/availability'
 import { Route as SlugRouteImport } from './routes/$slug'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DashboardPatientsIdRouteImport } from './routes/dashboard.patients.$id'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -94,6 +95,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardPatientsIdRoute = DashboardPatientsIdRouteImport.update({
+  id: '/patients/$id',
+  path: '/patients/$id',
+  getParentRoute: () => DashboardRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -101,7 +107,7 @@ export interface FileRoutesByFullPath {
   '/availability': typeof AvailabilityRoute
   '/billing': typeof BillingRoute
   '/branding': typeof BrandingRoute
-  '/dashboard': typeof DashboardRoute
+  '/dashboard': typeof DashboardRouteWithChildren
   '/feedback': typeof FeedbackRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
@@ -110,6 +116,7 @@ export interface FileRoutesByFullPath {
   '/sessions': typeof SessionsRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
+  '/dashboard/patients/$id': typeof DashboardPatientsIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -117,7 +124,7 @@ export interface FileRoutesByTo {
   '/availability': typeof AvailabilityRoute
   '/billing': typeof BillingRoute
   '/branding': typeof BrandingRoute
-  '/dashboard': typeof DashboardRoute
+  '/dashboard': typeof DashboardRouteWithChildren
   '/feedback': typeof FeedbackRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
@@ -126,6 +133,7 @@ export interface FileRoutesByTo {
   '/sessions': typeof SessionsRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
+  '/dashboard/patients/$id': typeof DashboardPatientsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -134,7 +142,7 @@ export interface FileRoutesById {
   '/availability': typeof AvailabilityRoute
   '/billing': typeof BillingRoute
   '/branding': typeof BrandingRoute
-  '/dashboard': typeof DashboardRoute
+  '/dashboard': typeof DashboardRouteWithChildren
   '/feedback': typeof FeedbackRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
@@ -143,6 +151,7 @@ export interface FileRoutesById {
   '/sessions': typeof SessionsRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
+  '/dashboard/patients/$id': typeof DashboardPatientsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -161,6 +170,7 @@ export interface FileRouteTypes {
     | '/sessions'
     | '/settings'
     | '/signup'
+    | '/dashboard/patients/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -177,6 +187,7 @@ export interface FileRouteTypes {
     | '/sessions'
     | '/settings'
     | '/signup'
+    | '/dashboard/patients/$id'
   id:
     | '__root__'
     | '/'
@@ -193,6 +204,7 @@ export interface FileRouteTypes {
     | '/sessions'
     | '/settings'
     | '/signup'
+    | '/dashboard/patients/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -201,7 +213,7 @@ export interface RootRouteChildren {
   AvailabilityRoute: typeof AvailabilityRoute
   BillingRoute: typeof BillingRoute
   BrandingRoute: typeof BrandingRoute
-  DashboardRoute: typeof DashboardRoute
+  DashboardRoute: typeof DashboardRouteWithChildren
   FeedbackRoute: typeof FeedbackRoute
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
@@ -312,8 +324,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard/patients/$id': {
+      id: '/dashboard/patients/$id'
+      path: '/patients/$id'
+      fullPath: '/dashboard/patients/$id'
+      preLoaderRoute: typeof DashboardPatientsIdRouteImport
+      parentRoute: typeof DashboardRoute
+    }
   }
 }
+
+interface DashboardRouteChildren {
+  DashboardPatientsIdRoute: typeof DashboardPatientsIdRoute
+}
+
+const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardPatientsIdRoute: DashboardPatientsIdRoute,
+}
+
+const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
+  DashboardRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -321,7 +352,7 @@ const rootRouteChildren: RootRouteChildren = {
   AvailabilityRoute: AvailabilityRoute,
   BillingRoute: BillingRoute,
   BrandingRoute: BrandingRoute,
-  DashboardRoute: DashboardRoute,
+  DashboardRoute: DashboardRouteWithChildren,
   FeedbackRoute: FeedbackRoute,
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,

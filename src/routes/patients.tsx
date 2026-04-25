@@ -342,9 +342,13 @@ function PatientsPage() {
                         </button>
                       </td>
                       <td className="p-4 text-right">
-                        <button className="text-primary hover:underline text-sm font-medium">
+                        <Link 
+                          to="/dashboard/patients/$id" 
+                          params={{ id: patient.id }}
+                          className="text-primary hover:underline text-sm font-medium"
+                        >
                           View
-                        </button>
+                        </Link>
                       </td>
                     </tr>
                   ))}
