@@ -259,7 +259,7 @@ function Signup() {
     if (signUpError) { 
       setLoading(false)
       triggerShake()
-      const msg = signUpError.message.toLowerCase()
+      const msg = (signUpError?.message ?? '').toLowerCase()
       if (msg.includes('already registered') || msg.includes('already exists')) {
         toast.error('An account with this email already exists. Please sign in instead.', {
           action: {

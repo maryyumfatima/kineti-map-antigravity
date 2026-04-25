@@ -138,7 +138,7 @@ function PatientsPage() {
       
       const initialMap: Record<string, string> = {}
       rows[0].forEach((h) => {
-        const hl = h.toLowerCase()
+        const hl = (h ?? '').toLowerCase()
         if (hl.includes('name')) initialMap[h] = 'full_name'
         else if (hl.includes('phone') || hl.includes('whatsapp') || hl.includes('number')) initialMap[h] = 'phone_number'
         else if (hl.includes('email')) initialMap[h] = 'email'
@@ -226,7 +226,7 @@ function PatientsPage() {
   }
 
   const getStatusColor = (status: string) => {
-    switch(status.toLowerCase()) {
+    switch((status ?? '').toLowerCase()) {
       case 'active': return 'bg-primary/10 text-primary border-primary/20'
       case 'lapsed': return 'bg-[#D9B29C]/20 text-[#B88B71] border-[#D9B29C]/30'
       case 'discharged': return 'bg-gray-100 text-gray-700 border-gray-200'
@@ -236,9 +236,9 @@ function PatientsPage() {
   }
 
   const filteredPatients = patients.filter(p => {
-    const matchesSearch = p.full_name.toLowerCase().includes(search.toLowerCase()) || 
-                          p.phone_number.includes(search)
-    const matchesFilter = filter === 'All' || p.status_tag.toLowerCase() === filter.toLowerCase()
+    const matchesSearch = (p.full_name ?? '').toLowerCase().includes((search ?? '').toLowerCase()) || 
+                          (p.phone_number ?? '').includes(search)
+    const matchesFilter = filter === 'All' || (p.status_tag ?? '').toLowerCase() === (filter ?? '').toLowerCase()
     return matchesSearch && matchesFilter
   })
 
@@ -323,7 +323,7 @@ function PatientsPage() {
                       <td className="p-4 text-text/80">{patient.primary_complaint}</td>
                       <td className="p-4">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${getStatusColor(patient.status_tag)}`}>
-                          {patient.status_tag.charAt(0).toUpperCase() + patient.status_tag.slice(1)}
+                          {(patient.status_tag ?? '').charAt(0).toUpperCase() + (patient.status_tag ?? '').slice(1)}
                         </span>
                       </td>
                       <td className="p-4 text-text/80">

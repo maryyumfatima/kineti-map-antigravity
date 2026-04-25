@@ -76,7 +76,7 @@ export function Sidebar() {
 
       <div className="p-4 border-t border-border mt-auto">
         <div className="text-sm font-medium text-text mb-4 truncate px-2">
-          {email || 'Loading...'}
+          {email ?? "User"}
         </div>
         <button
           onClick={handleSignOut}

@@ -188,7 +188,7 @@ function OnboardingPage() {
       
       const initialMap: Record<string, string> = {}
       rows[0].forEach((h) => {
-        const hl = h.toLowerCase()
+        const hl = (h ?? '').toLowerCase()
         if (hl.includes('name')) initialMap[h] = 'full_name'
         else if (hl.includes('phone') || hl.includes('whatsapp') || hl.includes('number')) initialMap[h] = 'phone_number'
         else if (hl.includes('email')) initialMap[h] = 'email'
