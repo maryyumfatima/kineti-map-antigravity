@@ -49,9 +49,6 @@ function BookingPage() {
   const [guardianWhatsappCode, setGuardianWhatsappCode] = useState('+44')
   const [guardianWhatsapp, setGuardianWhatsapp] = useState('')
 
-  // Step 2: Appointment Selection
-  const [availability, setAvailability] = useState<any[]>([])
-  const [bookings, setBookings] = useState<any[]>([])
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
   const [allSlots, setAllSlots] = useState<any[]>([])
@@ -116,10 +113,8 @@ function BookingPage() {
         ])
 
         if (availRes.data) {
-          setAvailability(availRes.data)
           generateAllSlots(availRes.data, bookingsRes.data || [])
         }
-        if (bookingsRes.data) setBookings(bookingsRes.data)
       }
     } catch (e) {
       console.error(e)

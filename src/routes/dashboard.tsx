@@ -44,7 +44,6 @@ function StatCard({ title, value, icon: Icon, color = 'text-primary', loading }:
 
 function Dashboard() {
   const [loading, setLoading] = useState(true)
-  const [clinicId, setClinicId] = useState<string | null>(null)
   
   // Stats
   const [todaySessionsCount, setTodaySessionsCount] = useState(0)
@@ -76,7 +75,6 @@ function Dashboard() {
       
       if (!cu) return
       const myClinicId = cu.clinic_id
-      setClinicId(myClinicId)
 
       const now = new Date()
       const todayStart = new Date(now.setHours(0, 0, 0, 0)).toISOString()

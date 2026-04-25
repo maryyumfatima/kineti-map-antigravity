@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 import { 
-  User, Phone, Mail, Calendar, Info, 
+  Phone, Mail, Calendar, Info, 
   MessageSquare, History, FileText, ChevronRight,
   CheckCircle, Clock, AlertCircle, ExternalLink,
   ChevronDown, ChevronUp
