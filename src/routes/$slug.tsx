@@ -49,23 +49,30 @@ function BookingPage() {
   const [guardianWhatsappCode, setGuardianWhatsappCode] = useState('+44')
   const [guardianWhatsapp, setGuardianWhatsapp] = useState('')
 
-  // Step 2: Where does it hurt?
+  // Step 2: Appointment Selection
+  const [availability, setAvailability] = useState<any[]>([])
+  const [bookings, setBookings] = useState<any[]>([])
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
+  const [allSlots, setAllSlots] = useState<any[]>([])
+
+  // Step 3: Where does it hurt?
   const [painData, setPainData] = useState<Record<string, number>>({})
 
-  // Step 3: Medical background
+  // Step 4: Medical background
   const [surgeries, setSurgeries] = useState('')
   const [conditions, setConditions] = useState('')
   const [medications, setMedications] = useState('')
   const [allergies, setAllergies] = useState('')
   const [occupation, setOccupation] = useState('')
 
-  // Step 4: Safety questions
+  // Step 5: Safety questions
   const [q1, setQ1] = useState<string | null>(null)
   const [q2, setQ2] = useState<string | null>(null)
   const [q3, setQ3] = useState<string | null>(null)
   const [q4, setQ4] = useState<string | null>(null)
 
-  // Step 5: Consent
+  // Step 6: Consent
   const [consent1, setConsent1] = useState(false)
   const [consent2, setConsent2] = useState(false)
   const [consent3, setConsent3] = useState(false)
@@ -83,7 +90,7 @@ function BookingPage() {
     if (isDemo) {
       setClinic({ id: 'demo', name: 'KinetiMap Demo Clinic', brand_color: '#F5A623', bio: 'This is a sample clinic to help you explore KinetiMap.', booking_page_mode: 'open' })
       setLoading(false)
-      setStep(7)
+      setStep(8)
       setFullName('Sarah Ahmed')
       setWhatsappCode('+44')
       setWhatsapp('7700 900000')
@@ -93,18 +100,77 @@ function BookingPage() {
     }
     
     try {
-      const { data: clinic } = await supabase
+      const { data: clinicData } = await supabase
         .from('clinics')
         .select('*')
         .eq('slug', slug)
         .maybeSingle()
       
-      if (clinic) setClinic(clinic)
+      if (clinicData) {
+        setClinic(clinicData)
+        
+        // Fetch Availability & Bookings
+        const [availRes, bookingsRes] = await Promise.all([
+          supabase.from('availability_slots').select('*').eq('clinic_id', clinicData.id).eq('is_active', true),
+          supabase.from('bookings').select('appointment_time').eq('clinic_id', clinicData.id).neq('status', 'cancelled').gte('appointment_time', new Date().toISOString())
+        ])
+
+        if (availRes.data) {
+          setAvailability(availRes.data)
+          generateAllSlots(availRes.data, bookingsRes.data || [])
+        }
+        if (bookingsRes.data) setBookings(bookingsRes.data)
+      }
     } catch (e) {
       console.error(e)
     } finally {
       setLoading(false)
     }
+  }
+
+  const generateAllSlots = (avail: any[], currentBookings: any[]) => {
+    const slots: any[] = []
+    const bookedTimes = new Set(currentBookings.map(b => b.appointment_time))
+    
+    // Generate for next 14 days
+    for (let i = 0; i < 14; i++) {
+      const date = new Date()
+      date.setDate(date.getDate() + i)
+      const dayOfWeek = date.getDay()
+      
+      const dayConfig = avail.find(a => a.day_of_week === dayOfWeek)
+      if (dayConfig) {
+        const [startH, startM] = dayConfig.start_time.split(':').map(Number)
+        const [endH, endM] = dayConfig.end_time.split(':').map(Number)
+        const duration = dayConfig.slot_duration_minutes || 60
+
+        let current = new Date(date)
+        current.setHours(startH, startM, 0, 0)
+        
+        const end = new Date(date)
+        end.setHours(endH, endM, 0, 0)
+
+        while (current < end) {
+          const iso = current.toISOString()
+          // Only show future slots
+          if (current > new Date()) {
+            slots.push({
+              iso,
+              time: current.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              date: current.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }),
+              dateKey: current.toISOString().split('T')[0],
+              isBooked: bookedTimes.has(iso)
+            })
+          }
+          current = new Date(current.getTime() + duration * 60000)
+        }
+      }
+    }
+    setAllSlots(slots)
+    
+    // Auto-select first available date
+    const firstDate = slots[0]?.dateKey
+    if (firstDate) setSelectedDate(firstDate)
   }
 
 
@@ -121,7 +187,7 @@ function BookingPage() {
 
     if (isDemo) {
       toast.success('Demo booking successful! (No data saved)')
-      setStep(6)
+      setStep(7)
       setGeneratedOtp('123456')
       return
     }
@@ -143,7 +209,7 @@ function BookingPage() {
 
       if (existing) {
         toast.info("We already have your details. Your booking request has been received. Your physio will confirm shortly.", { duration: 6000 })
-        setStep(7)
+        setStep(8)
         setSaving(false)
         return
       }
@@ -181,6 +247,8 @@ function BookingPage() {
       const { data: bookingData, error: bookingErr } = await supabase.from('bookings').insert({
         clinic_id: clinic.id,
         patient_id: patient.id,
+        appointment_time: selectedSlot,
+        appointment_price: clinic.appointment_price ? parseInt(clinic.appointment_price) : null,
         pain_data: painDataJson,
         red_flags: redFlags,
         status: 'upcoming',
@@ -212,7 +280,7 @@ function BookingPage() {
       console.log('OTP CODE:', code)
       toast.success(`[TEST MODE] OTP Code is: ${code}`, { duration: 8000 })
       
-      setStep(6)
+      setStep(7)
     } catch (err: any) {
       console.error("Booking Error:", err)
       toast.error(err.message || 'Something went wrong. Please try again.')
@@ -223,7 +291,7 @@ function BookingPage() {
 
   const verifyOtp = async () => {
     if (otpCode === generatedOtp) {
-      setStep(7)
+      setStep(8)
     } else {
       toast.error('Invalid OTP code')
     }
@@ -289,10 +357,10 @@ function BookingPage() {
             
             <div className="flex items-center justify-center gap-4 mt-6 mb-2">
               <div className="h-2 flex-1 rounded-full bg-gray-200 overflow-hidden">
-                <div className="h-full transition-all duration-500 ease-out" style={{ width: `${(step / 5) * 100}%`, backgroundColor: brandColor }} />
+                <div className="h-full transition-all duration-500 ease-out" style={{ width: `${(step / 6) * 100}%`, backgroundColor: brandColor }} />
               </div>
             </div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Step {step} of 5</p>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Step {step} of 6</p>
           </div>
         )}
 
@@ -382,6 +450,97 @@ function BookingPage() {
 
           {step === 2 && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Pick a time</h2>
+              <p className="text-sm text-gray-500 mb-6">Choose an appointment slot that works for you.</p>
+
+              {allSlots.length === 0 ? (
+                <div className="py-8 px-4 bg-orange-50 border border-orange-100 rounded-xl text-center">
+                  <p className="text-sm font-medium text-orange-800 mb-4">
+                    This clinic has not set their availability yet. Please contact them directly.
+                  </p>
+                  {clinic.whatsapp_number && (
+                    <a 
+                      href={`https://wa.me/${clinic.whatsapp_number.replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-green-700 transition-colors"
+                    >
+                      WhatsApp {clinic.whatsapp_number}
+                    </a>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {/* Date Selector */}
+                  <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide">
+                    {Array.from(new Set(allSlots.map(s => s.dateKey))).map(dateKey => {
+                      const slot = allSlots.find(s => s.dateKey === dateKey)
+                      const isActive = selectedDate === dateKey
+                      return (
+                        <button
+                          key={dateKey}
+                          onClick={() => setSelectedDate(dateKey)}
+                          className={`shrink-0 px-4 py-3 rounded-xl border-2 transition-all text-center min-w-[100px] ${
+                            isActive ? 'border-transparent shadow-md text-white' : 'border-gray-100 bg-gray-50 text-gray-500 hover:border-gray-200'
+                          }`}
+                          style={{ backgroundColor: isActive ? brandColor : undefined }}
+                        >
+                          <div className={`text-[10px] uppercase font-bold tracking-wider ${isActive ? 'text-white/70' : 'text-gray-400'}`}>
+                            {slot.date.split(' ')[0]}
+                          </div>
+                          <div className="text-sm font-bold">{slot.date.split(' ').slice(1).join(' ')}</div>
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {/* Time Grid */}
+                  <div className="grid grid-cols-3 gap-2">
+                    {allSlots.filter(s => s.dateKey === selectedDate).map(slot => {
+                      const isActive = selectedSlot === slot.iso
+                      return (
+                        <button
+                          key={slot.iso}
+                          disabled={slot.isBooked}
+                          onClick={() => setSelectedSlot(slot.iso)}
+                          className={`py-3 rounded-xl border-2 text-sm font-bold transition-all ${
+                            slot.isBooked ? 'bg-gray-100 border-transparent text-gray-300 cursor-not-allowed line-through' :
+                            isActive ? 'border-transparent shadow-md text-white' : 'border-gray-100 bg-white text-gray-700 hover:border-gray-200'
+                          }`}
+                          style={{ backgroundColor: isActive ? brandColor : undefined }}
+                        >
+                          {slot.time}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {clinic.appointment_price && (
+                    <div className="mt-4 p-4 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-between">
+                      <span className="text-sm text-gray-500 font-medium">Appointment Price</span>
+                      <span className="text-base font-bold text-gray-900">
+                        {clinic.currency || '£'}{clinic.appointment_price}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="pt-4">
+                    <button 
+                      disabled={!selectedSlot}
+                      onClick={() => setStep(3)} 
+                      className="w-full text-white font-bold py-3.5 rounded-xl transition-transform active:scale-95 disabled:opacity-50" 
+                      style={{ backgroundColor: brandColor }}
+                    >
+                      Confirm Time & Continue →
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <h2 className="text-xl font-bold text-gray-900 mb-2">Where does it hurt?</h2>
               <p className="text-sm text-gray-500 italic text-center mb-6">Tap where it hurts.<br/>Rate the pain 1–10.</p>
 
@@ -392,15 +551,15 @@ function BookingPage() {
               />
 
               <div className="pt-4 flex flex-col gap-3">
-                <button onClick={() => setStep(3)} className="w-full text-white font-bold py-3.5 rounded-xl transition-transform active:scale-95" style={{ backgroundColor: brandColor }}>
+                <button onClick={() => setStep(4)} className="w-full text-white font-bold py-3.5 rounded-xl transition-transform active:scale-95" style={{ backgroundColor: brandColor }}>
                   Next →
                 </button>
-                <button onClick={() => setStep(3)} className="text-gray-400 text-sm font-medium hover:text-gray-600">Skip this step</button>
+                <button onClick={() => setStep(4)} className="text-gray-400 text-sm font-medium hover:text-gray-600">Skip this step</button>
               </div>
             </div>
           )}
 
-          {step === 3 && (
+          {step === 4 && (
             <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <h2 className="text-xl font-bold text-gray-900 mb-2">Medical background</h2>
               <p className="text-sm text-gray-500 mb-6">This helps your physio prepare. Skip anything you prefer not to share.</p>
@@ -419,15 +578,15 @@ function BookingPage() {
               ))}
 
               <div className="pt-4 flex flex-col gap-3">
-                <button onClick={() => setStep(4)} className="w-full text-white font-bold py-3.5 rounded-xl transition-transform active:scale-95 mt-4" style={{ backgroundColor: brandColor }}>
+                <button onClick={() => setStep(5)} className="w-full text-white font-bold py-3.5 rounded-xl transition-transform active:scale-95 mt-4" style={{ backgroundColor: brandColor }}>
                   Next →
                 </button>
-                <button onClick={() => setStep(4)} className="text-gray-400 text-sm font-medium hover:text-gray-600">Skip this step</button>
+                <button onClick={() => setStep(5)} className="text-gray-400 text-sm font-medium hover:text-gray-600">Skip this step</button>
               </div>
             </div>
           )}
 
-          {step === 4 && (
+          {step === 5 && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <h2 className="text-xl font-bold text-gray-900 mb-2">Safety questions</h2>
               <p className="text-sm text-gray-500 mb-6">A few quick yes/no questions for your safety.</p>
@@ -457,13 +616,13 @@ function BookingPage() {
                 </div>
               ))}
 
-              <button onClick={() => setStep(5)} className="w-full text-white font-bold py-3.5 rounded-xl transition-transform active:scale-95 mt-4" style={{ backgroundColor: brandColor }}>
+              <button onClick={() => setStep(6)} className="w-full text-white font-bold py-3.5 rounded-xl transition-transform active:scale-95 mt-4" style={{ backgroundColor: brandColor }}>
                 Next →
               </button>
             </div>
           )}
 
-          {step === 5 && (
+          {step === 6 && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <h2 className="text-xl font-bold text-gray-900 mb-6">Consent</h2>
 
@@ -505,7 +664,7 @@ function BookingPage() {
             </div>
           )}
 
-          {step === 6 && (
+          {step === 7 && (
             <div className="space-y-6 text-center animate-in fade-in zoom-in-95 duration-300 py-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Verify your number</h2>
               <p className="text-sm text-gray-500 mb-6 max-w-[280px] mx-auto">We sent a 6-digit code to <strong className="text-gray-800">{whatsapp}</strong>. Enter it below to confirm your booking.</p>
@@ -520,7 +679,7 @@ function BookingPage() {
             </div>
           )}
 
-          {step === 7 && (
+          {step === 8 && (
             <div className="space-y-6 text-center animate-in fade-in zoom-in-95 duration-500 py-8">
               <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto bg-green-50">
                 <Check className="w-10 h-10 text-green-500" strokeWidth={3} />
@@ -528,6 +687,16 @@ function BookingPage() {
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">Booking Confirmed!</h2>
                 <p className="font-semibold" style={{ color: brandColor }}>{clinic.name}</p>
+                {selectedSlot && (
+                  <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-100 inline-block">
+                    <p className="text-sm font-bold text-gray-900">
+                      {new Date(selectedSlot).toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' })}
+                    </p>
+                    <p className="text-lg font-bold" style={{ color: brandColor }}>
+                      {new Date(selectedSlot).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                )}
                 <p className="text-sm text-gray-500 mt-4 max-w-[250px] mx-auto">You'll receive a WhatsApp confirmation shortly.</p>
               </div>
 
@@ -536,7 +705,7 @@ function BookingPage() {
                   <h3 className="font-bold text-lg mb-4 text-gray-800">Demo Patient Summary</h3>
                   <div className="space-y-4 text-sm text-gray-600">
                     <p><strong>Name:</strong> {fullName}</p>
-                    <p><strong>Status:</strong> All 5 steps completed</p>
+                    <p><strong>Status:</strong> All 6 steps completed</p>
                     <div>
                       <strong>Pain areas:</strong>
                       <div className="mt-4">
