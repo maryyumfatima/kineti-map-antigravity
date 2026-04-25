@@ -77,9 +77,9 @@ export function AppSidebar() {
         >
           KinetiMap
         </div>
-        {clinicName && (
-          <div className="mt-2 truncate text-sm text-foreground/70">{clinicName}</div>
-        )}
+        <div className="mt-2 truncate text-sm text-foreground/70">
+          {clinicName ?? "My Clinic"}
+        </div>
       </SidebarHeader>
       <SidebarContent className="px-3">
         <SidebarMenu className="gap-1">
@@ -108,7 +108,7 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border px-4 py-4">
         <div className="flex flex-col gap-2">
-          <span className="truncate text-xs text-foreground/60">{user?.email}</span>
+          <span className="truncate text-xs text-foreground/60">{user?.email ?? "User"}</span>
           <Button
             variant="outline"
             size="sm"

@@ -55,10 +55,10 @@ function PatientsPage() {
   }, []);
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = (search?.trim() ?? "").toLowerCase();
     if (!q) return patients;
     return patients.filter((p) =>
-      [p.full_name, p.email, p.phone].some((v) => v?.toLowerCase().includes(q)),
+      [p.full_name, p.email, p.phone].some((v) => (v?.toLowerCase() ?? "").includes(q)),
     );
   }, [patients, search]);
 

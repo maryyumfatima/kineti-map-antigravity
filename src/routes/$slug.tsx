@@ -159,7 +159,7 @@ function PublicBookingPage() {
         return;
       }
 
-      const normalizedSlug = slug.trim().toLowerCase();
+      const normalizedSlug = (slug?.trim() ?? "").toLowerCase();
       console.log("Slug from URL:", normalizedSlug);
       console.log(
         "Querying Supabase: from('clinics').select('*').eq('slug', '" +
