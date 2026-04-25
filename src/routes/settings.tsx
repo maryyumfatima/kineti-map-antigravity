@@ -62,7 +62,7 @@ function SettingsPage() {
   const navigate = useNavigate()
 
   // Auth / clinic state
-  const [userId, setUserId] = useState<string | null>(null)
+
   const [clinicId, setClinicId] = useState<string | null>(null)
 
   // Section 1: Account
@@ -101,7 +101,7 @@ function SettingsPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      setUserId(user.id)
+
       setEmail(user.email ?? '')
       setFullName(user.user_metadata?.full_name ?? '')
 

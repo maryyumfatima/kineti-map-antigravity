@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 import { Check, AlertCircle, X } from 'lucide-react'
@@ -62,7 +62,7 @@ const COUNTRY_CODES = [
 
 // ─── Body Map Component ───────────────────────────────────────────────────────
 
-function BodySVG({ side }: { side: 'front' | 'back' }) {
+function BodySVG() {
   return (
     <svg viewBox="0 0 100 200" className="w-full h-auto drop-shadow-sm">
       {/* Head */}
@@ -360,7 +360,7 @@ function BookingPage() {
               
               <div>
                 <label className={labelClass}>WhatsApp number *</label>
-                <div className="flex w-full rounded-xl border border-gray-200 overflow-hidden focus-within:ring-2 bg-gray-50 transition-colors" style={{ outlineColor: brandColor, focusWithin: `ring-${brandColor}` }}>
+                <div className="flex w-full rounded-xl border border-gray-200 overflow-hidden focus-within:ring-2 bg-gray-50 transition-colors" style={{ outlineColor: brandColor }}>
                   <select 
                     value={whatsappCode} 
                     onChange={e => setWhatsappCode(e.target.value)}
@@ -439,7 +439,7 @@ function BookingPage() {
                 <div className="text-center">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Front</p>
                   <div className="relative inline-block w-full max-w-[160px] mx-auto cursor-pointer" onClick={e => handleBodyClick(e, 'front')}>
-                    <BodySVG side="front" />
+                    <BodySVG />
                     {dots.filter(d => d.side === 'front').map(d => (
                       <div key={d.id} className="absolute w-5 h-5 rounded-full border-2 border-white shadow-sm -translate-x-1/2 -translate-y-1/2 flex items-center justify-center text-[10px] text-white font-bold"
                            style={{ left: `${d.x}%`, top: `${d.y}%`, backgroundColor: getScoreColor(d.score) }}
@@ -452,7 +452,7 @@ function BookingPage() {
                 <div className="text-center">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Back</p>
                   <div className="relative inline-block w-full max-w-[160px] mx-auto cursor-pointer" onClick={e => handleBodyClick(e, 'back')}>
-                    <BodySVG side="back" />
+                    <BodySVG />
                     {dots.filter(d => d.side === 'back').map(d => (
                       <div key={d.id} className="absolute w-5 h-5 rounded-full border-2 border-white shadow-sm -translate-x-1/2 -translate-y-1/2 flex items-center justify-center text-[10px] text-white font-bold"
                            style={{ left: `${d.x}%`, top: `${d.y}%`, backgroundColor: getScoreColor(d.score) }}

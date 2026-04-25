@@ -271,7 +271,7 @@ function RevenuePage() {
                 <XAxis dataKey="type" tick={{ fontSize: 12, fill: '#2C1A12', opacity: 0.6 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 12, fill: '#2C1A12', opacity: 0.6 }} axisLine={false} tickLine={false} tickFormatter={v => `£${v}`} />
                 <Tooltip
-                  formatter={(v: number) => [fmt(v), 'Collected']}
+                  formatter={(v: any) => v !== undefined ? [v.toString(), ''] : ['', '']}
                   contentStyle={{ borderRadius: 8, borderColor: '#E0EEF0', fontSize: 13 }}
                 />
                 <Bar dataKey="total" fill="#006D77" radius={[6, 6, 0, 0]} />
