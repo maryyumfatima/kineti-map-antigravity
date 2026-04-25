@@ -2,104 +2,20 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
-import { Check, AlertCircle, X } from 'lucide-react'
+import { Check, AlertCircle } from 'lucide-react'
+import { BodyMap } from '../components/BodyMap'
 
 export const Route = createFileRoute('/$slug')({
   component: BookingPage,
 })
 
-// ─── Shared Types & Helpers ───────────────────────────────────────────────────
-
-type Dot = {
-  id: string
-  x: number
-  y: number
-  side: 'front' | 'back'
-  score: number
-  regionId: string
-  regionName: string
-}
+// ─── Shared Helpers ───────────────────────────────────────────────────────────
 
 function calculateAge(dob: string) {
   if (!dob) return 999
   const birth = new Date(dob)
   const diff = Date.now() - birth.getTime()
   return new Date(diff).getUTCFullYear() - 1970
-}
-
-function getScoreColor(score: number) {
-  if (score <= 3) return '#D9B29C'
-  if (score <= 6) return '#F5A623'
-  return '#C0392B'
-}
-
-const frontRegions = [
-  { id: 'f_head', label: 'Head', type: 'circle', cx: 50, cy: 16, r: 12 },
-  { id: 'f_neck', label: 'Neck', type: 'rect', x: 45, y: 28, width: 10, height: 8 },
-  { id: 'f_chest', label: 'Chest', type: 'rect', x: 38, y: 36, width: 24, height: 20, rx: 4 },
-  { id: 'f_u_abd', label: 'Upper Abdomen', type: 'rect', x: 40, y: 56, width: 20, height: 16 },
-  { id: 'f_l_abd', label: 'Lower Abdomen', type: 'rect', x: 38, y: 72, width: 24, height: 16, rx: 4 },
-  { id: 'f_groin', label: 'Groin/Pelvis', type: 'rect', x: 44, y: 88, width: 12, height: 12, rx: 4 },
-  { id: 'f_r_shoulder', label: 'Right Shoulder', type: 'rect', x: 28, y: 36, width: 10, height: 12, rx: 4 },
-  { id: 'f_r_u_arm', label: 'Right Upper Arm', type: 'rect', x: 28, y: 48, width: 8, height: 24, rx: 4 },
-  { id: 'f_r_elbow', label: 'Right Elbow', type: 'circle', cx: 32, cy: 74, r: 5 },
-  { id: 'f_r_forearm', label: 'Right Forearm', type: 'rect', x: 29, y: 79, width: 6, height: 22, rx: 3 },
-  { id: 'f_r_hand', label: 'Right Hand', type: 'circle', cx: 32, cy: 105, r: 5 },
-  { id: 'f_r_hip', label: 'Right Hip', type: 'rect', x: 36, y: 88, width: 8, height: 16, rx: 3 },
-  { id: 'f_r_thigh', label: 'Right Thigh', type: 'rect', x: 38, y: 104, width: 10, height: 34, rx: 4 },
-  { id: 'f_r_knee', label: 'Right Knee', type: 'circle', cx: 43, cy: 140, r: 6 },
-  { id: 'f_r_shin', label: 'Right Shin', type: 'rect', x: 39, y: 146, width: 8, height: 30, rx: 3 },
-  { id: 'f_r_foot', label: 'Right Ankle & Foot', type: 'rect', x: 38, y: 176, width: 10, height: 12, rx: 4 },
-  { id: 'f_l_shoulder', label: 'Left Shoulder', type: 'rect', x: 62, y: 36, width: 10, height: 12, rx: 4 },
-  { id: 'f_l_u_arm', label: 'Left Upper Arm', type: 'rect', x: 64, y: 48, width: 8, height: 24, rx: 4 },
-  { id: 'f_l_elbow', label: 'Left Elbow', type: 'circle', cx: 68, cy: 74, r: 5 },
-  { id: 'f_l_forearm', label: 'Left Forearm', type: 'rect', x: 65, y: 79, width: 6, height: 22, rx: 3 },
-  { id: 'f_l_hand', label: 'Left Hand', type: 'circle', cx: 68, cy: 105, r: 5 },
-  { id: 'f_l_hip', label: 'Left Hip', type: 'rect', x: 56, y: 88, width: 8, height: 16, rx: 3 },
-  { id: 'f_l_thigh', label: 'Left Thigh', type: 'rect', x: 52, y: 104, width: 10, height: 34, rx: 4 },
-  { id: 'f_l_knee', label: 'Left Knee', type: 'circle', cx: 57, cy: 140, r: 6 },
-  { id: 'f_l_shin', label: 'Left Shin', type: 'rect', x: 53, y: 146, width: 8, height: 30, rx: 3 },
-  { id: 'f_l_foot', label: 'Left Ankle & Foot', type: 'rect', x: 52, y: 176, width: 10, height: 12, rx: 4 },
-]
-
-const backRegions = [
-  { id: 'b_head', label: 'Head (back)', type: 'circle', cx: 50, cy: 16, r: 12 },
-  { id: 'b_neck', label: 'Neck (back)', type: 'rect', x: 45, y: 28, width: 10, height: 8 },
-  { id: 'b_u_back', label: 'Upper Back', type: 'rect', x: 44, y: 36, width: 12, height: 16 },
-  { id: 'b_m_back', label: 'Mid Back', type: 'rect', x: 38, y: 52, width: 24, height: 16, rx: 2 },
-  { id: 'b_l_back', label: 'Lower Back', type: 'rect', x: 38, y: 68, width: 24, height: 20, rx: 2 },
-  { id: 'b_l_blade', label: 'Left Shoulder Blade', type: 'rect', x: 36, y: 36, width: 8, height: 16, rx: 2 },
-  { id: 'b_l_shoulder', label: 'Left Shoulder (back)', type: 'rect', x: 28, y: 36, width: 10, height: 12, rx: 4 },
-  { id: 'b_l_u_arm', label: 'Left Upper Arm (back)', type: 'rect', x: 28, y: 48, width: 8, height: 24, rx: 4 },
-  { id: 'b_l_elbow', label: 'Left Elbow (back)', type: 'circle', cx: 32, cy: 74, r: 5 },
-  { id: 'b_l_forearm', label: 'Left Forearm (back)', type: 'rect', x: 29, y: 79, width: 6, height: 22, rx: 3 },
-  { id: 'b_l_hand', label: 'Left Hand (back)', type: 'circle', cx: 32, cy: 105, r: 5 },
-  { id: 'b_l_glute', label: 'Left Glute', type: 'rect', x: 36, y: 88, width: 14, height: 16, rx: 4 },
-  { id: 'b_l_hamstring', label: 'Left Hamstring', type: 'rect', x: 38, y: 104, width: 10, height: 34, rx: 4 },
-  { id: 'b_l_knee', label: 'Left Knee (back)', type: 'circle', cx: 43, cy: 140, r: 6 },
-  { id: 'b_l_calf', label: 'Left Calf', type: 'rect', x: 39, y: 146, width: 8, height: 30, rx: 3 },
-  { id: 'b_l_foot', label: 'Left Heel & Foot', type: 'rect', x: 38, y: 176, width: 10, height: 12, rx: 4 },
-  { id: 'b_r_blade', label: 'Right Shoulder Blade', type: 'rect', x: 56, y: 36, width: 8, height: 16, rx: 2 },
-  { id: 'b_r_shoulder', label: 'Right Shoulder (back)', type: 'rect', x: 62, y: 36, width: 10, height: 12, rx: 4 },
-  { id: 'b_r_u_arm', label: 'Right Upper Arm (back)', type: 'rect', x: 64, y: 48, width: 8, height: 24, rx: 4 },
-  { id: 'b_r_elbow', label: 'Right Elbow (back)', type: 'circle', cx: 68, cy: 74, r: 5 },
-  { id: 'b_r_forearm', label: 'Right Forearm (back)', type: 'rect', x: 65, y: 79, width: 6, height: 22, rx: 3 },
-  { id: 'b_r_hand', label: 'Right Hand (back)', type: 'circle', cx: 68, cy: 105, r: 5 },
-  { id: 'b_r_glute', label: 'Right Glute', type: 'rect', x: 50, y: 88, width: 14, height: 16, rx: 4 },
-  { id: 'b_r_hamstring', label: 'Right Hamstring', type: 'rect', x: 52, y: 104, width: 10, height: 34, rx: 4 },
-  { id: 'b_r_knee', label: 'Right Knee (back)', type: 'circle', cx: 57, cy: 140, r: 6 },
-  { id: 'b_r_calf', label: 'Right Calf', type: 'rect', x: 53, y: 146, width: 8, height: 30, rx: 3 },
-  { id: 'b_r_foot', label: 'Right Heel & Foot', type: 'rect', x: 52, y: 176, width: 10, height: 12, rx: 4 },
-]
-
-
-
-function getFaceForScore(score: number) {
-  if (score <= 2) return '😊'
-  if (score <= 4) return '🙂'
-  if (score <= 6) return '😐'
-  if (score <= 8) return '😟'
-  return '😣'
 }
 
 const COUNTRY_CODES = [
@@ -111,32 +27,6 @@ const COUNTRY_CODES = [
   { flag: '🇵🇰', code: '+92', name: 'Pakistan' },
   { flag: '🌍', code: '+', name: 'Other' }
 ]
-
-// ─── Body Map Component ───────────────────────────────────────────────────────
-
-function BodySVG({ side }: { side: 'front' | 'back' }) {
-  const regions = side === 'front' ? frontRegions : backRegions
-  return (
-    <svg viewBox="0 0 100 200" className="w-full h-auto drop-shadow-sm">
-      {regions.map((r: any) => {
-        const props = {
-          key: r.id,
-          'data-id': r.id,
-          'data-label': r.label,
-          fill: '#f8f9fa',
-          stroke: '#cbd5e1',
-          strokeWidth: '1.5',
-          className: 'cursor-pointer hover:fill-slate-200 transition-colors',
-          ...r
-        }
-        if (r.type === 'circle') return <circle {...props} />
-        if (r.type === 'rect') return <rect {...props} />
-        if (r.type === 'path') return <path {...props} />
-        return null
-      })}
-    </svg>
-  )
-}
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -160,8 +50,7 @@ function BookingPage() {
   const [guardianWhatsapp, setGuardianWhatsapp] = useState('')
 
   // Step 2: Where does it hurt?
-  const [dots, setDots] = useState<Dot[]>([])
-  const [pendingDot, setPendingDot] = useState<{ x: number, y: number, side: 'front'|'back', regionId: string, regionName: string } | null>(null)
+  const [painData, setPainData] = useState<Record<string, number>>({})
 
   // Step 3: Medical background
   const [surgeries, setSurgeries] = useState('')
@@ -199,10 +88,7 @@ function BookingPage() {
       setWhatsappCode('+44')
       setWhatsapp('7700 900000')
       setDob('1990-01-01')
-      setDots([
-        { id: '1', x: 38, y: 68, side: 'back', score: 8, regionId: 'b_l_back', regionName: 'Lower Back' },
-        { id: '2', x: 57, y: 140, side: 'front', score: 6, regionId: 'f_l_knee', regionName: 'Left Knee' }
-      ])
+      setPainData({ 'b_l_back': 8, 'f_l_knee': 6 })
       return
     }
     
@@ -221,35 +107,7 @@ function BookingPage() {
     }
   }
 
-  const handleBodyClick = (e: React.MouseEvent<HTMLDivElement>, side: 'front' | 'back') => {
-    e.stopPropagation()
-    const target = e.target as SVGElement
-    const id = target.getAttribute('data-id')
-    const label = target.getAttribute('data-label')
-    if (!id || !label) return
-    
-    const rect = e.currentTarget.getBoundingClientRect()
-    const x = ((e.clientX - rect.left) / rect.width) * 100
-    const y = ((e.clientY - rect.top) / rect.height) * 100
-    
-    setPendingDot({ x, y, side, regionId: id, regionName: label })
-  }
 
-  const saveDot = (score: number) => {
-    if (!pendingDot) return
-    // Remove existing dot in same region if exists
-    const newDots = dots.filter(d => d.regionId !== pendingDot.regionId)
-    setDots([...newDots, {
-      id: Math.random().toString(36).substring(7),
-      x: pendingDot.x,
-      y: pendingDot.y,
-      side: pendingDot.side,
-      score,
-      regionId: pendingDot.regionId,
-      regionName: pendingDot.regionName
-    }])
-    setPendingDot(null)
-  }
 
   const submitBooking = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -310,7 +168,7 @@ function BookingPage() {
       if (patientErr || !patient) throw patientErr
 
       // 3. Format JSONs
-      const painData = dots.reduce((acc, d) => ({ ...acc, [d.regionId]: d.score }), {})
+      const painDataJson = painData
       const redFlags = {
         weight_loss: q1,
         bladder_bowel: q2,
@@ -323,7 +181,7 @@ function BookingPage() {
       const { data: bookingData, error: bookingErr } = await supabase.from('bookings').insert({
         clinic_id: clinic.id,
         patient_id: patient.id,
-        pain_data: painData,
+        pain_data: painDataJson,
         red_flags: redFlags,
         status: 'upcoming',
         appointment_type: 'initial',
@@ -527,74 +385,11 @@ function BookingPage() {
               <h2 className="text-xl font-bold text-gray-900 mb-2">Where does it hurt?</h2>
               <p className="text-sm text-gray-500 italic text-center mb-6">Tap where it hurts.<br/>Rate the pain 1–10.</p>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center">
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Front</p>
-                  <div className="relative inline-block w-full max-w-[160px] mx-auto cursor-pointer" onClick={e => handleBodyClick(e, 'front')}>
-                    <BodySVG side="front" />
-                    {dots.filter(d => d.side === 'front').map(d => (
-                      <div key={d.id} className="absolute w-5 h-5 rounded-full border-2 border-white shadow-sm -translate-x-1/2 -translate-y-1/2 flex items-center justify-center text-[10px] text-white font-bold"
-                           style={{ left: `${d.x}%`, top: `${d.y}%`, backgroundColor: getScoreColor(d.score) }}
-                           onClick={e => { e.stopPropagation(); setDots(dots.filter(dot => dot.id !== d.id)) }}>
-                        {d.score}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Back</p>
-                  <div className="relative inline-block w-full max-w-[160px] mx-auto cursor-pointer" onClick={e => handleBodyClick(e, 'back')}>
-                    <BodySVG side="back" />
-                    {dots.filter(d => d.side === 'back').map(d => (
-                      <div key={d.id} className="absolute w-5 h-5 rounded-full border-2 border-white shadow-sm -translate-x-1/2 -translate-y-1/2 flex items-center justify-center text-[10px] text-white font-bold"
-                           style={{ left: `${d.x}%`, top: `${d.y}%`, backgroundColor: getScoreColor(d.score) }}
-                           onClick={e => { e.stopPropagation(); setDots(dots.filter(dot => dot.id !== d.id)) }}>
-                        {d.score}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {dots.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-4 justify-center">
-                  {dots.map(d => (
-                    <div key={d.id} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-white shadow-sm transition-transform hover:scale-105"
-                         style={{ backgroundColor: getScoreColor(d.score) }}>
-                      {d.regionName} • {d.score}/10
-                      <button onClick={() => setDots(dots.filter(dot => dot.id !== d.id))} className="ml-1 opacity-70 hover:opacity-100">
-                        <X size={12} strokeWidth={3} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {pendingDot && (
-                <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-                  <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl relative animate-in zoom-in-95 duration-200">
-                    <button onClick={() => setPendingDot(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
-                      <X size={20} />
-                    </button>
-                    
-                    <p className="font-bold text-gray-900 mb-1">{pendingDot.regionName}</p>
-                    <p className="text-sm text-gray-500 mb-4">Rate the pain level (1-10)</p>
-                    
-                    <div className="flex gap-1 overflow-x-auto pb-2 justify-between">
-                      {[1,2,3,4,5,6,7,8,9,10].map(n => (
-                        <button key={n} onClick={() => saveDot(n)}
-                          className="flex flex-col items-center gap-1.5 min-w-[36px] p-1.5 rounded-xl hover:bg-gray-100 transition-colors">
-                          <span className="text-xl">{getFaceForScore(n)}</span>
-                          <span className="w-7 h-7 rounded-full text-[11px] flex items-center justify-center font-bold text-white shadow-sm"
-                                style={{ backgroundColor: getScoreColor(n) }}>
-                            {n}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
+              <BodyMap
+                mode="interactive"
+                initialData={painData}
+                onChange={(data) => setPainData(data)}
+              />
 
               <div className="pt-4 flex flex-col gap-3">
                 <button onClick={() => setStep(3)} className="w-full text-white font-bold py-3.5 rounded-xl transition-transform active:scale-95" style={{ backgroundColor: brandColor }}>
@@ -744,30 +539,13 @@ function BookingPage() {
                     <p><strong>Status:</strong> All 5 steps completed</p>
                     <div>
                       <strong>Pain areas:</strong>
-                      <div className="flex justify-center gap-8 mt-4">
-                        <div className="w-24 relative">
-                          <BodySVG side="front" />
-                          {dots.filter(d => d.side === 'front').map(d => (
-                            <div key={d.id} className="absolute w-4 h-4 rounded-full border-2 border-white shadow-sm -translate-x-1/2 -translate-y-1/2 flex items-center justify-center text-[8px] text-white font-bold"
-                                 style={{ left: `${d.x}%`, top: `${d.y}%`, backgroundColor: getScoreColor(d.score) }}>
-                              {d.score}
-                            </div>
-                          ))}
-                        </div>
-                        <div className="w-24 relative">
-                          <BodySVG side="back" />
-                          {dots.filter(d => d.side === 'back').map(d => (
-                            <div key={d.id} className="absolute w-4 h-4 rounded-full border-2 border-white shadow-sm -translate-x-1/2 -translate-y-1/2 flex items-center justify-center text-[8px] text-white font-bold"
-                                 style={{ left: `${d.x}%`, top: `${d.y}%`, backgroundColor: getScoreColor(d.score) }}>
-                              {d.score}
-                            </div>
-                          ))}
-                        </div>
+                      <div className="mt-4">
+                        <BodyMap mode="readonly" initialData={painData} />
                       </div>
                     </div>
                   </div>
                   <button onClick={() => {
-                    setFullName(''); setWhatsapp(''); setDob(''); setDots([]); setStep(1);
+                    setFullName(''); setWhatsapp(''); setDob(''); setPainData({}); setStep(1);
                   }} className="w-full mt-6 bg-white border-2 border-[#006D77] text-[#006D77] font-bold py-3 rounded-xl hover:bg-gray-50 transition-colors">
                     Start fresh booking
                   </button>
