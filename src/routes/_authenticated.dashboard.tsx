@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { CalendarDays, Users, Star, Wallet, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { CalendarDays, Users, Star, Wallet, CheckCircle2, XCircle, AlertTriangle, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
+import { AISOAPNoteModal } from "@/components/AISOAPNoteModal";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: DashboardPage,
@@ -11,14 +12,14 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 interface SessionRow {
   id: string;
-  patient_name: string | null;
-  scheduled_at: string | null;
+  patients?: { full_name: string | null } | null;
+  appointment_time: string | null;
   status: string | null;
 }
 
 interface FeedbackRow {
   id: string;
-  patient_name: string | null;
+  patients?: { full_name: string | null } | null;
   score: number | null;
   created_at: string | null;
 }
@@ -57,6 +58,9 @@ function DashboardPage() {
   });
   const [todayList, setTodayList] = useState<SessionRow[]>([]);
   const [lowScores, setLowScores] = useState<FeedbackRow[]>([]);
+  const [soapNotes, setSoapNotes] = useState<Record<string, boolean>>({});
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [draftData, setDraftData] = useState<any>(null);
 
   useEffect(() => {
     let active = true;
@@ -65,25 +69,46 @@ function DashboardPage() {
       const startISO = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
       const endISO = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString();
 
-      const [sessionsRes, patientsRes, feedbackRes, unpaidRes, lowRes] = await Promise.all([
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: cu } = await supabase
+        .from("clinic_users")
+        .select("clinic_id")
+        .eq("auth_user_id", user.id)
+        .single();
+      const clinicId = cu?.clinic_id;
+
+      if (!clinicId) return;
+
+      const [sessionsRes, patientsRes, feedbackRes, unpaidRes, lowRes, soapNotesRes] = await Promise.all([
         supabase
-          .from("sessions")
-          .select("id, patient_name, scheduled_at, status")
-          .gte("scheduled_at", startISO)
-          .lt("scheduled_at", endISO)
-          .order("scheduled_at", { ascending: true }),
-        supabase.from("patients").select("id", { count: "exact", head: true }),
-        supabase.from("feedback").select("score"),
+          .from("bookings")
+          .select("*, patients(full_name)")
+          .eq("clinic_id", clinicId)
+          .gte("appointment_time", startISO)
+          .lt("appointment_time", endISO)
+          .order("appointment_time", { ascending: true }),
         supabase
-          .from("sessions")
+          .from("patients")
           .select("id", { count: "exact", head: true })
-          .eq("paid", false),
+          .eq("clinic_id", clinicId)
+          .eq("status_tag", "active")
+          .eq("is_deleted", false),
+        supabase.from("feedback").select("score").eq("clinic_id", clinicId),
+        supabase
+          .from("cash_ledger")
+          .select("id", { count: "exact", head: true })
+          .eq("clinic_id", clinicId)
+          .eq("payment_status", "unpaid"),
         supabase
           .from("feedback")
-          .select("id, patient_name, score, created_at")
+          .select("*, patients(full_name)")
+          .eq("clinic_id", clinicId)
           .lte("score", 6)
           .order("created_at", { ascending: false })
           .limit(8),
+        supabase.from("soap_notes").select("booking_id, is_ai_generated").eq("clinic_id", clinicId),
       ]);
 
       if (!active) return;
@@ -96,6 +121,11 @@ function DashboardPage() {
           ? Math.round((validScores.reduce((a, b) => a + b, 0) / validScores.length) * 10) / 10
           : null;
 
+      const notes = (soapNotesRes?.data ?? []).reduce((acc: any, note: any) => {
+        if (note.is_ai_generated) acc[note.booking_id] = true;
+        return acc;
+      }, {} as Record<string, boolean>);
+
       setStats({
         todaySessions: todaySessions.length,
         activePatients: patientsRes.count ?? 0,
@@ -104,6 +134,7 @@ function DashboardPage() {
       });
       setTodayList(todaySessions as SessionRow[]);
       setLowScores((lowRes.data ?? []) as FeedbackRow[]);
+      setSoapNotes(notes);
     })();
     return () => {
       active = false;
@@ -111,8 +142,89 @@ function DashboardPage() {
   }, []);
 
   const updateSessionStatus = async (id: string, status: "completed" | "no_show") => {
-    await supabase.from("sessions").update({ status }).eq("id", id);
+    await supabase.from("bookings").update({ status }).eq("id", id);
     setTodayList((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
+
+    if (status === "completed") {
+      try {
+        const { data: booking } = await supabase
+          .from("bookings")
+          .select("clinic_id, patient_id, pain_data, appointment_type")
+          .eq("id", id)
+          .single();
+
+        if (!booking) return;
+
+        const { data: patient } = await supabase
+          .from("patients")
+          .select("primary_complaint")
+          .eq("id", booking.patient_id)
+          .single();
+
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: "llama3-8b-8192",
+            messages: [
+              {
+                role: "user",
+                content: `You are a physiotherapy clinical assistant. Generate a professional SOAP note based on:
+                
+                Primary complaint: ${patient?.primary_complaint || ""}
+                Pain areas and severity: ${JSON.stringify(booking.pain_data)}
+                Session type: ${booking.appointment_type}
+                
+                Return ONLY this JSON, nothing else:
+                {
+                  "subjective": "...",
+                  "objective": "...",
+                  "assessment": "...",
+                  "plan": "..."
+                }`
+              }
+            ],
+            max_tokens: 500
+          })
+        });
+
+        if (!response.ok) return;
+        const result = await response.json();
+        const content = result.choices?.[0]?.message?.content;
+        if (!content) return;
+
+        let parsed;
+        try {
+          const jsonMatch = content.match(/\{[\s\S]*\}/);
+          parsed = JSON.parse(jsonMatch ? jsonMatch[0] : content);
+        } catch {
+          return;
+        }
+
+        const { data: draft, error } = await supabase
+          .from("ai_soap_drafts")
+          .insert({
+            booking_id: id,
+            clinic_id: booking.clinic_id,
+            patient_id: booking.patient_id,
+            draft_subjective: parsed.subjective || "",
+            draft_objective: parsed.objective || "",
+            draft_assessment: parsed.assessment || "",
+            draft_plan: parsed.plan || "",
+          })
+          .select()
+          .single();
+
+        if (error || !draft) return;
+        setDraftData(draft);
+        setAiModalOpen(true);
+      } catch (e) {
+        // fail silently
+      }
+    }
   };
 
   return (
@@ -146,14 +258,19 @@ function DashboardPage() {
                 <div key={s.id} className="flex items-center justify-between gap-3 py-3">
                   <div className="min-w-0">
                     <div className="truncate text-sm font-medium text-foreground">
-                      {s.patient_name ?? "Unknown patient"}
+                      {s.patients?.full_name ?? "Unknown patient"}
+                      {soapNotes[s.id] && (
+                        <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent">
+                          AI ✨
+                        </span>
+                      )}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {s.scheduled_at
-                        ? new Date(s.scheduled_at).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
+                      {s.appointment_time
+                        ? new Date(s.appointment_time).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
                         : "—"}
                       {s.status && s.status !== "scheduled" ? ` • ${s.status}` : ""}
                     </div>
@@ -197,7 +314,7 @@ function DashboardPage() {
                 <div key={f.id} className="flex items-center justify-between py-3">
                   <div className="min-w-0">
                     <div className="truncate text-sm font-medium text-foreground">
-                      {f.patient_name ?? "Anonymous"}
+                      {f.patients?.full_name ?? "Anonymous"}
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {f.created_at ? new Date(f.created_at).toLocaleDateString() : ""}
@@ -212,6 +329,16 @@ function DashboardPage() {
           </div>
         </Card>
       </div>
+      <AISOAPNoteModal
+        isOpen={aiModalOpen}
+        onClose={() => setAiModalOpen(false)}
+        draftData={draftData}
+        onSaved={() => {
+          if (draftData) {
+            setSoapNotes((prev) => ({ ...prev, [draftData.booking_id]: true }));
+          }
+        }}
+      />
     </div>
   );
 }
