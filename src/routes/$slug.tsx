@@ -298,6 +298,7 @@ function ClosedNotice({ clinic }: { clinic: Clinic }) {
 type Stage = "form" | "otp" | "confirmed";
 
 function BookingFlow({ clinic, brand }: { clinic: Clinic; brand: string }) {
+  const isDemo = clinic.slug === "demo";
   const slots = useMemo(generateSlots, []);
   const [stage, setStage] = useState<Stage>("form");
   const [step, setStep] = useState(1);
@@ -305,21 +306,51 @@ function BookingFlow({ clinic, brand }: { clinic: Clinic; brand: string }) {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Step 1
-  const [identity, setIdentity] = useState<Step1>({
-    full_name: "",
-    whatsapp_number: "",
-    date_of_birth: "",
-    email: "",
-    guardian_name: "",
-    guardian_whatsapp: "",
-  });
+  const [identity, setIdentity] = useState<Step1>(
+    isDemo
+      ? {
+          full_name: "Sarah Ahmed",
+          whatsapp_number: "+44 7700 900000",
+          date_of_birth: "1990-05-15",
+          email: "sarah@example.com",
+          guardian_name: "",
+          guardian_whatsapp: "",
+        }
+      : {
+          full_name: "",
+          whatsapp_number: "",
+          date_of_birth: "",
+          email: "",
+          guardian_name: "",
+          guardian_whatsapp: "",
+        }
+  );
   const [identityErrors, setIdentityErrors] = useState<Partial<Record<keyof Step1, string>>>({});
   const [honeypot, setHoneypot] = useState("");
 
   // Step 2
-  const [painPoints, setPainPoints] = useState<PainPoint[]>([]);
-  const [painSummary, setPainSummary] = useState<PainData>({});
+  const demoPainPoints: PainPoint[] = [
+    { id: "demo-1", view: "back", x: 0.5, y: 0.55, region: "lower_back", score: 8 },
+    { id: "demo-2", view: "front", x: 0.6, y: 0.9, region: "left_knee", score: 6 },
+  ];
+  
+  const [painPoints, setPainPoints] = useState<PainPoint[]>(isDemo ? demoPainPoints : []);
+  const [painSummary, setPainSummary] = useState<PainData>(isDemo ? { lower_back: 8, left_knee: 6 } : {});
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+
+  const resetDemo = () => {
+    setIdentity({
+      full_name: "",
+      whatsapp_number: "",
+      date_of_birth: "",
+      email: "",
+      guardian_name: "",
+      guardian_whatsapp: "",
+    });
+    setPainPoints([]);
+    setPainSummary({});
+    setStep(1);
+  };
 
   // Step 3
   const [medical, setMedical] = useState<Record<MedicalField, string>>({
@@ -417,6 +448,12 @@ function BookingFlow({ clinic, brand }: { clinic: Clinic; brand: string }) {
     setSubmitting(true);
     setSubmitError(null);
     try {
+      if (clinic.slug === "demo") {
+        setBookingId("demo-booking-123");
+        setStage("confirmed");
+        return;
+      }
+
       // 1) Upsert patient by (phone_number, clinic_id)
       const phone = identity.whatsapp_number.trim();
       const { data: patient, error: patientErr } = await supabase
@@ -526,7 +563,7 @@ function BookingFlow({ clinic, brand }: { clinic: Clinic; brand: string }) {
               <Button type="button" variant="outline" onClick={() => setStage("form")}>
                 Back
               </Button>
-              <Button type="submit" className="flex-1" disabled={submitting} style={{ background: brand }}>
+              <Button type="submit" className="flex-1" disabled={submitting} style={{ backgroundColor: brand }}>
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify & confirm"}
               </Button>
             </div>
@@ -538,6 +575,26 @@ function BookingFlow({ clinic, brand }: { clinic: Clinic; brand: string }) {
 
   return (
     <div className="mx-auto mt-4 max-w-2xl px-4">
+      {isDemo && (
+        <div 
+          className="mb-4 flex flex-col items-center justify-between gap-4 rounded-xl p-4 text-sm font-medium sm:flex-row"
+          style={{ backgroundColor: "#EDF6F9", border: "1px solid #006D77", color: "#006D77" }}
+        >
+          <span>
+            <strong>You are viewing a demo</strong> — This is a sample clinic to explore KinetiMap
+          </span>
+          <Button 
+            type="button" 
+            variant="outline" 
+            size="sm" 
+            onClick={resetDemo}
+            style={{ borderColor: "#006D77", color: "#006D77" }}
+          >
+            Start fresh booking
+          </Button>
+        </div>
+      )}
+
       {/* Intro */}
       <p className="mb-4 rounded-xl border border-border bg-card p-4 text-sm leading-relaxed text-foreground">
         This helps your physiotherapist prepare. It takes under 5 minutes. You can skip anything you
@@ -550,7 +607,7 @@ function BookingFlow({ clinic, brand }: { clinic: Clinic; brand: string }) {
           <span>Step {step} of {TOTAL_STEPS}</span>
           <span>{Math.round((step / TOTAL_STEPS) * 100)}%</span>
         </div>
-        <Progress value={(step / TOTAL_STEPS) * 100} />
+        <Progress value={(step / TOTAL_STEPS) * 100} indicatorColor={brand} />
       </div>
 
       <form onSubmit={handleSubmitForm}>
@@ -603,11 +660,11 @@ function BookingFlow({ clinic, brand }: { clinic: Clinic; brand: string }) {
               Back
             </Button>
             {step < TOTAL_STEPS ? (
-              <Button type="button" onClick={next} style={{ background: brand }}>
+              <Button type="button" onClick={next} style={{ backgroundColor: brand }}>
                 Continue
               </Button>
             ) : (
-              <Button type="submit" disabled={submitting} style={{ background: brand }}>
+              <Button type="submit" disabled={submitting} style={{ backgroundColor: brand }}>
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send verification code"}
               </Button>
             )}
