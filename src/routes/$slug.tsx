@@ -84,18 +84,6 @@ function BookingPage() {
   }, [])
 
   const fetchClinic = async () => {
-    if (isDemo) {
-      setClinic({ id: 'demo', name: 'KinetiMap Demo Clinic', brand_color: '#006D77', secondary_color: '#D9B29C', text_color: '#2C1A12', bio: 'This is a sample clinic to help you explore KinetiMap.', booking_page_mode: 'open' })
-      setLoading(false)
-      setStep(8)
-      setFullName('Sarah Ahmed')
-      setWhatsappCode('+44')
-      setWhatsapp('7700 900000')
-      setDob('1990-01-01')
-      setPainData({ 'b_l_back': 8, 'f_l_knee': 6 })
-      return
-    }
-
     try {
       const { data: clinicData } = await supabase
         .from('clinics')
@@ -178,13 +166,6 @@ function BookingPage() {
 
     if (honeypot) {
       return // reject silently
-    }
-
-    if (isDemo) {
-      toast.success('Demo booking successful! (No data saved)')
-      setStep(7)
-      setGeneratedOtp('123456')
-      return
     }
 
     setSaving(true)
@@ -332,12 +313,11 @@ function BookingPage() {
     <div className="min-h-screen bg-[#EDF6F9] py-12 px-4 sm:px-6 font-sans">
 
       {isDemo && (
-        <div className="max-w-[560px] mx-auto mb-6 bg-[#FFF8E6] border border-[#F5A623] rounded-xl p-4 flex items-start gap-3 relative animate-in fade-in slide-in-from-top-4">
-          <AlertCircle className="w-5 h-5 text-[#854F0B] shrink-0 mt-0.5" />
-          <div className="pr-6">
-            <h3 className="font-bold text-[#854F0B] text-sm mb-1">You are viewing a demo.</h3>
-            <p className="text-[#854F0B]/80 text-xs leading-relaxed">This is a sample clinic to help you explore KinetiMap.</p>
-          </div>
+        <div className="max-w-[560px] mx-auto mb-4 flex justify-center">
+          <span className="inline-flex items-center gap-1.5 bg-white/70 backdrop-blur-sm border border-gray-200 rounded-full px-3 py-1 text-xs text-gray-600 shadow-sm">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            Demo mode — try the full booking flow
+          </span>
         </div>
       )}
 
