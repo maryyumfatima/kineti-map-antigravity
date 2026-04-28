@@ -143,23 +143,51 @@ function BrandingPage() {
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file || !clinicId) return
+    if (!file) {
+      toast.error('No file selected')
+      return
+    }
+    if (!clinicId) {
+      toast.error('Clinic ID missing — refresh the page and try again')
+      return
+    }
+    // Pre-flight checks
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error(`File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Max 2MB allowed.`)
+      return
+    }
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+    if (!validTypes.includes(file.type)) {
+      toast.error(`Invalid file type: ${file.type}. Use PNG, JPG, or WebP.`)
+      return
+    }
+
     setUploading(true)
     try {
-      const ext = file.name.split('.').pop()
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'png'
       const path = `${clinicId}/logo.${ext}`
+      console.log('[Branding] Uploading logo:', { path, size: file.size, type: file.type })
+
       const { error: upErr } = await supabase.storage
         .from('clinic-logos')
-        .upload(path, file, { upsert: true })
-      if (upErr) throw upErr
+        .upload(path, file, { upsert: true, contentType: file.type })
+
+      if (upErr) {
+        console.error('[Branding] Supabase upload error:', upErr)
+        throw upErr
+      }
+
       const { data: urlData } = supabase.storage
         .from('clinic-logos')
         .getPublicUrl(path)
-      set('logo_url', urlData.publicUrl)
-      toast.success('Logo uploaded')
-    } catch (e) {
-      console.error('[Branding] logo upload error:', e)
-      toast.error('Logo upload failed')
+      // Add cache-busting param so old cached version isn't shown
+      const freshUrl = `${urlData.publicUrl}?t=${Date.now()}`
+      set('logo_url', freshUrl)
+      toast.success('Logo uploaded successfully')
+    } catch (err: any) {
+      console.error('[Branding] logo upload error:', err)
+      const msg = err?.message || err?.error || 'Unknown error'
+      toast.error(`Logo upload failed: ${msg}`)
     } finally {
       setUploading(false)
     }

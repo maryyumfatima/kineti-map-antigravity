@@ -3,9 +3,9 @@ import { DashboardLayout } from '../components/DashboardLayout'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
-import { 
-  Users, Calendar, MessageSquare, CreditCard, 
-  CheckCircle, AlertCircle, Clock, ChevronRight 
+import {
+  Users, Calendar, MessageSquare, CreditCard,
+  CheckCircle, AlertCircle, Clock, ChevronRight
 } from 'lucide-react'
 
 export const Route = createFileRoute('/dashboard')({
@@ -22,20 +22,20 @@ type StatCardProps = {
 
 function StatCard({ title, value, icon: Icon, color = 'text-primary', loading }: StatCardProps) {
   return (
-    <div className="bg-card rounded-2xl p-6 border border-border shadow-sm flex flex-col">
-      <div className="flex justify-between items-start mb-4">
-        <div className={`p-2 rounded-xl bg-background border border-border ${color}`}>
-          <Icon className="w-5 h-5" />
+    <div className="bg-card rounded-2xl p-4 md:p-6 border border-border shadow-sm flex flex-col">
+      <div className="flex justify-between items-start mb-3 md:mb-4">
+        <div className={`p-1.5 md:p-2 rounded-xl bg-background border border-border ${color}`}>
+          <Icon className="w-4 h-4 md:w-5 md:h-5" />
         </div>
       </div>
       {loading ? (
-        <div className="h-10 w-20 bg-gray-100 animate-pulse rounded-lg mb-2" />
+        <div className="h-8 md:h-10 w-16 md:w-20 bg-gray-100 animate-pulse rounded-lg mb-2" />
       ) : (
-        <span className={`text-[36px] font-bold font-bricolage mb-1 leading-none ${color}`}>
+        <span className={`text-[28px] md:text-[36px] font-bold font-bricolage mb-1 leading-none ${color}`}>
           {value}
         </span>
       )}
-      <span className="text-text/50 font-medium text-sm">
+      <span className="text-text/50 font-medium text-xs md:text-sm">
         {title}
       </span>
     </div>
@@ -44,7 +44,7 @@ function StatCard({ title, value, icon: Icon, color = 'text-primary', loading }:
 
 function Dashboard() {
   const [loading, setLoading] = useState(true)
-  
+
   // Stats
   const [todaySessionsCount, setTodaySessionsCount] = useState(0)
   const [activePatientsCount, setActivePatientsCount] = useState(0)
@@ -54,7 +54,7 @@ function Dashboard() {
   // Lists
   const [todayBookings, setTodayBookings] = useState<any[]>([])
   const [lowScoreAlerts, setLowScoreAlerts] = useState<any[]>([])
-  
+
   const [updatingBooking, setUpdatingBooking] = useState<string | null>(null)
 
   useEffect(() => {
@@ -72,7 +72,7 @@ function Dashboard() {
         .select('clinic_id')
         .eq('auth_user_id', user.id)
         .single()
-      
+
       if (!cu) return
       const myClinicId = cu.clinic_id
 
@@ -89,7 +89,7 @@ function Dashboard() {
         .gte('appointment_time', todayStart)
         .lt('appointment_time', tomorrowStart)
         .eq('status', 'upcoming')
-      
+
       setTodaySessionsCount(sessionCount || 0)
 
       // 2. Active Patients Count
@@ -99,7 +99,7 @@ function Dashboard() {
         .eq('clinic_id', myClinicId)
         .eq('status_tag', 'active')
         .eq('is_deleted', false)
-      
+
       setActivePatientsCount(patientCount || 0)
 
       // 3. Avg Feedback Score
@@ -108,7 +108,7 @@ function Dashboard() {
         .select('score')
         .eq('clinic_id', myClinicId)
         .gte('created_at', thirtyDaysAgo)
-      
+
       if (feedbackData && feedbackData.length > 0) {
         const sum = feedbackData.reduce((acc, f) => acc + f.score, 0)
         setAvgFeedback(parseFloat((sum / feedbackData.length).toFixed(1)))
@@ -120,7 +120,7 @@ function Dashboard() {
         .select('*', { count: 'exact', head: true })
         .eq('clinic_id', myClinicId)
         .eq('payment_status', 'unpaid')
-      
+
       setUnpaidCount(unpaid || 0)
 
       // 5. Today's Bookings List
@@ -131,7 +131,7 @@ function Dashboard() {
         .gte('appointment_time', todayStart)
         .lt('appointment_time', tomorrowStart)
         .order('appointment_time', { ascending: true })
-      
+
       setTodayBookings(bList || [])
 
       // 6. Low Score Alerts
@@ -141,7 +141,7 @@ function Dashboard() {
         .eq('clinic_id', myClinicId)
         .lte('score', 6)
         .order('created_at', { ascending: false })
-      
+
       setLowScoreAlerts(fList || [])
 
     } catch (e) {
@@ -159,7 +159,7 @@ function Dashboard() {
         .from('bookings')
         .update({ status })
         .eq('id', bookingId)
-      
+
       if (error) throw error
       setTodayBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status } : b))
       toast.success(`Session marked as ${status}`)
@@ -180,49 +180,49 @@ function Dashboard() {
   return (
     <DashboardLayout>
       <div className="max-w-6xl mx-auto pb-12">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-1 md:gap-0 mb-6 md:mb-8">
           <div>
-            <h1 className="text-[28px] font-bold text-primary font-bricolage">Dashboard Overview</h1>
+            <h1 className="text-2xl md:text-[28px] font-bold text-primary font-bricolage leading-tight">Dashboard Overview</h1>
             <p className="text-text/50 text-sm mt-1">Here's what's happening today at your clinic.</p>
           </div>
-          <div className="text-right">
+          <div className="md:text-right">
             <p className="text-sm font-semibold text-text">{new Date().toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' })}</p>
             <p className="text-xs text-text/40 mt-0.5">Real-time metrics</p>
           </div>
         </div>
-        
+
         {/* STATS GRID */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-          <StatCard 
-            title="Today's Sessions" 
-            value={todaySessionsCount} 
-            icon={Calendar} 
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-10">
+          <StatCard
+            title="Today's Sessions"
+            value={todaySessionsCount}
+            icon={Calendar}
             loading={loading}
           />
-          <StatCard 
-            title="Active Patients" 
-            value={activePatientsCount} 
-            icon={Users} 
+          <StatCard
+            title="Active Patients"
+            value={activePatientsCount}
+            icon={Users}
             loading={loading}
           />
-          <StatCard 
-            title="Avg Feedback Score" 
-            value={avgFeedback ?? '--'} 
-            icon={MessageSquare} 
+          <StatCard
+            title="Avg Feedback Score"
+            value={avgFeedback ?? '--'}
+            icon={MessageSquare}
             color={getFeedbackColor(avgFeedback)}
             loading={loading}
           />
-          <StatCard 
-            title="Unpaid Sessions" 
-            value={unpaidCount} 
-            icon={CreditCard} 
+          <StatCard
+            title="Unpaid Sessions"
+            value={unpaidCount}
+            icon={CreditCard}
             color={unpaidCount > 0 ? 'text-amber-600' : 'text-primary'}
             loading={loading}
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8">
+
           {/* LEFT: TODAY'S SESSIONS */}
           <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden flex flex-col">
             <div className="p-6 border-b border-border flex justify-between items-center bg-white">
@@ -232,7 +232,7 @@ function Dashboard() {
               </h2>
               <span className="text-[10px] font-bold uppercase tracking-widest text-text/30">{todayBookings.length} total</span>
             </div>
-            
+
             <div className="flex-1">
               {todayBookings.length === 0 ? (
                 <div className="p-12 text-center">
@@ -258,20 +258,19 @@ function Dashboard() {
                               <span className="text-[10px] font-bold bg-background border border-border px-2 py-0.5 rounded text-text/50 uppercase">
                                 {booking.appointment_type?.replace('_', ' ') ?? ''}
                               </span>
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase border ${
-                                booking.status === 'completed' ? 'bg-green-50 border-green-100 text-green-600' :
-                                booking.status === 'upcoming' ? 'bg-sky-50 border-sky-100 text-sky-600' :
-                                'bg-gray-50 border-gray-100 text-gray-500'
-                              }`}>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase border ${booking.status === 'completed' ? 'bg-green-50 border-green-100 text-green-600' :
+                                  booking.status === 'upcoming' ? 'bg-sky-50 border-sky-100 text-sky-600' :
+                                    'bg-gray-50 border-gray-100 text-gray-500'
+                                }`}>
                                 {booking.status}
                               </span>
                             </div>
                           </div>
                         </div>
-                        
+
                         {booking.status === 'upcoming' && (
                           <div className="flex gap-1">
-                            <button 
+                            <button
                               onClick={() => updateBookingStatus(booking.id, 'completed')}
                               disabled={updatingBooking === booking.id}
                               className="p-2 rounded-lg hover:bg-green-50 text-green-600 transition-colors disabled:opacity-50"
@@ -279,7 +278,7 @@ function Dashboard() {
                             >
                               <CheckCircle className="w-5 h-5" />
                             </button>
-                            <button 
+                            <button
                               onClick={() => updateBookingStatus(booking.id, 'no_show')}
                               disabled={updatingBooking === booking.id}
                               className="p-2 rounded-lg hover:bg-red-50 text-red-500 transition-colors disabled:opacity-50"
@@ -313,7 +312,7 @@ function Dashboard() {
                 Low Score Alerts
               </h2>
             </div>
-            
+
             <div className="flex-1">
               {lowScoreAlerts.length === 0 ? (
                 <div className="p-16 text-center flex flex-col items-center justify-center">

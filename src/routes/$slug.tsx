@@ -500,7 +500,7 @@ function BookingPage() {
                           disabled={slot.isBooked}
                           onClick={() => setSelectedSlot(slot.iso)}
                           className={`py-3 rounded-xl border-2 text-sm font-bold transition-all ${slot.isBooked ? 'bg-gray-100 border-transparent text-gray-300 cursor-not-allowed line-through' :
-                              isActive ? 'border-transparent shadow-md text-white' : 'border-gray-100 bg-white text-gray-700 hover:border-gray-200'
+                            isActive ? 'border-transparent shadow-md text-white' : 'border-gray-100 bg-white text-gray-700 hover:border-gray-200'
                             }`}
                           style={{ backgroundColor: isActive ? brandColor : undefined }}
                         >
