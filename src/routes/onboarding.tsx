@@ -52,11 +52,10 @@ function LeftPanel({ step }: { step: number }) {
             const isCompleted = step > item.num
             return (
               <div key={item.num} className="flex items-start gap-4 transition-opacity" style={{ opacity: isActive || isCompleted ? 1 : 0.5 }}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-colors ${
-                  isActive ? 'bg-white text-primary ring-4 ring-white/20' :
-                  isCompleted ? 'bg-[#D9B29C] text-white' :
-                  'bg-white/20 text-white'
-                }`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-colors ${isActive ? 'bg-white text-primary ring-4 ring-white/20' :
+                    isCompleted ? 'bg-[#D9B29C] text-white' :
+                      'bg-white/20 text-white'
+                  }`}>
                   {isCompleted ? <Check size={16} strokeWidth={3} /> : item.num}
                 </div>
                 <div>
@@ -111,8 +110,66 @@ function OnboardingPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { navigate({ to: '/login' }); return }
 
-      const { data: cu } = await supabase.from('clinic_users').select('clinic_id').eq('auth_user_id', user.id).single()
-      if (!cu) return
+      const { data: cu, error: cuErr } = await supabase
+        .from('clinic_users')
+        .select('clinic_id')
+        .eq('auth_user_id', user.id)
+        .maybeSingle()
+
+      if (cuErr) {
+        console.error('[Onboarding] clinic_users fetch error:', cuErr)
+      }
+
+      // If no clinic exists, the auto-create trigger may have failed.
+      // Fall back to creating one client-side so the user isn't stuck.
+      if (!cu) {
+        console.warn('[Onboarding] No clinic found for user, creating fallback...')
+        const meta = (user.user_metadata as any) || {}
+        const fallbackName = meta.clinic_name || 'My Clinic'
+        const baseSlug = (fallbackName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'clinic')
+        // Try a few slug variations to avoid collisions
+        let workingSlug = baseSlug
+        for (let i = 1; i < 50; i++) {
+          const { data: existing } = await supabase.from('clinics').select('id').eq('slug', workingSlug).maybeSingle()
+          if (!existing) break
+          workingSlug = `${baseSlug}-${i}`
+        }
+        const { data: newClinic, error: createErr } = await supabase.from('clinics').insert({
+          name: fallbackName,
+          slug: workingSlug,
+          whatsapp_number: meta.whatsapp_number || null,
+          brand_color: '#006D77',
+          secondary_color: '#D9B29C',
+          text_color: '#2C1A12',
+          appointment_price: 50,
+          currency: 'GBP',
+          default_slot_duration: 60,
+          booking_page_mode: 'open',
+          onboarding_completed: false,
+        }).select('id').single()
+        if (createErr || !newClinic) {
+          toast.error('Could not set up your clinic. Please contact support.')
+          return
+        }
+        await supabase.from('clinic_users').insert({
+          clinic_id: newClinic.id,
+          auth_user_id: user.id,
+          role: 'owner',
+        })
+        // Set sensible default availability (Mon–Fri 9am–7pm)
+        await supabase.from('availability_slots').insert([
+          { clinic_id: newClinic.id, day_of_week: 1, start_time: '09:00:00', end_time: '19:00:00', slot_duration_minutes: 60, is_active: true },
+          { clinic_id: newClinic.id, day_of_week: 2, start_time: '09:00:00', end_time: '19:00:00', slot_duration_minutes: 60, is_active: true },
+          { clinic_id: newClinic.id, day_of_week: 3, start_time: '09:00:00', end_time: '19:00:00', slot_duration_minutes: 60, is_active: true },
+          { clinic_id: newClinic.id, day_of_week: 4, start_time: '09:00:00', end_time: '19:00:00', slot_duration_minutes: 60, is_active: true },
+          { clinic_id: newClinic.id, day_of_week: 5, start_time: '09:00:00', end_time: '19:00:00', slot_duration_minutes: 60, is_active: true },
+        ])
+        setClinicId(newClinic.id)
+        setName(fallbackName)
+        setSlug(workingSlug)
+        return
+      }
+
       setClinicId(cu.clinic_id)
 
       const { data: clinic } = await supabase.from('clinics').select('*').eq('id', cu.clinic_id).single()
@@ -178,14 +235,14 @@ function OnboardingPage() {
     reader.onload = (event) => {
       const text = event.target?.result as string
       if (!text) return
-      
+
       const rows = text.split('\n').filter(r => r.trim()).map(r => r.split(',').map(c => c.trim()?.replace(/^"|"$/g, '') ?? ''))
       if (rows.length < 2) { toast.error('CSV must have headers and at least 1 row'); return }
-      
+
       setCsvHeaders(rows[0])
       setCsvRows(rows.slice(1))
       setCsvFile(file)
-      
+
       const initialMap: Record<string, string> = {}
       rows[0].forEach((h) => {
         const hl = (h ?? '').toLowerCase()
@@ -215,7 +272,7 @@ function OnboardingPage() {
         })
         return p
       }).filter(p => p.full_name && p.phone_number)
-      
+
       if (patientsToInsert.length === 0) {
         toast.error('No valid patients found. Please map Name and Phone columns.')
         setImporting(false)
@@ -226,18 +283,18 @@ function OnboardingPage() {
       for (const p of patientsToInsert) {
         const { error } = await supabase.rpc('upsert_patient', { ...p, source: 'csv_import' })
         if (error) {
-           const { data: inserted } = await supabase.from('patients').upsert(p, { onConflict: 'clinic_id,phone_number' }).select().single()
-           if (inserted) {
-             await supabase.from('patient_activity_log').insert({
-               patient_id: inserted.id, clinic_id: clinicId, action: 'created', source: 'csv_import'
-             })
-             successCount++
-           }
+          const { data: inserted } = await supabase.from('patients').upsert(p, { onConflict: 'clinic_id,phone_number' }).select().single()
+          if (inserted) {
+            await supabase.from('patient_activity_log').insert({
+              patient_id: inserted.id, clinic_id: clinicId, action: 'created', source: 'csv_import'
+            })
+            successCount++
+          }
         } else {
           successCount++
         }
       }
-      
+
       toast.success(`${successCount} patients imported successfully`)
       setCsvFile(null)
     } catch (e) {
@@ -265,7 +322,7 @@ function OnboardingPage() {
     setSaving(true)
     try {
       const map: Record<string, number> = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 }
-      
+
       const slots = Object.entries(schedule).map(([day, data]) => ({
         clinic_id: clinicId,
         day_of_week: map[day],
@@ -277,10 +334,10 @@ function OnboardingPage() {
 
       // Clear any existing slots just in case
       await supabase.from('availability_slots').delete().eq('clinic_id', clinicId)
-      
+
       // Insert new slots
       const { error } = await supabase.from('availability_slots').insert(slots)
-      
+
       if (error) throw error
       setStep(3)
     } catch (e) {
@@ -330,7 +387,7 @@ function OnboardingPage() {
         overflowY: 'auto',
       }}>
         <div className="w-full max-w-md auth-card-in">
-          
+
           {/* STEP 1 */}
           {step === 1 && (
             <div className="space-y-6">
@@ -353,7 +410,7 @@ function OnboardingPage() {
                   </label>
                   <textarea value={bio} onChange={e => e.target.value.length <= 300 && setBio(e.target.value)} rows={3} className={`${inputClass} resize-none`} placeholder="Tell patients about your clinic…" />
                 </div>
-                
+
                 <div>
                   <label className={labelClass}>Clinic logo (optional)</label>
                   <div className="flex items-center gap-4 mt-2">
@@ -399,7 +456,7 @@ function OnboardingPage() {
                   <h3 className="font-bricolage text-[20px] font-bold text-text mb-1">Import existing patients</h3>
                   <p className="text-text/60 text-sm">Already have patient data? Import it now — takes 2 minutes</p>
                 </div>
-                
+
                 {!csvFile ? (
                   <div className="border-2 border-dashed border-border rounded-xl p-8 text-center bg-gray-50/50">
                     <Upload className="w-8 h-8 text-primary/40 mx-auto mb-3" />
@@ -419,9 +476,9 @@ function OnboardingPage() {
                         {csvHeaders.map((h) => (
                           <div key={h} className="p-3 flex items-center justify-between gap-4">
                             <span className="text-sm font-medium text-text truncate flex-1" title={h}>{h}</span>
-                            <select 
-                              value={csvMapping[h] || 'skip'} 
-                              onChange={(e) => setCsvMapping({...csvMapping, [h]: e.target.value})}
+                            <select
+                              value={csvMapping[h] || 'skip'}
+                              onChange={(e) => setCsvMapping({ ...csvMapping, [h]: e.target.value })}
                               className="w-[180px] text-sm border border-border rounded-md px-2 py-1.5 outline-none focus:border-primary"
                             >
                               {KINETIMAP_FIELDS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
@@ -430,21 +487,21 @@ function OnboardingPage() {
                         ))}
                       </div>
                     </div>
-                    
+
                     {importing && (
-                       <div className="w-full bg-gray-200 rounded-full h-2 mb-4 overflow-hidden">
-                         <div className="bg-primary h-2 rounded-full animate-pulse w-full"></div>
-                       </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2 mb-4 overflow-hidden">
+                        <div className="bg-primary h-2 rounded-full animate-pulse w-full"></div>
+                      </div>
                     )}
-                    
-                    <button 
-                      onClick={handleImportCsv} 
-                      disabled={importing} 
+
+                    <button
+                      onClick={handleImportCsv}
+                      disabled={importing}
                       className="w-full bg-primary hover:bg-[#005560] text-white font-semibold py-3 rounded-xl transition-all disabled:opacity-60"
                     >
                       {importing ? 'Importing...' : `Import ${csvRows.length} patients`}
                     </button>
-                    
+
                     <div className="text-center">
                       <button onClick={() => setCsvFile(null)} className="text-sm text-text/50 hover:text-text">Skip import</button>
                     </div>
@@ -470,7 +527,7 @@ function OnboardingPage() {
                       <button onClick={() => toggleDay(day)} className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${dayData.enabled ? 'bg-primary' : 'bg-gray-300'}`}>
                         <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${dayData.enabled ? 'translate-x-4' : 'translate-x-1'}`} />
                       </button>
-                      <span className={`w-24 text-sm font-medium ${dayData.enabled ? 'text-text' : 'text-text/40'}`}>{day.substring(0,3)}</span>
+                      <span className={`w-24 text-sm font-medium ${dayData.enabled ? 'text-text' : 'text-text/40'}`}>{day.substring(0, 3)}</span>
                       {dayData.enabled ? (
                         <div className="flex items-center gap-2 flex-1">
                           <input type="time" value={dayData.start} onChange={e => updateDay(day, 'start', e.target.value)} className="border border-border rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-primary flex-1 bg-white" />
