@@ -34,7 +34,7 @@ function BookingPage() {
   const { slug } = Route.useParams()
   const [loading, setLoading] = useState(true)
   const [clinic, setClinic] = useState<any>(null)
-  
+
   const isDemo = slug === 'demo'
   const [step, setStep] = useState(1)
   const [saving, setSaving] = useState(false)
@@ -85,7 +85,7 @@ function BookingPage() {
 
   const fetchClinic = async () => {
     if (isDemo) {
-      setClinic({ id: 'demo', name: 'KinetiMap Demo Clinic', brand_color: '#F5A623', bio: 'This is a sample clinic to help you explore KinetiMap.', booking_page_mode: 'open' })
+      setClinic({ id: 'demo', name: 'KinetiMap Demo Clinic', brand_color: '#006D77', secondary_color: '#D9B29C', text_color: '#2C1A12', bio: 'This is a sample clinic to help you explore KinetiMap.', booking_page_mode: 'open' })
       setLoading(false)
       setStep(8)
       setFullName('Sarah Ahmed')
@@ -95,17 +95,17 @@ function BookingPage() {
       setPainData({ 'b_l_back': 8, 'f_l_knee': 6 })
       return
     }
-    
+
     try {
       const { data: clinicData } = await supabase
         .from('clinics')
         .select('*')
         .eq('slug', slug)
         .maybeSingle()
-      
+
       if (clinicData) {
         setClinic(clinicData)
-        
+
         // Fetch Availability & Bookings
         const [availRes, bookingsRes] = await Promise.all([
           supabase.from('availability_slots').select('*').eq('clinic_id', clinicData.id).eq('is_active', true),
@@ -126,13 +126,13 @@ function BookingPage() {
   const generateAllSlots = (avail: any[], currentBookings: any[]) => {
     const slots: any[] = []
     const bookedTimes = new Set(currentBookings.map(b => b.appointment_time))
-    
+
     // Generate for next 14 days
     for (let i = 0; i < 14; i++) {
       const date = new Date()
       date.setDate(date.getDate() + i)
       const dayOfWeek = date.getDay()
-      
+
       const dayConfig = avail.find(a => a.day_of_week === dayOfWeek)
       if (dayConfig) {
         const [startH, startM] = dayConfig.start_time.split(':').map(Number)
@@ -141,7 +141,7 @@ function BookingPage() {
 
         let current = new Date(date)
         current.setHours(startH, startM, 0, 0)
-        
+
         const end = new Date(date)
         end.setHours(endH, endM, 0, 0)
 
@@ -162,7 +162,7 @@ function BookingPage() {
       }
     }
     setAllSlots(slots)
-    
+
     // Auto-select first available date
     const firstDate = slots[0]?.dateKey
     if (firstDate) setSelectedDate(firstDate)
@@ -172,7 +172,7 @@ function BookingPage() {
 
   const submitBooking = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     console.log("Confirm booking clicked")
     console.log("form data:", { fullName, whatsapp, dob, clinicId: clinic?.id, consent1, honeypot })
 
@@ -199,7 +199,7 @@ function BookingPage() {
         .eq('phone_number', fullWhatsapp)
         .eq('clinic_id', clinic.id)
         .maybeSingle()
-        
+
       if (existingErr) throw existingErr
 
       if (existing) {
@@ -250,7 +250,7 @@ function BookingPage() {
         appointment_type: 'initial',
         notes: notes
       }).select().single()
-      
+
       console.log("booking insert result:", bookingData, bookingErr)
       if (bookingErr) throw bookingErr
 
@@ -270,11 +270,11 @@ function BookingPage() {
         code
       })
       if (otpErr) throw otpErr
-      
+
       setGeneratedOtp(code)
       console.log('OTP CODE:', code)
       toast.success(`[TEST MODE] OTP Code is: ${code}`, { duration: 8000 })
-      
+
       setStep(7)
     } catch (err: any) {
       console.error("Booking Error:", err)
@@ -321,6 +321,8 @@ function BookingPage() {
   }
 
   const brandColor = clinic.brand_color || '#006D77'
+  const secondaryColor = clinic.secondary_color || '#D9B29C'
+  const textColor = clinic.text_color || '#2C1A12'
   const isMinor = calculateAge(dob) < 16
 
   const inputClass = "w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 outline-none text-sm bg-gray-50 transition-colors"
@@ -328,7 +330,7 @@ function BookingPage() {
 
   return (
     <div className="min-h-screen bg-[#EDF6F9] py-12 px-4 sm:px-6 font-sans">
-      
+
       {isDemo && (
         <div className="max-w-[560px] mx-auto mb-6 bg-[#FFF8E6] border border-[#F5A623] rounded-xl p-4 flex items-start gap-3 relative animate-in fade-in slide-in-from-top-4">
           <AlertCircle className="w-5 h-5 text-[#854F0B] shrink-0 mt-0.5" />
@@ -340,18 +342,18 @@ function BookingPage() {
       )}
 
       <div className="max-w-[560px] mx-auto">
-        
+
         {/* HEADER */}
         {step < 6 && (
           <div className="text-center mb-8">
             {clinic.logo_url && (
               <img src={clinic.logo_url} alt={clinic.name} className="w-20 h-20 rounded-2xl object-cover mx-auto mb-4 shadow-sm border border-gray-100" />
             )}
-            <h1 className="text-2xl font-bold mb-2" style={{ color: brandColor }}>{clinic.name}</h1>
-            {clinic.bio && <p className="text-sm text-gray-500 max-w-sm mx-auto mb-4 leading-relaxed">{clinic.bio}</p>}
-            
+            <h1 className="text-2xl font-bold mb-2" style={{ color: textColor }}>{clinic.name}</h1>
+            {clinic.bio && <p className="text-sm max-w-sm mx-auto mb-4 leading-relaxed" style={{ color: textColor, opacity: 0.65 }}>{clinic.bio}</p>}
+
             <div className="flex items-center justify-center gap-4 mt-6 mb-2">
-              <div className="h-2 flex-1 rounded-full bg-gray-200 overflow-hidden">
+              <div className="h-2 flex-1 rounded-full overflow-hidden" style={{ backgroundColor: secondaryColor + '40' }}>
                 <div className="h-full transition-all duration-500 ease-out" style={{ width: `${(step / 6) * 100}%`, backgroundColor: brandColor }} />
               </div>
             </div>
@@ -361,21 +363,21 @@ function BookingPage() {
 
         {/* CARD CONTENT */}
         <div className="bg-white rounded-2xl p-6 sm:p-10 shadow-lg border border-gray-100 relative overflow-hidden">
-          
+
           {step === 1 && (
             <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <h2 className="text-xl font-bold text-gray-900 mb-6">Your details</h2>
-              
+
               <div>
                 <label className={labelClass}>Full name *</label>
                 <input required type="text" value={fullName} onChange={e => setFullName(e.target.value)} className={inputClass} style={{ outlineColor: brandColor }} />
               </div>
-              
+
               <div>
                 <label className={labelClass}>WhatsApp number *</label>
                 <div className="flex w-full rounded-xl border border-gray-200 overflow-hidden focus-within:ring-2 bg-gray-50 transition-colors" style={{ outlineColor: brandColor }}>
-                  <select 
-                    value={whatsappCode} 
+                  <select
+                    value={whatsappCode}
                     onChange={e => setWhatsappCode(e.target.value)}
                     className="w-[120px] px-3 py-3 bg-transparent border-r border-gray-200 outline-none text-sm text-gray-700 cursor-pointer appearance-none"
                   >
@@ -383,11 +385,11 @@ function BookingPage() {
                       <option key={c.name} value={c.code}>{c.flag} {c.code}</option>
                     ))}
                   </select>
-                  <input 
-                    required type="tel" value={whatsapp} 
-                    onChange={e => setWhatsapp(e.target.value)} 
-                    placeholder="7700 900000" 
-                    className="flex-1 px-4 py-3 bg-transparent outline-none text-sm" 
+                  <input
+                    required type="tel" value={whatsapp}
+                    onChange={e => setWhatsapp(e.target.value)}
+                    placeholder="7700 900000"
+                    className="flex-1 px-4 py-3 bg-transparent outline-none text-sm"
                   />
                 </div>
               </div>
@@ -412,8 +414,8 @@ function BookingPage() {
                   <div>
                     <label className={labelClass}>Guardian WhatsApp *</label>
                     <div className="flex w-full rounded-xl border border-gray-200 overflow-hidden focus-within:ring-2 bg-gray-50 transition-colors bg-white">
-                      <select 
-                        value={guardianWhatsappCode} 
+                      <select
+                        value={guardianWhatsappCode}
                         onChange={e => setGuardianWhatsappCode(e.target.value)}
                         className="w-[120px] px-3 py-3 bg-transparent border-r border-gray-200 outline-none text-sm text-gray-700 cursor-pointer appearance-none"
                       >
@@ -421,11 +423,11 @@ function BookingPage() {
                           <option key={c.name} value={c.code}>{c.flag} {c.code}</option>
                         ))}
                       </select>
-                      <input 
-                        required type="tel" value={guardianWhatsapp} 
-                        onChange={e => setGuardianWhatsapp(e.target.value)} 
-                        placeholder="7700 900000" 
-                        className="flex-1 px-4 py-3 bg-transparent outline-none text-sm" 
+                      <input
+                        required type="tel" value={guardianWhatsapp}
+                        onChange={e => setGuardianWhatsapp(e.target.value)}
+                        placeholder="7700 900000"
+                        className="flex-1 px-4 py-3 bg-transparent outline-none text-sm"
                       />
                     </div>
                   </div>
@@ -454,7 +456,7 @@ function BookingPage() {
                     This clinic has not set their availability yet. Please contact them directly.
                   </p>
                   {clinic.whatsapp_number && (
-                    <a 
+                    <a
                       href={`https://wa.me/${clinic.whatsapp_number?.replace(/\D/g, '') ?? ''}`}
                       target="_blank"
                       rel="noreferrer"
@@ -475,9 +477,8 @@ function BookingPage() {
                         <button
                           key={dateKey}
                           onClick={() => setSelectedDate(dateKey)}
-                          className={`shrink-0 px-4 py-3 rounded-xl border-2 transition-all text-center min-w-[100px] ${
-                            isActive ? 'border-transparent shadow-md text-white' : 'border-gray-100 bg-gray-50 text-gray-500 hover:border-gray-200'
-                          }`}
+                          className={`shrink-0 px-4 py-3 rounded-xl border-2 transition-all text-center min-w-[100px] ${isActive ? 'border-transparent shadow-md text-white' : 'border-gray-100 bg-gray-50 text-gray-500 hover:border-gray-200'
+                            }`}
                           style={{ backgroundColor: isActive ? brandColor : undefined }}
                         >
                           <div className={`text-[10px] uppercase font-bold tracking-wider ${isActive ? 'text-white/70' : 'text-gray-400'}`}>
@@ -498,10 +499,9 @@ function BookingPage() {
                           key={slot.iso}
                           disabled={slot.isBooked}
                           onClick={() => setSelectedSlot(slot.iso)}
-                          className={`py-3 rounded-xl border-2 text-sm font-bold transition-all ${
-                            slot.isBooked ? 'bg-gray-100 border-transparent text-gray-300 cursor-not-allowed line-through' :
-                            isActive ? 'border-transparent shadow-md text-white' : 'border-gray-100 bg-white text-gray-700 hover:border-gray-200'
-                          }`}
+                          className={`py-3 rounded-xl border-2 text-sm font-bold transition-all ${slot.isBooked ? 'bg-gray-100 border-transparent text-gray-300 cursor-not-allowed line-through' :
+                              isActive ? 'border-transparent shadow-md text-white' : 'border-gray-100 bg-white text-gray-700 hover:border-gray-200'
+                            }`}
                           style={{ backgroundColor: isActive ? brandColor : undefined }}
                         >
                           {slot.time}
@@ -520,10 +520,10 @@ function BookingPage() {
                   )}
 
                   <div className="pt-4">
-                    <button 
+                    <button
                       disabled={!selectedSlot}
-                      onClick={() => setStep(3)} 
-                      className="w-full text-white font-bold py-3.5 rounded-xl transition-transform active:scale-95 disabled:opacity-50" 
+                      onClick={() => setStep(3)}
+                      className="w-full text-white font-bold py-3.5 rounded-xl transition-transform active:scale-95 disabled:opacity-50"
                       style={{ backgroundColor: brandColor }}
                     >
                       Confirm Time & Continue →
@@ -537,7 +537,7 @@ function BookingPage() {
           {step === 3 && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <h2 className="text-xl font-bold text-gray-900 mb-2">Where does it hurt?</h2>
-              <p className="text-sm text-gray-500 italic text-center mb-6">Tap where it hurts.<br/>Rate the pain 1–10.</p>
+              <p className="text-sm text-gray-500 italic text-center mb-6">Tap where it hurts.<br />Rate the pain 1–10.</p>
 
               <BodyMap
                 mode="interactive"
@@ -596,9 +596,8 @@ function BookingPage() {
                   <p className="text-sm font-semibold text-gray-800 mb-3">{q.text}</p>
                   <div className="flex gap-2">
                     {['Yes', 'No', 'Unsure'].map(opt => (
-                      <button key={opt} onClick={() => q.set(opt)} className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-colors ${
-                        q.val === opt ? 'text-white border-transparent' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
-                      }`} style={{ backgroundColor: q.val === opt ? brandColor : undefined }}>
+                      <button key={opt} onClick={() => q.set(opt)} className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-colors ${q.val === opt ? 'text-white border-transparent' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                        }`} style={{ backgroundColor: q.val === opt ? brandColor : undefined }}>
                         {opt}
                       </button>
                     ))}
@@ -632,7 +631,7 @@ function BookingPage() {
                     <input type="checkbox" checked={consent2} onChange={e => setConsent2(e.target.checked)} className="mt-1 w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded" />
                     <span className="text-sm text-gray-700">I agree to receive WhatsApp reminders about my appointments</span>
                   </label>
-                  
+
                   {!consent2 && (
                     <div className="p-3 rounded-lg flex items-start gap-2 ml-7" style={{ backgroundColor: '#FFF8E6', border: '1px solid #F5A623', color: '#854F0B' }}>
                       <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />

@@ -566,7 +566,7 @@ function BrandingPage() {
                   <div className="w-20 h-1.5 bg-gray-600 rounded-full" />
                 </div>
                 <div className="bg-background min-h-[520px] flex flex-col">
-                  <div className="px-6 pt-8 pb-6 flex flex-col items-center text-center" style={{ backgroundColor: form.brand_color + '18' }}>
+                  <div className="px-6 pt-8 pb-6 flex flex-col items-center text-center" style={{ backgroundColor: form.secondary_color + '33' }}>
                     {form.logo_url ? (
                       <img src={form.logo_url} alt="Logo" className="w-16 h-16 rounded-2xl object-cover shadow-md mb-3 border-2 border-white" />
                     ) : (
@@ -575,13 +575,13 @@ function BrandingPage() {
                         {form.name ? form.name[0].toUpperCase() : '?'}
                       </div>
                     )}
-                    <h3 className="text-base font-bold font-bricolage leading-tight" style={{ color: form.brand_color }}>
+                    <h3 className="text-base font-bold font-bricolage leading-tight" style={{ color: form.text_color }}>
                       {form.name || 'Your Clinic Name'}
                     </h3>
                   </div>
                   <div className="px-5 py-4 flex-1 flex flex-col gap-4">
                     {form.bio && (
-                      <p className="text-xs text-text/70 leading-relaxed text-center">{form.bio}</p>
+                      <p className="text-xs leading-relaxed text-center" style={{ color: form.text_color, opacity: 0.7 }}>{form.bio}</p>
                     )}
                     {form.appointment_price && (
                       <div className="flex justify-center">
