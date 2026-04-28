@@ -3,7 +3,7 @@ import { DashboardLayout } from '../components/DashboardLayout'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
-import { Copy, Upload, Check, Building2 } from 'lucide-react'
+import { Copy, Upload, Check, Building2, Eye, EyeOff } from 'lucide-react'
 
 export const Route = createFileRoute('/branding')({
   component: BrandingPage,
@@ -70,6 +70,7 @@ function BrandingPage() {
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [showMobilePreview, setShowMobilePreview] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { fetchClinic() }, [])
@@ -267,6 +268,19 @@ function BrandingPage() {
     <DashboardLayout>
       <div className="max-w-6xl mx-auto">
         <h1 className="text-[28px] font-bold text-primary font-bricolage mb-8">Branding</h1>
+
+        {/* Mobile-only floating Preview toggle (hidden when preview is open) */}
+        {!showMobilePreview && (
+          <button
+            type="button"
+            onClick={() => setShowMobilePreview(true)}
+            className="lg:hidden fixed bottom-6 right-6 z-40 bg-primary text-white rounded-full shadow-lg px-5 py-3 flex items-center gap-2 text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
+            aria-label="Show preview"
+          >
+            <Eye className="w-4 h-4" />
+            Preview
+          </button>
+        )}
 
         <div className="flex flex-col lg:flex-row gap-8">
 
@@ -532,11 +546,21 @@ function BrandingPage() {
           </div>
 
           {/* ══════════════ RIGHT — Live Preview ══════════════ */}
-          <div className="lg:w-80 xl:w-96 shrink-0">
-            <div className="sticky top-8">
-              <p className="text-xs font-semibold text-text/50 uppercase tracking-widest mb-3 text-center">
-                How your booking page looks to patients
-              </p>
+          <div className={`lg:w-80 xl:w-96 shrink-0 ${showMobilePreview ? 'block' : 'hidden lg:block'}`}>
+            <div className="lg:sticky lg:top-8">
+              <div className="flex items-center justify-between mb-3 lg:justify-center">
+                <p className="text-xs font-semibold text-text/50 uppercase tracking-widest text-center">
+                  How your booking page looks to patients
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowMobilePreview(false)}
+                  className="lg:hidden text-text/50 hover:text-text p-1"
+                  aria-label="Hide preview"
+                >
+                  <EyeOff className="w-4 h-4" />
+                </button>
+              </div>
               <div className="bg-white border-[3px] border-gray-800 rounded-[36px] shadow-2xl overflow-hidden mx-auto max-w-xs">
                 <div className="h-7 bg-gray-800 flex items-center justify-center">
                   <div className="w-20 h-1.5 bg-gray-600 rounded-full" />
