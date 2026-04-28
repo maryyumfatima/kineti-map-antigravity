@@ -17,9 +17,11 @@ type ClinicForm = {
   whatsapp_number: string
   logo_url: string
   brand_color: string
+  secondary_color: string
+  text_color: string
   appointment_price: string
   currency: string
-  slot_duration: string
+  default_slot_duration: number
   booking_page_mode: 'open' | 'invite_only' | 'closed'
   slug: string
   // Contact details (Issue 2)
@@ -36,7 +38,7 @@ const CURRENCIES = [
   { code: 'USD', symbol: '$', label: 'USD ($)' },
 ]
 
-const DURATIONS = ['30 min', '45 min', '60 min', '90 min']
+const DURATIONS = [30, 45, 60, 90]
 
 const DEFAULT_FORM: ClinicForm = {
   name: '',
@@ -44,9 +46,11 @@ const DEFAULT_FORM: ClinicForm = {
   whatsapp_number: '',
   logo_url: '',
   brand_color: '#006D77',
+  secondary_color: '#D9B29C',
+  text_color: '#2C1A12',
   appointment_price: '',
   currency: 'GBP',
-  slot_duration: '60 min',
+  default_slot_duration: 60,
   booking_page_mode: 'open',
   slug: '',
   contact_email: '',
@@ -113,9 +117,11 @@ function BrandingPage() {
           whatsapp_number: data.whatsapp_number ?? '',
           logo_url: data.logo_url ?? '',
           brand_color: data.brand_color ?? '#006D77',
+          secondary_color: data.secondary_color ?? '#D9B29C',
+          text_color: data.text_color ?? '#2C1A12',
           appointment_price: data.appointment_price != null ? String(data.appointment_price) : '',
           currency: data.currency ?? 'GBP',
-          slot_duration: data.slot_duration ?? '60 min',
+          default_slot_duration: data.default_slot_duration ?? 60,
           booking_page_mode: data.booking_page_mode ?? 'open',
           slug: data.slug ?? '',
           contact_email: data.contact_email ?? '',
@@ -131,7 +137,7 @@ function BrandingPage() {
     }
   }
 
-  const set = (key: keyof ClinicForm, value: string) =>
+  const set = <K extends keyof ClinicForm>(key: K, value: ClinicForm[K]) =>
     setForm(prev => ({ ...prev, [key]: value }))
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -173,9 +179,11 @@ function BrandingPage() {
       whatsapp_number: form.whatsapp_number || null,
       logo_url: form.logo_url || null,
       brand_color: form.brand_color,
+      secondary_color: form.secondary_color,
+      text_color: form.text_color,
       appointment_price: form.appointment_price ? Number(form.appointment_price) : null,
       currency: form.currency,
-      slot_duration: form.slot_duration,
+      default_slot_duration: form.default_slot_duration,
     }
 
     // Extended columns added via SQL migration
@@ -363,7 +371,7 @@ function BrandingPage() {
                   </div>
                 </div>
                 <div>
-                  <label className={labelClass}>Brand color</label>
+                  <label className={labelClass}>Brand color (primary)</label>
                   <div className="flex items-center gap-3">
                     <input
                       type="color" value={form.brand_color}
@@ -378,6 +386,43 @@ function BrandingPage() {
                     />
                     <div className="w-10 h-10 rounded-lg border border-border shadow-sm flex-shrink-0" style={{ backgroundColor: form.brand_color }} />
                   </div>
+                  <p className="text-xs text-text/40 mt-1">Used for buttons, badges, and main accents</p>
+                </div>
+                <div>
+                  <label className={labelClass}>Secondary color (accent)</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color" value={form.secondary_color}
+                      onChange={e => set('secondary_color', e.target.value)}
+                      className="w-10 h-10 rounded-lg border border-border cursor-pointer p-0.5 bg-white"
+                    />
+                    <input
+                      type="text" value={form.secondary_color}
+                      onChange={e => set('secondary_color', e.target.value)}
+                      className={`${inputClass} w-36 font-mono uppercase`}
+                      maxLength={7} placeholder="#D9B29C"
+                    />
+                    <div className="w-10 h-10 rounded-lg border border-border shadow-sm flex-shrink-0" style={{ backgroundColor: form.secondary_color }} />
+                  </div>
+                  <p className="text-xs text-text/40 mt-1">Used for highlights, soft backgrounds, and pain markers</p>
+                </div>
+                <div>
+                  <label className={labelClass}>Text color</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color" value={form.text_color}
+                      onChange={e => set('text_color', e.target.value)}
+                      className="w-10 h-10 rounded-lg border border-border cursor-pointer p-0.5 bg-white"
+                    />
+                    <input
+                      type="text" value={form.text_color}
+                      onChange={e => set('text_color', e.target.value)}
+                      className={`${inputClass} w-36 font-mono uppercase`}
+                      maxLength={7} placeholder="#2C1A12"
+                    />
+                    <div className="w-10 h-10 rounded-lg border border-border shadow-sm flex-shrink-0" style={{ backgroundColor: form.text_color }} />
+                  </div>
+                  <p className="text-xs text-text/40 mt-1">Used for headings and body text on your booking page</p>
                 </div>
               </div>
             </div>
@@ -411,14 +456,13 @@ function BrandingPage() {
                   <label className={labelClass}>Default slot duration</label>
                   <div className="flex gap-2 flex-wrap">
                     {DURATIONS.map(d => (
-                      <button key={d} type="button" onClick={() => set('slot_duration', d)}
-                        className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                          form.slot_duration === d
+                      <button key={d} type="button" onClick={() => set('default_slot_duration', d)}
+                        className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${form.default_slot_duration === d
                             ? 'bg-primary text-white border-primary'
                             : 'bg-white text-text border-border hover:border-primary/40'
-                        }`}
+                          }`}
                       >
-                        {d}
+                        {d} min
                       </button>
                     ))}
                   </div>
@@ -436,9 +480,8 @@ function BrandingPage() {
                   { value: 'closed', label: 'Closed', desc: 'Shows a contact message only' },
                 ] as const).map(opt => (
                   <label key={opt.value}
-                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                      form.booking_page_mode === opt.value ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/30'
-                    }`}
+                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${form.booking_page_mode === opt.value ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/30'
+                      }`}
                   >
                     <input
                       type="radio" name="booking_page_mode" value={opt.value}
@@ -519,7 +562,7 @@ function BrandingPage() {
                     {form.appointment_price && (
                       <div className="flex justify-center">
                         <span className="text-xs font-semibold px-3 py-1 rounded-full text-white" style={{ backgroundColor: form.brand_color }}>
-                          {currencySymbol(form.currency)}{form.appointment_price} · {form.slot_duration}
+                          {currencySymbol(form.currency)}{form.appointment_price} · {form.default_slot_duration} min
                         </span>
                       </div>
                     )}
