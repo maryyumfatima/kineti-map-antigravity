@@ -4,12 +4,13 @@ import ReactPhoneInput from 'react-phone-number-input'
 interface PhoneInputProps {
   value: string;
   onChange: (v: string) => void;
+  onCountryChange?: (c: string) => void;
   disabled?: boolean;
   className?: string;
   placeholder?: string;
 }
 
-export function PhoneInput({ value, onChange, disabled, className = '', placeholder }: PhoneInputProps) {
+export function PhoneInput({ value, onChange, onCountryChange, disabled, className = '', placeholder }: PhoneInputProps) {
   const [focused, setFocused] = useState(false)
   const [defaultCountry, setDefaultCountry] = useState<any>('GB')
 
@@ -33,9 +34,11 @@ export function PhoneInput({ value, onChange, disabled, className = '', placehol
     >
       <ReactPhoneInput
         international
+        countries={['GB', 'AU', 'DE', 'FR', 'NL', 'PK']}
         defaultCountry={defaultCountry}
         value={value}
         onChange={(v) => onChange(v || '')}
+        onCountryChange={onCountryChange}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         disabled={disabled}

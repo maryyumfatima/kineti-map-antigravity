@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 import { Search, Plus, Users, X, Upload } from 'lucide-react'
-import PhoneInput from 'react-phone-number-input'
+import { PhoneInput } from '../components/PhoneInput'
 
 export const Route = createFileRoute('/patients')({
   component: PatientsPage,
@@ -23,43 +23,7 @@ type Patient = {
   gdpr_consent: boolean
 }
 
-function PatientPhoneInput({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled?: boolean }) {
-  const [focused, setFocused] = useState(false)
-  const [defaultCountry, setDefaultCountry] = useState<any>('GB')
-
-  useEffect(() => {
-    try {
-      const locale = navigator.language || (navigator as any).userLanguage;
-      if (locale) {
-        const parts = locale.split('-');
-        if (parts.length > 1 && parts[1].length === 2) {
-          setDefaultCountry(parts[1].toUpperCase());
-        } else if (parts[0].length === 2) {
-          setDefaultCountry(parts[0].toUpperCase());
-        }
-      }
-    } catch (e) {}
-  }, [])
-
-  return (
-    <div
-      className={`w-full px-3 py-1.5 rounded-lg border border-border bg-white transition-all flex items-center ${
-        focused && !disabled ? 'ring-2 ring-primary/50 border-primary' : ''
-      } ${disabled ? 'bg-gray-50 opacity-80' : ''}`}
-    >
-      <PhoneInput
-        international
-        defaultCountry={defaultCountry}
-        value={value}
-        onChange={onChange}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        disabled={disabled}
-        className="w-full flex items-center"
-      />
-    </div>
-  )
-}
+// Removed PatientPhoneInput in favor of shared component
 
 function PatientsPage() {
   const [patients, setPatients] = useState<Patient[]>([])
@@ -468,7 +432,11 @@ function PatientsPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-text mb-1">WhatsApp / Phone *</label>
-                  <PatientPhoneInput value={formData.phone_number} onChange={v => setFormData({...formData, phone_number: v || ''})} />
+                  <PhoneInput 
+                    value={formData.phone_number} 
+                    onChange={v => setFormData({...formData, phone_number: v || ''})} 
+                    className="w-full px-3 py-1.5 rounded-lg border border-border bg-white focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-text mb-1">Email</label>
@@ -607,10 +575,11 @@ function PatientsPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-text mb-1">Phone number</label>
-                  <PatientPhoneInput 
+                  <PhoneInput 
                     value={drawerFormData.phone_number || ''} 
                     onChange={v => setDrawerFormData({...drawerFormData, phone_number: v || ''})} 
                     disabled={!isEditing}
+                    className="w-full px-3 py-1.5 rounded-lg border border-border bg-white focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary"
                   />
                 </div>
                 <div>

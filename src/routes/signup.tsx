@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { Mail, Lock, User, Building2, Eye, EyeOff, Check } from 'lucide-react'
 import { toast } from 'sonner'
-import PhoneInput from 'react-phone-number-input'
+import { PhoneInput } from '../components/PhoneInput'
 
 export const Route = createFileRoute('/signup')({
   component: Signup,
@@ -36,52 +36,7 @@ function AuthInput({
   )
 }
 
-// Custom Phone Input integrating react-phone-number-input
-function CustomPhoneInput({ value, onChange, onCountryChange }: { value: string; onChange: (v: string) => void; onCountryChange?: (c: string) => void }) {
-  const [focused, setFocused] = useState(false)
-  const [defaultCountry, setDefaultCountry] = useState<any>('GB')
-
-  useEffect(() => {
-    try {
-      const locale = navigator.language || (navigator as any).userLanguage;
-      if (locale) {
-        const parts = locale.split('-');
-        if (parts.length > 1 && parts[1].length === 2) {
-          setDefaultCountry(parts[1].toUpperCase());
-        } else if (parts[0].length === 2) {
-          setDefaultCountry(parts[0].toUpperCase());
-        }
-      }
-    } catch (e) {}
-  }, [])
-
-  return (
-    <div
-      style={{
-        background: focused ? '#EDF6F9' : '#F7F9FA',
-        borderRadius: '10px',
-        padding: '0 14px',
-        width: '100%',
-        transition: 'background 0.2s ease',
-        boxSizing: 'border-box',
-        height: '45px',
-        display: 'flex',
-        alignItems: 'center',
-      }}
-    >
-      <PhoneInput
-        international
-        defaultCountry={defaultCountry}
-        value={value}
-        onChange={onChange}
-        onCountryChange={onCountryChange}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        placeholder="WhatsApp number"
-      />
-    </div>
-  )
-}
+// Removed CustomPhoneInput in favor of shared component
 
 function PasswordInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [focused, setFocused] = useState(false)
@@ -317,10 +272,12 @@ function Signup() {
 
             {/* Phone Number Input */}
             <div>
-              <CustomPhoneInput 
+              <PhoneInput 
                 value={form.whatsapp} 
                 onChange={set('whatsapp')} 
                 onCountryChange={c => setForm(prev => ({ ...prev, country: c || 'Unknown' }))}
+                placeholder="WhatsApp number"
+                className="w-full bg-[#F7F9FA] focus-within:bg-[#EDF6F9] px-[14px] rounded-[10px] h-[45px] transition-colors box-border"
               />
               <p style={{ fontSize: '11px', color: '#bbb', margin: '4px 0 0 4px' }}>WhatsApp number for verification</p>
             </div>
