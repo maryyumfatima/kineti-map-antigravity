@@ -19,6 +19,82 @@ body {
   color: var(--color-text);
   margin: 0;
   padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Typography & Layout ── */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.card-shadow {
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+
+.transition-premium {
+  transition: all 0.2s ease;
+}
+
+/* ── Buttons ── */
+.btn-premium {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  background-image: linear-gradient(to bottom, rgba(255,255,255,0.1), rgba(0,0,0,0.05));
+}
+.btn-premium:active {
+  transform: scale(0.98);
+}
+
+/* ── Progress Bar ── */
+@keyframes progress {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(-30%); }
+  100% { transform: translateX(0); }
+}
+
+.top-progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--color-primary);
+  z-index: 1000;
+  transform-origin: left;
+  animation: progress 2s ease-in-out infinite;
+}
+
+/* ── Modal/Drawer Animations ── */
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.drawer-in {
+  animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.fade-in {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+/* ── Skeleton Loading ── */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #f0f4f5 25%, #e0e8ea 50%, #f0f4f5 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+  border-radius: 4px;
 }
 
 /* ── Auth page animations ── */

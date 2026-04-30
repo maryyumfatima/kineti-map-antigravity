@@ -29,6 +29,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background">
+      <div className="top-progress-bar" />
       <Toaster position="top-right" richColors />
 
       <Sidebar
@@ -39,16 +40,16 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       />
 
       {/* Mobile-only top bar with hamburger */}
-      <header className="lg:hidden sticky top-0 z-20 bg-background border-b border-border h-14 flex items-center px-4 gap-3">
+      <header className="lg:hidden sticky top-0 z-20 bg-gradient-to-r from-primary to-[#005a63] border-b border-primary/20 h-14 flex items-center px-4 gap-3 shadow-lg">
         <button
           type="button"
           onClick={() => setMobileOpen(true)}
-          className="p-2 -ml-2 rounded-lg hover:bg-accent/20 active:scale-95 transition-transform"
+          className="p-2 -ml-2 rounded-lg hover:bg-white/10 active:scale-95 transition-transform"
           aria-label="Open menu"
         >
-          <Menu className="w-6 h-6 text-text" />
+          <Menu className="w-6 h-6 text-white" />
         </button>
-        <h2 className="text-primary font-bricolage text-[18px] font-bold">KinetiMap</h2>
+        <h2 className="text-white font-bricolage text-[18px] font-bold">KinetiMap</h2>
       </header>
 
       <main className={`p-4 lg:p-8 transition-[margin] duration-200 ${mainMarginClass}`}>

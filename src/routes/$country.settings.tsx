@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
+import { createFileRoute, useNavigate, Link, useParams } from '@tanstack/react-router'
 import { DashboardLayout } from '../components/DashboardLayout'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
@@ -8,7 +8,7 @@ import {
   Download, FileText, LogOut, Trash2
 } from 'lucide-react'
 
-export const Route = createFileRoute('/settings')({
+export const Route = createFileRoute('/$country/settings')({
   component: SettingsPage,
 })
 
@@ -60,6 +60,7 @@ function SectionTitle({ children, badge }: { children: React.ReactNode; badge?: 
 
 function SettingsPage() {
   const navigate = useNavigate()
+  const { country: countryCode } = useParams({ strict: false }) as { country: string }
 
   // Auth / clinic state
 
@@ -199,7 +200,7 @@ function SettingsPage() {
   // ── Sign out all devices ────────────────────────────────────────────────────
   const handleSignOutAll = async () => {
     await supabase.auth.signOut()
-    navigate({ to: '/login' })
+    navigate({ to: '/$country/login', params: { country: countryCode } as any })
   }
 
   // ── Delete account ──────────────────────────────────────────────────────────
@@ -329,7 +330,7 @@ function SettingsPage() {
                   </div>
                 </div>
                 <div className="flex items-center justify-between border-t border-border pt-3">
-                  <Link to="/billing" className="text-xs text-primary hover:underline font-medium">Upgrade to unlock →</Link>
+                  <Link to="/$country/billing" params={{ country: countryCode } as any} className="text-xs text-primary hover:underline font-medium">Upgrade to unlock →</Link>
                   <Toggle checked={false} onChange={() => {}} disabled />
                 </div>
               </div>

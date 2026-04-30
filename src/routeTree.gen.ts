@@ -9,85 +9,32 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SignupRouteImport } from './routes/signup'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as SessionsRouteImport } from './routes/sessions'
-import { Route as RevenueRouteImport } from './routes/revenue'
-import { Route as PatientsRouteImport } from './routes/patients'
-import { Route as OnboardingRouteImport } from './routes/onboarding'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as FeedbackRouteImport } from './routes/feedback'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as BrandingRouteImport } from './routes/branding'
-import { Route as BillingRouteImport } from './routes/billing'
-import { Route as AvailabilityRouteImport } from './routes/availability'
 import { Route as SlugRouteImport } from './routes/$slug'
+import { Route as CountryRouteImport } from './routes/$country'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as DashboardPatientsIdRouteImport } from './routes/dashboard.patients.$id'
+import { Route as CountrySignupRouteImport } from './routes/$country.signup'
+import { Route as CountrySettingsRouteImport } from './routes/$country.settings'
+import { Route as CountrySessionsRouteImport } from './routes/$country.sessions'
+import { Route as CountryRevenueRouteImport } from './routes/$country.revenue'
+import { Route as CountryPatientsRouteImport } from './routes/$country.patients'
+import { Route as CountryOnboardingRouteImport } from './routes/$country.onboarding'
+import { Route as CountryLoginRouteImport } from './routes/$country.login'
+import { Route as CountryFeedbackRouteImport } from './routes/$country.feedback'
+import { Route as CountryDashboardRouteImport } from './routes/$country.dashboard'
+import { Route as CountryBrandingRouteImport } from './routes/$country.branding'
+import { Route as CountryBillingRouteImport } from './routes/$country.billing'
+import { Route as CountryAvailabilityRouteImport } from './routes/$country.availability'
+import { Route as CountryAiSoapNotesRouteImport } from './routes/$country.ai.soap-notes'
+import { Route as CountryDashboardPatientsIdRouteImport } from './routes/$country.dashboard.patients.$id'
 
-const SignupRoute = SignupRouteImport.update({
-  id: '/signup',
-  path: '/signup',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SessionsRoute = SessionsRouteImport.update({
-  id: '/sessions',
-  path: '/sessions',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RevenueRoute = RevenueRouteImport.update({
-  id: '/revenue',
-  path: '/revenue',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PatientsRoute = PatientsRouteImport.update({
-  id: '/patients',
-  path: '/patients',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OnboardingRoute = OnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FeedbackRoute = FeedbackRouteImport.update({
-  id: '/feedback',
-  path: '/feedback',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BrandingRoute = BrandingRouteImport.update({
-  id: '/branding',
-  path: '/branding',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BillingRoute = BillingRouteImport.update({
-  id: '/billing',
-  path: '/billing',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AvailabilityRoute = AvailabilityRouteImport.update({
-  id: '/availability',
-  path: '/availability',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SlugRoute = SlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CountryRoute = CountryRouteImport.update({
+  id: '/$country',
+  path: '/$country',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -95,226 +42,216 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DashboardPatientsIdRoute = DashboardPatientsIdRouteImport.update({
-  id: '/patients/$id',
-  path: '/patients/$id',
-  getParentRoute: () => DashboardRoute,
+const CountrySignupRoute = CountrySignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => CountryRoute,
 } as any)
+const CountrySettingsRoute = CountrySettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => CountryRoute,
+} as any)
+const CountrySessionsRoute = CountrySessionsRouteImport.update({
+  id: '/sessions',
+  path: '/sessions',
+  getParentRoute: () => CountryRoute,
+} as any)
+const CountryRevenueRoute = CountryRevenueRouteImport.update({
+  id: '/revenue',
+  path: '/revenue',
+  getParentRoute: () => CountryRoute,
+} as any)
+const CountryPatientsRoute = CountryPatientsRouteImport.update({
+  id: '/patients',
+  path: '/patients',
+  getParentRoute: () => CountryRoute,
+} as any)
+const CountryOnboardingRoute = CountryOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => CountryRoute,
+} as any)
+const CountryLoginRoute = CountryLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => CountryRoute,
+} as any)
+const CountryFeedbackRoute = CountryFeedbackRouteImport.update({
+  id: '/feedback',
+  path: '/feedback',
+  getParentRoute: () => CountryRoute,
+} as any)
+const CountryDashboardRoute = CountryDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => CountryRoute,
+} as any)
+const CountryBrandingRoute = CountryBrandingRouteImport.update({
+  id: '/branding',
+  path: '/branding',
+  getParentRoute: () => CountryRoute,
+} as any)
+const CountryBillingRoute = CountryBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => CountryRoute,
+} as any)
+const CountryAvailabilityRoute = CountryAvailabilityRouteImport.update({
+  id: '/availability',
+  path: '/availability',
+  getParentRoute: () => CountryRoute,
+} as any)
+const CountryAiSoapNotesRoute = CountryAiSoapNotesRouteImport.update({
+  id: '/ai/soap-notes',
+  path: '/ai/soap-notes',
+  getParentRoute: () => CountryRoute,
+} as any)
+const CountryDashboardPatientsIdRoute =
+  CountryDashboardPatientsIdRouteImport.update({
+    id: '/patients/$id',
+    path: '/patients/$id',
+    getParentRoute: () => CountryDashboardRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/$country': typeof CountryRouteWithChildren
   '/$slug': typeof SlugRoute
-  '/availability': typeof AvailabilityRoute
-  '/billing': typeof BillingRoute
-  '/branding': typeof BrandingRoute
-  '/dashboard': typeof DashboardRouteWithChildren
-  '/feedback': typeof FeedbackRoute
-  '/login': typeof LoginRoute
-  '/onboarding': typeof OnboardingRoute
-  '/patients': typeof PatientsRoute
-  '/revenue': typeof RevenueRoute
-  '/sessions': typeof SessionsRoute
-  '/settings': typeof SettingsRoute
-  '/signup': typeof SignupRoute
-  '/dashboard/patients/$id': typeof DashboardPatientsIdRoute
+  '/$country/availability': typeof CountryAvailabilityRoute
+  '/$country/billing': typeof CountryBillingRoute
+  '/$country/branding': typeof CountryBrandingRoute
+  '/$country/dashboard': typeof CountryDashboardRouteWithChildren
+  '/$country/feedback': typeof CountryFeedbackRoute
+  '/$country/login': typeof CountryLoginRoute
+  '/$country/onboarding': typeof CountryOnboardingRoute
+  '/$country/patients': typeof CountryPatientsRoute
+  '/$country/revenue': typeof CountryRevenueRoute
+  '/$country/sessions': typeof CountrySessionsRoute
+  '/$country/settings': typeof CountrySettingsRoute
+  '/$country/signup': typeof CountrySignupRoute
+  '/$country/ai/soap-notes': typeof CountryAiSoapNotesRoute
+  '/$country/dashboard/patients/$id': typeof CountryDashboardPatientsIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/$country': typeof CountryRouteWithChildren
   '/$slug': typeof SlugRoute
-  '/availability': typeof AvailabilityRoute
-  '/billing': typeof BillingRoute
-  '/branding': typeof BrandingRoute
-  '/dashboard': typeof DashboardRouteWithChildren
-  '/feedback': typeof FeedbackRoute
-  '/login': typeof LoginRoute
-  '/onboarding': typeof OnboardingRoute
-  '/patients': typeof PatientsRoute
-  '/revenue': typeof RevenueRoute
-  '/sessions': typeof SessionsRoute
-  '/settings': typeof SettingsRoute
-  '/signup': typeof SignupRoute
-  '/dashboard/patients/$id': typeof DashboardPatientsIdRoute
+  '/$country/availability': typeof CountryAvailabilityRoute
+  '/$country/billing': typeof CountryBillingRoute
+  '/$country/branding': typeof CountryBrandingRoute
+  '/$country/dashboard': typeof CountryDashboardRouteWithChildren
+  '/$country/feedback': typeof CountryFeedbackRoute
+  '/$country/login': typeof CountryLoginRoute
+  '/$country/onboarding': typeof CountryOnboardingRoute
+  '/$country/patients': typeof CountryPatientsRoute
+  '/$country/revenue': typeof CountryRevenueRoute
+  '/$country/sessions': typeof CountrySessionsRoute
+  '/$country/settings': typeof CountrySettingsRoute
+  '/$country/signup': typeof CountrySignupRoute
+  '/$country/ai/soap-notes': typeof CountryAiSoapNotesRoute
+  '/$country/dashboard/patients/$id': typeof CountryDashboardPatientsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/$country': typeof CountryRouteWithChildren
   '/$slug': typeof SlugRoute
-  '/availability': typeof AvailabilityRoute
-  '/billing': typeof BillingRoute
-  '/branding': typeof BrandingRoute
-  '/dashboard': typeof DashboardRouteWithChildren
-  '/feedback': typeof FeedbackRoute
-  '/login': typeof LoginRoute
-  '/onboarding': typeof OnboardingRoute
-  '/patients': typeof PatientsRoute
-  '/revenue': typeof RevenueRoute
-  '/sessions': typeof SessionsRoute
-  '/settings': typeof SettingsRoute
-  '/signup': typeof SignupRoute
-  '/dashboard/patients/$id': typeof DashboardPatientsIdRoute
+  '/$country/availability': typeof CountryAvailabilityRoute
+  '/$country/billing': typeof CountryBillingRoute
+  '/$country/branding': typeof CountryBrandingRoute
+  '/$country/dashboard': typeof CountryDashboardRouteWithChildren
+  '/$country/feedback': typeof CountryFeedbackRoute
+  '/$country/login': typeof CountryLoginRoute
+  '/$country/onboarding': typeof CountryOnboardingRoute
+  '/$country/patients': typeof CountryPatientsRoute
+  '/$country/revenue': typeof CountryRevenueRoute
+  '/$country/sessions': typeof CountrySessionsRoute
+  '/$country/settings': typeof CountrySettingsRoute
+  '/$country/signup': typeof CountrySignupRoute
+  '/$country/ai/soap-notes': typeof CountryAiSoapNotesRoute
+  '/$country/dashboard/patients/$id': typeof CountryDashboardPatientsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/$country'
     | '/$slug'
-    | '/availability'
-    | '/billing'
-    | '/branding'
-    | '/dashboard'
-    | '/feedback'
-    | '/login'
-    | '/onboarding'
-    | '/patients'
-    | '/revenue'
-    | '/sessions'
-    | '/settings'
-    | '/signup'
-    | '/dashboard/patients/$id'
+    | '/$country/availability'
+    | '/$country/billing'
+    | '/$country/branding'
+    | '/$country/dashboard'
+    | '/$country/feedback'
+    | '/$country/login'
+    | '/$country/onboarding'
+    | '/$country/patients'
+    | '/$country/revenue'
+    | '/$country/sessions'
+    | '/$country/settings'
+    | '/$country/signup'
+    | '/$country/ai/soap-notes'
+    | '/$country/dashboard/patients/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/$country'
     | '/$slug'
-    | '/availability'
-    | '/billing'
-    | '/branding'
-    | '/dashboard'
-    | '/feedback'
-    | '/login'
-    | '/onboarding'
-    | '/patients'
-    | '/revenue'
-    | '/sessions'
-    | '/settings'
-    | '/signup'
-    | '/dashboard/patients/$id'
+    | '/$country/availability'
+    | '/$country/billing'
+    | '/$country/branding'
+    | '/$country/dashboard'
+    | '/$country/feedback'
+    | '/$country/login'
+    | '/$country/onboarding'
+    | '/$country/patients'
+    | '/$country/revenue'
+    | '/$country/sessions'
+    | '/$country/settings'
+    | '/$country/signup'
+    | '/$country/ai/soap-notes'
+    | '/$country/dashboard/patients/$id'
   id:
     | '__root__'
     | '/'
+    | '/$country'
     | '/$slug'
-    | '/availability'
-    | '/billing'
-    | '/branding'
-    | '/dashboard'
-    | '/feedback'
-    | '/login'
-    | '/onboarding'
-    | '/patients'
-    | '/revenue'
-    | '/sessions'
-    | '/settings'
-    | '/signup'
-    | '/dashboard/patients/$id'
+    | '/$country/availability'
+    | '/$country/billing'
+    | '/$country/branding'
+    | '/$country/dashboard'
+    | '/$country/feedback'
+    | '/$country/login'
+    | '/$country/onboarding'
+    | '/$country/patients'
+    | '/$country/revenue'
+    | '/$country/sessions'
+    | '/$country/settings'
+    | '/$country/signup'
+    | '/$country/ai/soap-notes'
+    | '/$country/dashboard/patients/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CountryRoute: typeof CountryRouteWithChildren
   SlugRoute: typeof SlugRoute
-  AvailabilityRoute: typeof AvailabilityRoute
-  BillingRoute: typeof BillingRoute
-  BrandingRoute: typeof BrandingRoute
-  DashboardRoute: typeof DashboardRouteWithChildren
-  FeedbackRoute: typeof FeedbackRoute
-  LoginRoute: typeof LoginRoute
-  OnboardingRoute: typeof OnboardingRoute
-  PatientsRoute: typeof PatientsRoute
-  RevenueRoute: typeof RevenueRoute
-  SessionsRoute: typeof SessionsRoute
-  SettingsRoute: typeof SettingsRoute
-  SignupRoute: typeof SignupRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/signup': {
-      id: '/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof SignupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sessions': {
-      id: '/sessions'
-      path: '/sessions'
-      fullPath: '/sessions'
-      preLoaderRoute: typeof SessionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/revenue': {
-      id: '/revenue'
-      path: '/revenue'
-      fullPath: '/revenue'
-      preLoaderRoute: typeof RevenueRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/patients': {
-      id: '/patients'
-      path: '/patients'
-      fullPath: '/patients'
-      preLoaderRoute: typeof PatientsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/onboarding': {
-      id: '/onboarding'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof OnboardingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/feedback': {
-      id: '/feedback'
-      path: '/feedback'
-      fullPath: '/feedback'
-      preLoaderRoute: typeof FeedbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/branding': {
-      id: '/branding'
-      path: '/branding'
-      fullPath: '/branding'
-      preLoaderRoute: typeof BrandingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/billing': {
-      id: '/billing'
-      path: '/billing'
-      fullPath: '/billing'
-      preLoaderRoute: typeof BillingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/availability': {
-      id: '/availability'
-      path: '/availability'
-      fullPath: '/availability'
-      preLoaderRoute: typeof AvailabilityRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/$slug': {
       id: '/$slug'
       path: '/$slug'
       fullPath: '/$slug'
       preLoaderRoute: typeof SlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$country': {
+      id: '/$country'
+      path: '/$country'
+      fullPath: '/$country'
+      preLoaderRoute: typeof CountryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -324,43 +261,157 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dashboard/patients/$id': {
-      id: '/dashboard/patients/$id'
+    '/$country/signup': {
+      id: '/$country/signup'
+      path: '/signup'
+      fullPath: '/$country/signup'
+      preLoaderRoute: typeof CountrySignupRouteImport
+      parentRoute: typeof CountryRoute
+    }
+    '/$country/settings': {
+      id: '/$country/settings'
+      path: '/settings'
+      fullPath: '/$country/settings'
+      preLoaderRoute: typeof CountrySettingsRouteImport
+      parentRoute: typeof CountryRoute
+    }
+    '/$country/sessions': {
+      id: '/$country/sessions'
+      path: '/sessions'
+      fullPath: '/$country/sessions'
+      preLoaderRoute: typeof CountrySessionsRouteImport
+      parentRoute: typeof CountryRoute
+    }
+    '/$country/revenue': {
+      id: '/$country/revenue'
+      path: '/revenue'
+      fullPath: '/$country/revenue'
+      preLoaderRoute: typeof CountryRevenueRouteImport
+      parentRoute: typeof CountryRoute
+    }
+    '/$country/patients': {
+      id: '/$country/patients'
+      path: '/patients'
+      fullPath: '/$country/patients'
+      preLoaderRoute: typeof CountryPatientsRouteImport
+      parentRoute: typeof CountryRoute
+    }
+    '/$country/onboarding': {
+      id: '/$country/onboarding'
+      path: '/onboarding'
+      fullPath: '/$country/onboarding'
+      preLoaderRoute: typeof CountryOnboardingRouteImport
+      parentRoute: typeof CountryRoute
+    }
+    '/$country/login': {
+      id: '/$country/login'
+      path: '/login'
+      fullPath: '/$country/login'
+      preLoaderRoute: typeof CountryLoginRouteImport
+      parentRoute: typeof CountryRoute
+    }
+    '/$country/feedback': {
+      id: '/$country/feedback'
+      path: '/feedback'
+      fullPath: '/$country/feedback'
+      preLoaderRoute: typeof CountryFeedbackRouteImport
+      parentRoute: typeof CountryRoute
+    }
+    '/$country/dashboard': {
+      id: '/$country/dashboard'
+      path: '/dashboard'
+      fullPath: '/$country/dashboard'
+      preLoaderRoute: typeof CountryDashboardRouteImport
+      parentRoute: typeof CountryRoute
+    }
+    '/$country/branding': {
+      id: '/$country/branding'
+      path: '/branding'
+      fullPath: '/$country/branding'
+      preLoaderRoute: typeof CountryBrandingRouteImport
+      parentRoute: typeof CountryRoute
+    }
+    '/$country/billing': {
+      id: '/$country/billing'
+      path: '/billing'
+      fullPath: '/$country/billing'
+      preLoaderRoute: typeof CountryBillingRouteImport
+      parentRoute: typeof CountryRoute
+    }
+    '/$country/availability': {
+      id: '/$country/availability'
+      path: '/availability'
+      fullPath: '/$country/availability'
+      preLoaderRoute: typeof CountryAvailabilityRouteImport
+      parentRoute: typeof CountryRoute
+    }
+    '/$country/ai/soap-notes': {
+      id: '/$country/ai/soap-notes'
+      path: '/ai/soap-notes'
+      fullPath: '/$country/ai/soap-notes'
+      preLoaderRoute: typeof CountryAiSoapNotesRouteImport
+      parentRoute: typeof CountryRoute
+    }
+    '/$country/dashboard/patients/$id': {
+      id: '/$country/dashboard/patients/$id'
       path: '/patients/$id'
-      fullPath: '/dashboard/patients/$id'
-      preLoaderRoute: typeof DashboardPatientsIdRouteImport
-      parentRoute: typeof DashboardRoute
+      fullPath: '/$country/dashboard/patients/$id'
+      preLoaderRoute: typeof CountryDashboardPatientsIdRouteImport
+      parentRoute: typeof CountryDashboardRoute
     }
   }
 }
 
-interface DashboardRouteChildren {
-  DashboardPatientsIdRoute: typeof DashboardPatientsIdRoute
+interface CountryDashboardRouteChildren {
+  CountryDashboardPatientsIdRoute: typeof CountryDashboardPatientsIdRoute
 }
 
-const DashboardRouteChildren: DashboardRouteChildren = {
-  DashboardPatientsIdRoute: DashboardPatientsIdRoute,
+const CountryDashboardRouteChildren: CountryDashboardRouteChildren = {
+  CountryDashboardPatientsIdRoute: CountryDashboardPatientsIdRoute,
 }
 
-const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
-  DashboardRouteChildren,
-)
+const CountryDashboardRouteWithChildren =
+  CountryDashboardRoute._addFileChildren(CountryDashboardRouteChildren)
+
+interface CountryRouteChildren {
+  CountryAvailabilityRoute: typeof CountryAvailabilityRoute
+  CountryBillingRoute: typeof CountryBillingRoute
+  CountryBrandingRoute: typeof CountryBrandingRoute
+  CountryDashboardRoute: typeof CountryDashboardRouteWithChildren
+  CountryFeedbackRoute: typeof CountryFeedbackRoute
+  CountryLoginRoute: typeof CountryLoginRoute
+  CountryOnboardingRoute: typeof CountryOnboardingRoute
+  CountryPatientsRoute: typeof CountryPatientsRoute
+  CountryRevenueRoute: typeof CountryRevenueRoute
+  CountrySessionsRoute: typeof CountrySessionsRoute
+  CountrySettingsRoute: typeof CountrySettingsRoute
+  CountrySignupRoute: typeof CountrySignupRoute
+  CountryAiSoapNotesRoute: typeof CountryAiSoapNotesRoute
+}
+
+const CountryRouteChildren: CountryRouteChildren = {
+  CountryAvailabilityRoute: CountryAvailabilityRoute,
+  CountryBillingRoute: CountryBillingRoute,
+  CountryBrandingRoute: CountryBrandingRoute,
+  CountryDashboardRoute: CountryDashboardRouteWithChildren,
+  CountryFeedbackRoute: CountryFeedbackRoute,
+  CountryLoginRoute: CountryLoginRoute,
+  CountryOnboardingRoute: CountryOnboardingRoute,
+  CountryPatientsRoute: CountryPatientsRoute,
+  CountryRevenueRoute: CountryRevenueRoute,
+  CountrySessionsRoute: CountrySessionsRoute,
+  CountrySettingsRoute: CountrySettingsRoute,
+  CountrySignupRoute: CountrySignupRoute,
+  CountryAiSoapNotesRoute: CountryAiSoapNotesRoute,
+}
+
+const CountryRouteWithChildren =
+  CountryRoute._addFileChildren(CountryRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CountryRoute: CountryRouteWithChildren,
   SlugRoute: SlugRoute,
-  AvailabilityRoute: AvailabilityRoute,
-  BillingRoute: BillingRoute,
-  BrandingRoute: BrandingRoute,
-  DashboardRoute: DashboardRouteWithChildren,
-  FeedbackRoute: FeedbackRoute,
-  LoginRoute: LoginRoute,
-  OnboardingRoute: OnboardingRoute,
-  PatientsRoute: PatientsRoute,
-  RevenueRoute: RevenueRoute,
-  SessionsRoute: SessionsRoute,
-  SettingsRoute: SettingsRoute,
-  SignupRoute: SignupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

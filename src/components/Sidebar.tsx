@@ -1,4 +1,4 @@
-import { Link, useRouter } from '@tanstack/react-router'
+import { Link, useRouter, useParams } from '@tanstack/react-router'
 import {
   LayoutDashboard,
   Users,
@@ -18,15 +18,16 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
 const navItems = [
-  { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { name: 'Patients', path: '/patients', icon: Users },
-  { name: 'Sessions', path: '/sessions', icon: Calendar },
-  { name: 'Availability', path: '/availability', icon: Clock },
-  { name: 'Feedback', path: '/feedback', icon: Star },
-  { name: 'Revenue', path: '/revenue', icon: DollarSign },
-  { name: 'Branding', path: '/branding', icon: Palette },
-  { name: 'Billing', path: '/billing', icon: CreditCard },
-  { name: 'Settings', path: '/settings', icon: Settings },
+  { name: 'Dashboard', path: '/$country/dashboard', icon: LayoutDashboard },
+  { name: 'Patients', path: '/$country/patients', icon: Users },
+  { name: 'AI SOAP Notes', path: '/$country/ai/soap-notes', icon: Star },
+  { name: 'Sessions', path: '/$country/sessions', icon: Calendar },
+  { name: 'Availability', path: '/$country/availability', icon: Clock },
+  { name: 'Feedback', path: '/$country/feedback', icon: Star },
+  { name: 'Revenue', path: '/$country/revenue', icon: DollarSign },
+  { name: 'Branding', path: '/$country/branding', icon: Palette },
+  { name: 'Billing', path: '/$country/billing', icon: CreditCard },
+  { name: 'Settings', path: '/$country/settings', icon: Settings },
 ]
 
 interface SidebarProps {
@@ -39,6 +40,7 @@ interface SidebarProps {
 export function Sidebar({ collapsed, onToggleCollapsed, mobileOpen, onMobileClose }: SidebarProps) {
   const [email, setEmail] = useState<string | null>(null)
   const router = useRouter()
+  const { country } = useParams({ strict: false }) as { country: string }
 
   useEffect(() => {
     const getUser = async () => {
@@ -52,7 +54,7 @@ export function Sidebar({ collapsed, onToggleCollapsed, mobileOpen, onMobileClos
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
-    router.navigate({ to: '/login' })
+    router.navigate({ to: '/$country/login', params: { country } })
   }
 
   // Width classes based on state
@@ -117,17 +119,18 @@ export function Sidebar({ collapsed, onToggleCollapsed, mobileOpen, onMobileClos
               <Link
                 key={item.name}
                 to={item.path}
+                params={{ country }}
                 onClick={onMobileClose}
-                className={`flex items-center gap-3 ${collapsed ? 'lg:justify-center lg:px-2' : 'px-3'} py-2 rounded-lg text-sm font-medium transition-colors`}
+                className={`flex items-center gap-3 ${collapsed ? 'lg:justify-center lg:px-2' : 'px-3'} py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group relative`}
                 activeProps={{
-                  className: 'bg-primary text-white',
+                  className: 'bg-primary/10 text-primary border-l-4 border-primary rounded-l-none',
                 }}
                 inactiveProps={{
-                  className: 'text-text hover:bg-accent/20',
+                  className: 'text-text hover:bg-accent/10 border-l-4 border-transparent',
                 }}
                 title={collapsed ? item.name : undefined}
               >
-                <Icon className="w-5 h-5 flex-shrink-0" />
+                <Icon className="w-5 h-5 flex-shrink-0 transition-transform group-hover:scale-110" />
                 {/* Hide label on desktop when collapsed; always visible on mobile */}
                 <span className={collapsed ? 'lg:hidden' : ''}>{item.name}</span>
               </Link>

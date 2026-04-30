@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 import { Star } from 'lucide-react'
 
-export const Route = createFileRoute('/feedback')({
+export const Route = createFileRoute('/$country/feedback')({
   component: FeedbackPage,
 })
 

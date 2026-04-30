@@ -1,11 +1,11 @@
-import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
-import { useState, useEffect } from 'react'
+import { createFileRoute, useNavigate, Link, useParams } from '@tanstack/react-router'
+import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { Mail, Lock, User, Building2, Eye, EyeOff, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { PhoneInput } from '../components/PhoneInput'
 
-export const Route = createFileRoute('/signup')({
+export const Route = createFileRoute('/$country/signup')({
   component: Signup,
 })
 
@@ -148,6 +148,7 @@ function Signup() {
   const [loading, setLoading] = useState(false)
   const [shaking, setShaking] = useState(false)
   const navigate = useNavigate()
+  const { country } = useParams({ strict: false }) as { country: string }
 
   const set = (key: keyof typeof form) => (val: string) =>
     setForm(prev => ({ ...prev, [key]: val }))
@@ -197,7 +198,7 @@ function Signup() {
         toast.error('An account with this email already exists. Please sign in instead.', {
           action: {
             label: 'Sign in →',
-            onClick: () => navigate({ to: '/login' })
+            onClick: () => navigate({ to: '/$country/login', params: { country } as any })
           }
         })
         return
@@ -205,7 +206,7 @@ function Signup() {
       setError(signUpError.message)
       return 
     }
-    if (data.session) navigate({ to: '/onboarding' })
+    if (data.session) navigate({ to: '/$country/onboarding', params: { country } as any })
     else { setSuccess(true); setLoading(false) }
   }
 
@@ -224,7 +225,7 @@ function Signup() {
                 We sent a confirmation link to <strong style={{ color: '#2C1A12' }}>{form.email}</strong>.
                 Click it to activate your account.
               </p>
-              <Link to="/login" style={{ display: 'block', marginTop: '20px', color: '#006D77', fontSize: '13px', textDecoration: 'none', fontWeight: 500 }}>
+              <Link to="/$country/login" params={{ country } as any} style={{ display: 'block', marginTop: '20px', color: '#006D77', fontSize: '13px', textDecoration: 'none', fontWeight: 500 }}>
                 ← Back to Sign In
               </Link>
             </div>
@@ -294,7 +295,7 @@ function Signup() {
 
           <p style={{ textAlign: 'center', fontSize: '13px', color: '#888', marginTop: '10px' }}>
             Already have an account?{' '}
-            <Link to="/login" style={{ color: '#006D77', fontWeight: 500, textDecoration: 'none' }}>Sign in →</Link>
+            <Link to="/$country/login" params={{ country } as any} style={{ color: '#006D77', fontWeight: 500, textDecoration: 'none' }}>Sign in →</Link>
           </p>
         </div>
       </div>

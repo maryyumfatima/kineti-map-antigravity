@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useParams } from '@tanstack/react-router'
 import { DashboardLayout } from '../components/DashboardLayout'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
@@ -10,7 +10,7 @@ import {
   ChevronDown, ChevronUp
 } from 'lucide-react'
 
-export const Route = createFileRoute('/dashboard/patients/$id')({
+export const Route = createFileRoute('/$country/dashboard/patients/$id')({
   component: PatientDetailPage,
 })
 
@@ -83,6 +83,7 @@ const getBookingStatusColor = (status: string) => {
 
 function PatientDetailPage() {
   const { id } = Route.useParams()
+  const { country } = useParams({ strict: false }) as { country: string }
   const [patient, setPatient] = useState<Patient | null>(null)
   const [bookings, setBookings] = useState<Booking[]>([])
   const [messages, setMessages] = useState<WhatsAppMessage[]>([])
@@ -195,7 +196,7 @@ function PatientDetailPage() {
         <div className="flex flex-col items-center justify-center h-64 text-text/50">
           <AlertCircle className="w-12 h-12 mb-4 opacity-20" />
           <p className="font-medium">Patient not found.</p>
-          <Link to="/patients" className="mt-4 text-primary hover:underline text-sm font-medium">Back to Patients</Link>
+          <Link to="/$country/patients" params={{ country } as any} className="mt-4 text-primary hover:underline text-sm font-medium">Back to Patients</Link>
         </div>
       </DashboardLayout>
     )
@@ -221,8 +222,8 @@ function PatientDetailPage() {
             </div>
           </div>
           <Link 
-            to="/patients" 
-            className="text-primary hover:underline text-sm font-medium flex items-center gap-1"
+            to="/$country/patients" 
+            params={{ country } as any}
           >
             <ChevronRight className="w-4 h-4 rotate-180" />
             Back to Patients

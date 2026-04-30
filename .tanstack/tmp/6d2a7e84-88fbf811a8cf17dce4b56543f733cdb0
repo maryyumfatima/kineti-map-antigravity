@@ -3,10 +3,11 @@ import { DashboardLayout } from '../components/DashboardLayout'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
-import { Search, Plus, Users, X, Upload } from 'lucide-react'
+import { Search, Plus, Users, X, Upload, Sparkles, Loader2, Brain } from 'lucide-react'
 import { PhoneInput } from '../components/PhoneInput'
+import { generatePainSummary } from '../lib/groq'
 
-export const Route = createFileRoute('/patients')({
+export const Route = createFileRoute('/$country/patients')({
   component: PatientsPage,
 })
 
@@ -21,6 +22,7 @@ type Patient = {
   status_tag: 'active' | 'lapsed' | 'discharged' | 'no-show'
   last_session_date: string | null
   gdpr_consent: boolean
+  ai_pain_summary?: string | null
 }
 
 // Removed PatientPhoneInput in favor of shared component
@@ -59,9 +61,28 @@ function PatientsPage() {
   const [csvMapping, setCsvMapping] = useState<Record<string, string>>({})
   const [importing, setImporting] = useState(false)
 
+  // AI Pain Summary state
+  const [aiSummary, setAiSummary] = useState<string | null>(null)
+  const [generatingSummary, setGeneratingSummary] = useState(false)
+  const [clinicData, setClinicData] = useState<any>(null)
+
   useEffect(() => {
     fetchPatients()
+    fetchClinicData()
   }, [])
+
+  const fetchClinicData = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data: cu } = await supabase.from('clinic_users').select('clinic_id').eq('auth_user_id', user.id).single()
+      if (!cu) return
+      const { data: clinic } = await supabase.from('clinics').select('subscription_plan, ai_credits_used').eq('id', cu.clinic_id).single()
+      setClinicData(clinic)
+    } catch (e) {
+      console.error(e)
+    }
+  }
 
   const fetchPatients = async () => {
     setLoading(true)
@@ -137,7 +158,76 @@ function PatientsPage() {
     setSelectedPatient(patient)
     setDrawerFormData(patient)
     setIsEditing(false)
+    setAiSummary(patient.ai_pain_summary || null)
     setIsDrawerOpen(true)
+  }
+
+  const handleGeneratePainSummary = async () => {
+    if (!selectedPatient || !clinicId) return
+
+    // Gate check
+    const used = clinicData?.ai_credits_used || 0
+    const plan = clinicData?.subscription_plan || 'trial'
+    let limit = 999999
+    if (plan === 'trial') limit = 5
+    else if (plan === 'essentials') limit = 200
+    else if (plan === 'growth') limit = 600
+    else if (plan === 'scale') limit = 1500
+
+    if (used >= limit) {
+      toast.error(`AI credit limit (${limit}) reached. Upgrade your plan for more.`)
+      return
+    }
+
+    setGeneratingSummary(true)
+    try {
+      // Fetch last 10 session pain scores
+      const { data: bookings, error } = await supabase
+        .from('bookings')
+        .select('pain_data')
+        .eq('patient_id', selectedPatient.id)
+        .eq('status', 'completed')
+        .order('appointment_time', { ascending: false })
+        .limit(10)
+      
+      if (error) throw error
+
+      const scores = (bookings || [])
+        .map(b => {
+          if (!b.pain_data) return null
+          const vals = Object.values(b.pain_data as Record<string, number>)
+          if (vals.length === 0) return null
+          return vals.reduce((a, b) => a + b, 0) / vals.length
+        })
+        .filter((s): s is number => s !== null)
+        .reverse() // oldest to newest
+
+      if (scores.length === 0) {
+        toast.error('No pain scores found for this patient yet.')
+        setGeneratingSummary(false)
+        return
+      }
+
+      const summary = await generatePainSummary(scores)
+      setAiSummary(summary)
+
+      // Save to patient record
+      await supabase
+        .from('patients')
+        .update({ ai_pain_summary: summary })
+        .eq('id', selectedPatient.id)
+
+      // Track usage
+      await supabase.from('clinics').update({ ai_credits_used: used + 1 }).eq('id', clinicId)
+      setClinicData({ ...clinicData, ai_credits_used: used + 1 })
+      
+      toast.success('AI Summary generated and saved')
+    } catch (error) {
+      console.error(error)
+      toast.error('Failed to generate summary')
+    } finally {
+      setGeneratingSummary(false)
+    }
   }
 
   const handleSaveDrawer = async (e: React.FormEvent) => {
@@ -314,18 +404,20 @@ function PatientsPage() {
               <Upload className="w-5 h-5" />
               Import CSV
             </button>
-            <input type="file" id="csv-import-patients" accept=".csv" className="hidden" onChange={handleCsvUpload} />
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="bg-primary hover:opacity-90 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
-            >
-              <Plus className="w-5 h-5" />
-              Add Patient
-            </button>
+            <div className="flex items-center gap-3">
+              <input type="file" id="csv-import-patients" accept=".csv" className="hidden" onChange={handleCsvUpload} />
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="btn-premium bg-primary text-white px-6 py-2.5 rounded-lg shadow-lg shadow-primary/20 flex items-center gap-2 hover:opacity-90"
+              >
+                <Plus className="w-5 h-5" />
+                Add Patient
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
+        <div className="bg-card rounded-xl border border-border overflow-hidden card-shadow transition-premium">
           <div className="p-4 border-b border-border flex flex-col sm:flex-row justify-between gap-4 items-center bg-white">
             <div className="relative w-full sm:w-80">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text/50" />
@@ -353,11 +445,32 @@ function PatientsPage() {
           </div>
 
           {loading ? (
-            <div className="p-12 text-center text-text/70">Loading patients...</div>
+            <div className="p-0">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex items-center gap-4 p-4 border-b border-border last:border-0">
+                  <div className="w-10 h-10 rounded-full skeleton" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-1/4 skeleton" />
+                    <div className="h-3 w-1/6 skeleton" />
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : filteredPatients.length === 0 ? (
-            <div className="p-16 flex flex-col items-center justify-center text-text/50">
-              <Users className="w-12 h-12 mb-4 opacity-20" />
-              <p className="font-medium text-text/70">No patients yet. Add your first patient.</p>
+            <div className="p-16 flex flex-col items-center justify-center text-center">
+              <div className="w-20 h-20 bg-primary/5 rounded-full flex items-center justify-center mb-6">
+                <Users className="w-10 h-10 text-primary/30" />
+              </div>
+              <h3 className="text-xl font-bold text-text font-bricolage mb-2">No patients found</h3>
+              <p className="text-text/50 max-w-sm mb-8">
+                Start building your clinic's database by adding your first patient or importing from a CSV.
+              </p>
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="btn-premium bg-primary text-white px-6 py-2.5 rounded-lg shadow-lg shadow-primary/20 flex items-center gap-2 hover:opacity-90"
+              >
+                <Plus className="w-5 h-5" /> Add First Patient
+              </button>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -535,13 +648,13 @@ function PatientsPage() {
 
       {/* Drawer Overlay */}
       <div
-        className={`fixed inset-0 bg-black/20 z-40 transition-opacity duration-300 ${isDrawerOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 bg-black/20 z-40 transition-opacity duration-300 fade-in ${isDrawerOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         onClick={() => setIsDrawerOpen(false)}
       />
 
       {/* Right Drawer */}
       <div
-        className={`fixed top-0 right-0 h-full w-full sm:w-[450px] bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${isDrawerOpen ? 'translate-x-0' : 'translate-x-full'
+        className={`fixed top-0 right-0 h-full w-full sm:w-[450px] bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col drawer-in ${isDrawerOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
       >
         {selectedPatient && (
@@ -652,6 +765,41 @@ function PatientsPage() {
                     className="mt-1"
                   />
                   <label htmlFor="drawer-gdpr" className="text-sm text-text/80">GDPR consent provided</label>
+                </div>
+
+                {/* AI Pain Summary Section */}
+                <div className="pt-6 border-t border-border space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-text flex items-center gap-2">
+                      <Brain className="w-4 h-4 text-primary" />
+                      AI Clinical Analysis
+                    </h3>
+                    {!aiSummary && (
+                      <button
+                        type="button"
+                        onClick={handleGeneratePainSummary}
+                        disabled={generatingSummary}
+                        className="text-xs flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white rounded-lg hover:opacity-90 disabled:opacity-50 transition-all font-bold shadow-sm"
+                      >
+                        {generatingSummary ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                        {generatingSummary ? 'Analyzing...' : 'Generate Summary'}
+                      </button>
+                    )}
+                  </div>
+
+                  {aiSummary ? (
+                    <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 space-y-2 animate-in fade-in slide-in-from-top-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-primary uppercase tracking-wider">Pain Trend Summary</span>
+                        <button type="button" onClick={() => setAiSummary(null)} className="text-[10px] text-text/40 hover:text-text">Clear</button>
+                      </div>
+                      <p className="text-sm text-text/80 leading-relaxed italic">"{aiSummary}"</p>
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 border border-dashed border-border rounded-xl p-4 text-center">
+                      <p className="text-xs text-text/40">No AI analysis generated yet. Click above to analyze last 10 session trends.</p>
+                    </div>
+                  )}
                 </div>
 
                 {!isEditing && drawerFormData.last_session_date && (

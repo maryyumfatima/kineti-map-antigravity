@@ -1,10 +1,10 @@
-import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
+import { createFileRoute, useNavigate, Link, useParams } from '@tanstack/react-router'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { Check, Upload, Copy, Share, Users, LayoutDashboard, Building2 } from 'lucide-react'
 import { toast } from 'sonner'
 
-export const Route = createFileRoute('/onboarding')({
+export const Route = createFileRoute('/$country/onboarding')({
   component: OnboardingPage,
 })
 
@@ -77,6 +77,7 @@ function OnboardingPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const navigate = useNavigate()
+  const { country } = useParams({ strict: false }) as { country: string }
 
   // Step 1 Data
   const [name, setName] = useState('')
@@ -108,7 +109,7 @@ function OnboardingPage() {
     setLoading(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { navigate({ to: '/login' }); return }
+      if (!user) { navigate({ to: '/$country/login', params: { country } as any }); return }
 
       const { data: cu, error: cuErr } = await supabase
         .from('clinic_users')
@@ -175,7 +176,7 @@ function OnboardingPage() {
       const { data: clinic } = await supabase.from('clinics').select('*').eq('id', cu.clinic_id).single()
       if (clinic) {
         if (clinic.onboarding_completed) {
-          navigate({ to: '/dashboard' })
+          navigate({ to: '/$country/dashboard', params: { country } as any })
           return
         }
         setName(clinic.name || '')
@@ -353,7 +354,7 @@ function OnboardingPage() {
     setSaving(true)
     try {
       await supabase.from('clinics').update({ onboarding_completed: true }).eq('id', clinicId)
-      navigate({ to: '/dashboard' })
+      navigate({ to: '/$country/dashboard', params: { country } as any })
     } catch (e) {
       toast.error('Failed to complete onboarding')
     } finally {
@@ -588,7 +589,7 @@ function OnboardingPage() {
                   </div>
                 </div>
 
-                <Link to="/patients" className="border border-border rounded-xl p-4 flex items-center gap-4 bg-white shadow-sm hover:border-primary/30 transition-colors" onClick={() => supabase.from('clinics').update({ onboarding_completed: true }).eq('id', clinicId!)}>
+                <Link to="/$country/patients" params={{ country } as any} className="border border-border rounded-xl p-4 flex items-center gap-4 bg-white shadow-sm hover:border-primary/30 transition-colors" onClick={() => supabase.from('clinics').update({ onboarding_completed: true }).eq('id', clinicId!)}>
                   <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
                     <Users className="w-5 h-5 text-[#C4957D]" />
                   </div>

@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { Clock, Save, Plug, ChevronDown } from 'lucide-react'
 import { useRef } from 'react'
 
-export const Route = createFileRoute('/availability')({
+export const Route = createFileRoute('/$country/availability')({
   component: AvailabilityPage,
 })
 
