@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 import { Copy, Upload, Check, Building2, Eye, EyeOff } from 'lucide-react'
+import { PhoneInput } from '../components/PhoneInput'
 
 export const Route = createFileRoute('/branding')({
   component: BrandingPage,
@@ -343,10 +344,11 @@ function BrandingPage() {
                 </div>
                 <div>
                   <label className={labelClass}>WhatsApp number</label>
-                  <input
-                    type="tel" value={form.whatsapp_number}
-                    onChange={e => set('whatsapp_number', e.target.value)}
-                    className={inputClass} placeholder="+447700900000"
+                  <PhoneInput
+                    value={form.whatsapp_number}
+                    onChange={v => set('whatsapp_number', v)}
+                    placeholder="+447700900000"
+                    className="w-full px-3 py-1.5 rounded-lg border border-border focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary outline-none text-sm bg-white"
                   />
                   <p className="text-xs text-text/40 mt-1">E.164 format — include country code</p>
                 </div>
@@ -365,10 +367,11 @@ function BrandingPage() {
                     </div>
                     <div>
                       <label className={labelClass}>Phone number</label>
-                      <input
-                        type="tel" value={form.contact_phone}
-                        onChange={e => set('contact_phone', e.target.value)}
-                        className={inputClass} placeholder="+441234567890"
+                      <PhoneInput
+                        value={form.contact_phone}
+                        onChange={v => set('contact_phone', v)}
+                        placeholder="+441234567890"
+                        className="w-full px-3 py-1.5 rounded-lg border border-border focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary outline-none text-sm bg-white"
                       />
                     </div>
                     <div>

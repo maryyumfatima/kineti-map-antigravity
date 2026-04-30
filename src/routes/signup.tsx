@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
-import { useState, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { Mail, Lock, User, Building2, Globe, Phone, Eye, EyeOff, Check } from 'lucide-react'
+import { Mail, Lock, User, Building2, Eye, EyeOff, Check } from 'lucide-react'
 import { toast } from 'sonner'
+import PhoneInput from 'react-phone-number-input'
 
 export const Route = createFileRoute('/signup')({
   component: Signup,
@@ -35,51 +36,49 @@ function AuthInput({
   )
 }
 
-// Country select — visually identical to AuthInput (same height, icon, padding)
-function CountrySelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+// Custom Phone Input integrating react-phone-number-input
+function CustomPhoneInput({ value, onChange, onCountryChange }: { value: string; onChange: (v: string) => void; onCountryChange?: (c: string) => void }) {
   const [focused, setFocused] = useState(false)
+  const [defaultCountry, setDefaultCountry] = useState<any>('GB')
+
+  useEffect(() => {
+    try {
+      const locale = navigator.language || (navigator as any).userLanguage;
+      if (locale) {
+        const parts = locale.split('-');
+        if (parts.length > 1 && parts[1].length === 2) {
+          setDefaultCountry(parts[1].toUpperCase());
+        } else if (parts[0].length === 2) {
+          setDefaultCountry(parts[0].toUpperCase());
+        }
+      }
+    } catch (e) {}
+  }, [])
+
   return (
-    <div style={{ position: 'relative', height: '45px' }}>
-      <Globe
-        size={15}
-        style={{
-          position: 'absolute',
-          left: '13px',
-          top: '50%',
-          transform: 'translateY(-50%)',
-          color: '#006D77',
-          pointerEvents: 'none',
-          zIndex: 2,
-        }}
-      />
-      <select
+    <div
+      style={{
+        background: focused ? '#EDF6F9' : '#F7F9FA',
+        borderRadius: '10px',
+        padding: '0 14px',
+        width: '100%',
+        transition: 'background 0.2s ease',
+        boxSizing: 'border-box',
+        height: '45px',
+        display: 'flex',
+        alignItems: 'center',
+      }}
+    >
+      <PhoneInput
+        international
+        defaultCountry={defaultCountry}
         value={value}
-        onChange={e => onChange(e.target.value)}
+        onChange={onChange}
+        onCountryChange={onCountryChange}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        style={{
-          display: 'block',
-          width: '100%',
-          height: '45px',
-          padding: '0 14px 0 40px',
-          fontSize: '14px',
-          color: '#2C1A12',
-          background: focused ? '#EDF6F9' : '#F7F9FA',
-          border: 'none',
-          borderRadius: '10px',
-          outline: 'none',
-          transition: 'background 0.2s ease',
-          boxSizing: 'border-box',
-          cursor: 'pointer',
-          appearance: 'none',
-          WebkitAppearance: 'none',
-          MozAppearance: 'none',
-        }}
-      >
-        {['United Kingdom', 'Australia', 'Germany', 'France', 'Netherlands', 'Pakistan', 'Other'].map(c => (
-          <option key={c}>{c}</option>
-        ))}
-      </select>
+        placeholder="WhatsApp number"
+      />
     </div>
   )
 }
@@ -187,37 +186,16 @@ function LeftPanel() {
 function Signup() {
   const [form, setForm] = useState({
     fullName: '', clinicName: '', email: '', password: '',
-    country: 'United Kingdom', whatsapp: '',
+    country: 'GB', whatsapp: '',
   })
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
   const [shaking, setShaking] = useState(false)
   const navigate = useNavigate()
-  const whatsappRef = useRef<HTMLInputElement>(null)
 
   const set = (key: keyof typeof form) => (val: string) =>
     setForm(prev => ({ ...prev, [key]: val }))
-
-  const handleCountryChange = (c: string) => {
-    const codes: Record<string, string> = {
-      'United Kingdom': '+44',
-      'Australia': '+61',
-      'Germany': '+49',
-      'France': '+33',
-      'Netherlands': '+31',
-      'Pakistan': '+92',
-      'Other': '+'
-    }
-    const code = codes[c] || '+'
-    setForm(prev => ({ ...prev, country: c, whatsapp: code }))
-    setTimeout(() => {
-      if (whatsappRef.current) {
-        whatsappRef.current.focus()
-        whatsappRef.current.setSelectionRange(code.length, code.length)
-      }
-    }, 0)
-  }
 
   const triggerShake = () => {
     setShaking(true)
@@ -337,13 +315,14 @@ function Signup() {
             <AuthInput icon={Mail} type="email" placeholder="Email address" value={form.email} onChange={set('email')} />
             <PasswordInput value={form.password} onChange={set('password')} />
 
-            {/* Row 2: Country + WhatsApp */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <CountrySelect value={form.country} onChange={handleCountryChange} />
-              <div>
-                <AuthInput inputRef={whatsappRef} icon={Phone} type="tel" placeholder="+447..." value={form.whatsapp} onChange={set('whatsapp')} />
-                <p style={{ fontSize: '11px', color: '#bbb', margin: '4px 0 0 4px' }}>For verification</p>
-              </div>
+            {/* Phone Number Input */}
+            <div>
+              <CustomPhoneInput 
+                value={form.whatsapp} 
+                onChange={set('whatsapp')} 
+                onCountryChange={c => setForm(prev => ({ ...prev, country: c || 'Unknown' }))}
+              />
+              <p style={{ fontSize: '11px', color: '#bbb', margin: '4px 0 0 4px' }}>WhatsApp number for verification</p>
             </div>
 
             <SubmitButton loading={loading} label="Create free account →" />

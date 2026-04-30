@@ -50,3 +50,70 @@ body {
     display: none !important;
   }
 }
+
+/* ── react-phone-number-input overrides ── */
+.PhoneInput {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+.PhoneInputCountry {
+  display: flex;
+  align-items: center;
+  margin-right: 12px;
+}
+.PhoneInputCountryIcon {
+  width: 24px;
+  height: 16px;
+  border: 1px solid rgba(0,0,0,0.1);
+}
+.PhoneInputCountryIcon--square {
+  width: 1em;
+}
+.PhoneInputCountryIcon--border {
+  background-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5) inset;
+}
+.PhoneInputInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 14px;
+  color: #2C1A12;
+  padding: 12px 0;
+}
+.PhoneInputInput:focus {
+  outline: none;
+}
+.PhoneInputCountrySelectArrow {
+  display: block;
+  content: '';
+  width: 0.3em;
+  height: 0.3em;
+  margin-left: 0.35em;
+  border-style: solid;
+  border-color: #006D77;
+  border-width: 0 1px 1px 0;
+  transform: rotate(45deg);
+  opacity: 0.5;
+}
+.PhoneInputCountrySelect {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  z-index: 1;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.PhoneInputCountry {
+  position: relative;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  margin-right: 0.5em;
+}
