@@ -1,4 +1,4 @@
-import { formatInTimeZone, zonedTimeToUtc } from 'date-fns-tz'
+import { formatInTimeZone, fromZonedTime } from 'date-fns-tz'
 
 export const COUNTRY_TIMEZONES: Record<string, string> = {
   gb: 'Europe/London',
@@ -23,7 +23,7 @@ export function formatLocalTime(utcDateStr: string, countryCode: string, formatS
 export function toUtcString(localDateStr: string, countryCode: string) {
   const timezone = getClinicTimezone(countryCode)
   try {
-    return zonedTimeToUtc(localDateStr, timezone).toISOString()
+    return fromZonedTime(localDateStr, timezone).toISOString()
   } catch (e) {
     return new Date(localDateStr).toISOString()
   }

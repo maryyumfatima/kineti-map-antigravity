@@ -9,9 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SlugRouteImport } from './routes/$slug'
 import { Route as CountryRouteImport } from './routes/$country'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BookSlugRouteImport } from './routes/book.$slug'
 import { Route as CountrySignupRouteImport } from './routes/$country.signup'
 import { Route as CountrySettingsRouteImport } from './routes/$country.settings'
 import { Route as CountrySessionsRouteImport } from './routes/$country.sessions'
@@ -24,14 +24,10 @@ import { Route as CountryDashboardRouteImport } from './routes/$country.dashboar
 import { Route as CountryBrandingRouteImport } from './routes/$country.branding'
 import { Route as CountryBillingRouteImport } from './routes/$country.billing'
 import { Route as CountryAvailabilityRouteImport } from './routes/$country.availability'
+import { Route as CountryPatientsPatientIdRouteImport } from './routes/$country.patients.$patientId'
 import { Route as CountryAiSoapNotesRouteImport } from './routes/$country.ai.soap-notes'
 import { Route as CountryDashboardPatientsIdRouteImport } from './routes/$country.dashboard.patients.$id'
 
-const SlugRoute = SlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const CountryRoute = CountryRouteImport.update({
   id: '/$country',
   path: '/$country',
@@ -40,6 +36,11 @@ const CountryRoute = CountryRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookSlugRoute = BookSlugRouteImport.update({
+  id: '/book/$slug',
+  path: '/book/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CountrySignupRoute = CountrySignupRouteImport.update({
@@ -102,6 +103,12 @@ const CountryAvailabilityRoute = CountryAvailabilityRouteImport.update({
   path: '/availability',
   getParentRoute: () => CountryRoute,
 } as any)
+const CountryPatientsPatientIdRoute =
+  CountryPatientsPatientIdRouteImport.update({
+    id: '/$patientId',
+    path: '/$patientId',
+    getParentRoute: () => CountryPatientsRoute,
+  } as any)
 const CountryAiSoapNotesRoute = CountryAiSoapNotesRouteImport.update({
   id: '/ai/soap-notes',
   path: '/ai/soap-notes',
@@ -117,7 +124,6 @@ const CountryDashboardPatientsIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$country': typeof CountryRouteWithChildren
-  '/$slug': typeof SlugRoute
   '/$country/availability': typeof CountryAvailabilityRoute
   '/$country/billing': typeof CountryBillingRoute
   '/$country/branding': typeof CountryBrandingRoute
@@ -125,18 +131,19 @@ export interface FileRoutesByFullPath {
   '/$country/feedback': typeof CountryFeedbackRoute
   '/$country/login': typeof CountryLoginRoute
   '/$country/onboarding': typeof CountryOnboardingRoute
-  '/$country/patients': typeof CountryPatientsRoute
+  '/$country/patients': typeof CountryPatientsRouteWithChildren
   '/$country/revenue': typeof CountryRevenueRoute
   '/$country/sessions': typeof CountrySessionsRoute
   '/$country/settings': typeof CountrySettingsRoute
   '/$country/signup': typeof CountrySignupRoute
+  '/book/$slug': typeof BookSlugRoute
   '/$country/ai/soap-notes': typeof CountryAiSoapNotesRoute
+  '/$country/patients/$patientId': typeof CountryPatientsPatientIdRoute
   '/$country/dashboard/patients/$id': typeof CountryDashboardPatientsIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$country': typeof CountryRouteWithChildren
-  '/$slug': typeof SlugRoute
   '/$country/availability': typeof CountryAvailabilityRoute
   '/$country/billing': typeof CountryBillingRoute
   '/$country/branding': typeof CountryBrandingRoute
@@ -144,19 +151,20 @@ export interface FileRoutesByTo {
   '/$country/feedback': typeof CountryFeedbackRoute
   '/$country/login': typeof CountryLoginRoute
   '/$country/onboarding': typeof CountryOnboardingRoute
-  '/$country/patients': typeof CountryPatientsRoute
+  '/$country/patients': typeof CountryPatientsRouteWithChildren
   '/$country/revenue': typeof CountryRevenueRoute
   '/$country/sessions': typeof CountrySessionsRoute
   '/$country/settings': typeof CountrySettingsRoute
   '/$country/signup': typeof CountrySignupRoute
+  '/book/$slug': typeof BookSlugRoute
   '/$country/ai/soap-notes': typeof CountryAiSoapNotesRoute
+  '/$country/patients/$patientId': typeof CountryPatientsPatientIdRoute
   '/$country/dashboard/patients/$id': typeof CountryDashboardPatientsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$country': typeof CountryRouteWithChildren
-  '/$slug': typeof SlugRoute
   '/$country/availability': typeof CountryAvailabilityRoute
   '/$country/billing': typeof CountryBillingRoute
   '/$country/branding': typeof CountryBrandingRoute
@@ -164,12 +172,14 @@ export interface FileRoutesById {
   '/$country/feedback': typeof CountryFeedbackRoute
   '/$country/login': typeof CountryLoginRoute
   '/$country/onboarding': typeof CountryOnboardingRoute
-  '/$country/patients': typeof CountryPatientsRoute
+  '/$country/patients': typeof CountryPatientsRouteWithChildren
   '/$country/revenue': typeof CountryRevenueRoute
   '/$country/sessions': typeof CountrySessionsRoute
   '/$country/settings': typeof CountrySettingsRoute
   '/$country/signup': typeof CountrySignupRoute
+  '/book/$slug': typeof BookSlugRoute
   '/$country/ai/soap-notes': typeof CountryAiSoapNotesRoute
+  '/$country/patients/$patientId': typeof CountryPatientsPatientIdRoute
   '/$country/dashboard/patients/$id': typeof CountryDashboardPatientsIdRoute
 }
 export interface FileRouteTypes {
@@ -177,7 +187,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/$country'
-    | '/$slug'
     | '/$country/availability'
     | '/$country/billing'
     | '/$country/branding'
@@ -190,13 +199,14 @@ export interface FileRouteTypes {
     | '/$country/sessions'
     | '/$country/settings'
     | '/$country/signup'
+    | '/book/$slug'
     | '/$country/ai/soap-notes'
+    | '/$country/patients/$patientId'
     | '/$country/dashboard/patients/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/$country'
-    | '/$slug'
     | '/$country/availability'
     | '/$country/billing'
     | '/$country/branding'
@@ -209,13 +219,14 @@ export interface FileRouteTypes {
     | '/$country/sessions'
     | '/$country/settings'
     | '/$country/signup'
+    | '/book/$slug'
     | '/$country/ai/soap-notes'
+    | '/$country/patients/$patientId'
     | '/$country/dashboard/patients/$id'
   id:
     | '__root__'
     | '/'
     | '/$country'
-    | '/$slug'
     | '/$country/availability'
     | '/$country/billing'
     | '/$country/branding'
@@ -228,25 +239,20 @@ export interface FileRouteTypes {
     | '/$country/sessions'
     | '/$country/settings'
     | '/$country/signup'
+    | '/book/$slug'
     | '/$country/ai/soap-notes'
+    | '/$country/patients/$patientId'
     | '/$country/dashboard/patients/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CountryRoute: typeof CountryRouteWithChildren
-  SlugRoute: typeof SlugRoute
+  BookSlugRoute: typeof BookSlugRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/$slug': {
-      id: '/$slug'
-      path: '/$slug'
-      fullPath: '/$slug'
-      preLoaderRoute: typeof SlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/$country': {
       id: '/$country'
       path: '/$country'
@@ -259,6 +265,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/book/$slug': {
+      id: '/book/$slug'
+      path: '/book/$slug'
+      fullPath: '/book/$slug'
+      preLoaderRoute: typeof BookSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$country/signup': {
@@ -345,6 +358,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CountryAvailabilityRouteImport
       parentRoute: typeof CountryRoute
     }
+    '/$country/patients/$patientId': {
+      id: '/$country/patients/$patientId'
+      path: '/$patientId'
+      fullPath: '/$country/patients/$patientId'
+      preLoaderRoute: typeof CountryPatientsPatientIdRouteImport
+      parentRoute: typeof CountryPatientsRoute
+    }
     '/$country/ai/soap-notes': {
       id: '/$country/ai/soap-notes'
       path: '/ai/soap-notes'
@@ -373,6 +393,18 @@ const CountryDashboardRouteChildren: CountryDashboardRouteChildren = {
 const CountryDashboardRouteWithChildren =
   CountryDashboardRoute._addFileChildren(CountryDashboardRouteChildren)
 
+interface CountryPatientsRouteChildren {
+  CountryPatientsPatientIdRoute: typeof CountryPatientsPatientIdRoute
+}
+
+const CountryPatientsRouteChildren: CountryPatientsRouteChildren = {
+  CountryPatientsPatientIdRoute: CountryPatientsPatientIdRoute,
+}
+
+const CountryPatientsRouteWithChildren = CountryPatientsRoute._addFileChildren(
+  CountryPatientsRouteChildren,
+)
+
 interface CountryRouteChildren {
   CountryAvailabilityRoute: typeof CountryAvailabilityRoute
   CountryBillingRoute: typeof CountryBillingRoute
@@ -381,7 +413,7 @@ interface CountryRouteChildren {
   CountryFeedbackRoute: typeof CountryFeedbackRoute
   CountryLoginRoute: typeof CountryLoginRoute
   CountryOnboardingRoute: typeof CountryOnboardingRoute
-  CountryPatientsRoute: typeof CountryPatientsRoute
+  CountryPatientsRoute: typeof CountryPatientsRouteWithChildren
   CountryRevenueRoute: typeof CountryRevenueRoute
   CountrySessionsRoute: typeof CountrySessionsRoute
   CountrySettingsRoute: typeof CountrySettingsRoute
@@ -397,7 +429,7 @@ const CountryRouteChildren: CountryRouteChildren = {
   CountryFeedbackRoute: CountryFeedbackRoute,
   CountryLoginRoute: CountryLoginRoute,
   CountryOnboardingRoute: CountryOnboardingRoute,
-  CountryPatientsRoute: CountryPatientsRoute,
+  CountryPatientsRoute: CountryPatientsRouteWithChildren,
   CountryRevenueRoute: CountryRevenueRoute,
   CountrySessionsRoute: CountrySessionsRoute,
   CountrySettingsRoute: CountrySettingsRoute,
@@ -411,7 +443,7 @@ const CountryRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CountryRoute: CountryRouteWithChildren,
-  SlugRoute: SlugRoute,
+  BookSlugRoute: BookSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
