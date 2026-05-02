@@ -23,6 +23,7 @@ import {
   MapPin,
   Search
 } from 'lucide-react'
+import { formatLocalTime } from '../lib/date'
 
 export const Route = createFileRoute('/$country/patients/$patientId')({
   component: PatientProfilePage,
@@ -198,7 +199,7 @@ function PatientProfilePage() {
                   <Calendar className="w-4 h-4 text-text/30 mt-0.5" />
                   <div>
                     <p className="text-[10px] font-bold text-text/30 uppercase tracking-widest">Date of Birth</p>
-                    <p className="text-sm text-text/80">{patient.date_of_birth ? new Date(patient.date_of_birth).toLocaleDateString() : 'Not provided'}</p>
+                    <p className="text-sm text-text/80">{patient.date_of_birth ? formatLocalTime(patient.date_of_birth, country, 'MMM d, yyyy') : 'Not provided'}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
@@ -292,12 +293,12 @@ function PatientProfilePage() {
                           <div className="bg-white border border-border rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-primary/20 transition-all">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
                               <div className="flex items-center gap-3">
-                                <span className="font-bold text-text font-bricolage">{new Date(session.appointment_time).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+                                <span className="font-bold text-text font-bricolage">{formatLocalTime(session.appointment_time, country, 'EEEE, MMMM d')}</span>
                                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase tracking-wider ${session.status === 'completed' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-gray-50 text-gray-400 border-gray-100'}`}>
                                   {session.status}
                                 </span>
                               </div>
-                              <span className="text-xs font-medium text-text/40">{new Date(session.appointment_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              <span className="text-xs font-medium text-text/40">{formatLocalTime(session.appointment_time, country, 'h:mm a')}</span>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -344,7 +345,7 @@ function PatientProfilePage() {
                         <div key={note.id} className="bg-white border border-border rounded-2xl overflow-hidden hover:shadow-md transition-all">
                           <div className="p-4 border-b border-border bg-gray-50/30 flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <span className="text-sm font-bold text-text">{new Date(note.created_at).toLocaleDateString()}</span>
+                              <span className="text-sm font-bold text-text">{formatLocalTime(note.created_at, country, 'MMM d, yyyy')}</span>
                               <span className="text-[10px] font-bold text-primary uppercase tracking-widest px-2 py-0.5 bg-primary/5 rounded border border-primary/10">AI Assisted</span>
                             </div>
                             <div className="flex items-center gap-2">

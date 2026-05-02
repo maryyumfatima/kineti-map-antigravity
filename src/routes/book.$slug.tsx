@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 import { Check, AlertCircle } from 'lucide-react'
 import { BodyMap } from '../components/BodyMap'
+import { formatLocalTime, toUtcString, getClinicTimezone } from '../lib/date'
 
 export const Route = createFileRoute('/book/$slug')({
   component: BookingPage,
@@ -91,7 +92,7 @@ function BookingPage() {
         ])
 
         if (availRes.data) {
-          generateAllSlots(availRes.data, bookingsRes.data || [])
+          generateAllSlots(availRes.data, bookingsRes.data || [], clinicData)
         }
       }
     } catch (e) {
@@ -101,41 +102,54 @@ function BookingPage() {
     }
   }
 
-  const generateAllSlots = (avail: any[], currentBookings: any[]) => {
+  const generateAllSlots = (avail: any[], currentBookings: any[], clinicData: any) => {
     const slots: any[] = []
     const bookedTimes = new Set(currentBookings.map(b => b.appointment_time))
+    const timezone = getClinicTimezone(clinicData.country)
 
     // Generate for next 14 days
     for (let i = 0; i < 14; i++) {
-      const date = new Date()
-      date.setDate(date.getDate() + i)
-      const dayOfWeek = date.getDay()
-
+      // Create a base date in the clinic's timezone
+      const baseDate = new Date()
+      baseDate.setDate(baseDate.getDate() + i)
+      
+      const dayOfWeek = baseDate.getDay()
       const dayConfig = avail.find(a => a.day_of_week === dayOfWeek)
+      
       if (dayConfig) {
         const [startH, startM] = dayConfig.start_time.split(':').map(Number)
         const [endH, endM] = dayConfig.end_time.split(':').map(Number)
         const duration = dayConfig.slot_duration_minutes || 60
 
-        let current = new Date(date)
-        current.setHours(startH, startM, 0, 0)
+        // Build the local date string for the start of the day
+        const year = baseDate.getFullYear()
+        const month = String(baseDate.getMonth() + 1).padStart(2, '0')
+        const day = String(baseDate.getDate()).padStart(2, '0')
 
-        const end = new Date(date)
-        end.setHours(endH, endM, 0, 0)
+        let currentMins = startH * 60 + startM
+        const endMins = endH * 60 + endM
 
-        while (current < end) {
-          const iso = current.toISOString()
+        while (currentMins < endMins) {
+          const h = Math.floor(currentMins / 60)
+          const m = currentMins % 60
+          
+          // Format: YYYY-MM-DDTHH:mm:00
+          const localDateTimeStr = `${year}-${month}-${day}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`
+          
+          // Convert local clinic time to UTC
+          const utcIso = toUtcString(localDateTimeStr, clinicData.country)
+          
           // Only show future slots
-          if (current > new Date()) {
+          if (new Date(utcIso) > new Date()) {
             slots.push({
-              iso,
-              time: current.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              date: current.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }),
-              dateKey: current.toISOString().split('T')[0],
-              isBooked: bookedTimes.has(iso)
+              iso: utcIso,
+              time: formatLocalTime(utcIso, clinicData.country, 'h:mm a'),
+              date: formatLocalTime(utcIso, clinicData.country, 'EEE, MMM d'),
+              dateKey: localDateTimeStr.split('T')[0],
+              isBooked: bookedTimes.has(utcIso)
             })
           }
-          current = new Date(current.getTime() + duration * 60000)
+          currentMins += duration
         }
       }
     }
@@ -632,10 +646,10 @@ function BookingPage() {
                 {selectedSlot && (
                   <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-100 inline-block">
                     <p className="text-sm font-bold text-gray-900">
-                      {new Date(selectedSlot).toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' })}
+                      {formatLocalTime(selectedSlot, clinic.country, 'EEEE, MMMM d')}
                     </p>
                     <p className="text-lg font-bold" style={{ color: brandColor }}>
-                      {new Date(selectedSlot).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {formatLocalTime(selectedSlot, clinic.country, 'h:mm a')}
                     </p>
                   </div>
                 )}

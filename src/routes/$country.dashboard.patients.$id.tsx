@@ -7,8 +7,10 @@ import {
   Phone, Mail, Calendar, Info, 
   MessageSquare, History, FileText, ChevronRight,
   CheckCircle, Clock, AlertCircle, ExternalLink,
-  ChevronDown, ChevronUp
+  ChevronDown, ChevronUp, Download, Trash2, ShieldAlert
 } from 'lucide-react'
+import { exportPatientData, deletePatientData } from '../lib/gdpr'
+import { formatLocalTime } from '../lib/date'
 
 export const Route = createFileRoute('/$country/dashboard/patients/$id')({
   component: PatientDetailPage,
@@ -91,6 +93,11 @@ function PatientDetailPage() {
   const [clinicId, setClinicId] = useState<string | null>(null)
   const [expandedBooking, setExpandedBooking] = useState<string | null>(null)
   const [updatingBooking, setUpdatingBooking] = useState<string | null>(null)
+  const [isExporting, setIsExporting] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [isDeleting, setIsDeleting] = useState(false)
+  const navigate = Route.useNavigate()
 
   useEffect(() => {
     fetchData()
@@ -182,6 +189,34 @@ function PatientDetailPage() {
     }
   }
 
+  const handleExport = async () => {
+    if (!patient || !clinicId) return
+    setIsExporting(true)
+    toast.info('Preparing patient data export...')
+    const result = await exportPatientData(patient.id, clinicId)
+    if (result.success) {
+      toast.success('Patient data exported successfully')
+    } else {
+      toast.error(`Export failed: ${result.error}`)
+    }
+    setIsExporting(false)
+  }
+
+  const handleDelete = async () => {
+    if (!patient || !clinicId || deleteConfirmText !== patient.full_name) return
+    setIsDeleting(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    const result = await deletePatientData(patient.id, clinicId, user?.id || 'unknown')
+    if (result.success) {
+      toast.success('Patient completely removed from system.')
+      navigate({ to: '/$country/patients', params: { country } as any })
+    } else {
+      toast.error(`Deletion failed: ${result.error}`)
+      setIsDeleting(false)
+    }
+  }
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -261,7 +296,7 @@ function PatientDetailPage() {
                   <div>
                     <p className="text-xs text-text/40 font-medium uppercase tracking-wider">Date of Birth</p>
                     <p className="text-sm font-medium text-text">
-                      {new Date(patient.date_of_birth).toLocaleDateString()} 
+                      {formatLocalTime(patient.date_of_birth, country, 'MMM d, yyyy')} 
                       <span className="text-text/40 ml-2">({calculateAge(patient.date_of_birth)} yrs)</span>
                     </p>
                   </div>
@@ -353,8 +388,8 @@ function PatientDetailPage() {
                               {isExpanded ? <ChevronUp className="w-4 h-4 text-text/30" /> : <ChevronDown className="w-4 h-4 text-text/30" />}
                             </div>
                             <div>
-                              <p className="text-sm font-bold text-text">{dt.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</p>
-                              <p className="text-xs text-text/40 mt-0.5">{dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {booking.appointment_type?.replace('_', ' ')?.toUpperCase() ?? ''}</p>
+                              <p className="text-sm font-bold text-text">{formatLocalTime(booking.appointment_time, country, 'EEE, MMM d, yyyy')}</p>
+                              <p className="text-xs text-text/40 mt-0.5">{formatLocalTime(booking.appointment_time, country, 'h:mm a')} · {booking.appointment_type?.replace('_', ' ')?.toUpperCase() ?? ''}</p>
                             </div>
                           </div>
                           
@@ -404,30 +439,109 @@ function PatientDetailPage() {
               )}
             </div>
 
-            {/* 4. DATA EXPORT (Export PDF Button) */}
-            <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
-              <div className="flex items-center gap-2 mb-6">
-                <FileText className="w-4 h-4 text-primary" />
-                <h2 className="font-bold text-text font-bricolage">Data Export</h2>
+            {/* 4. DATA MANAGEMENT (GDPR) */}
+            <div className="bg-card border border-alert/20 rounded-2xl p-6 shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-10">
+                <ShieldAlert className="w-24 h-24 text-alert" />
               </div>
-              <div className="flex flex-col sm:flex-row items-center gap-4">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-text">Export full patient history</p>
-                  <p className="text-xs text-text/40 mt-1">Download a PDF summary of all sessions, notes, and pain data.</p>
+              <div className="flex items-center gap-2 mb-6 relative z-10">
+                <ShieldAlert className="w-4 h-4 text-alert" />
+                <h2 className="font-bold text-text font-bricolage">Data Management (GDPR)</h2>
+              </div>
+              
+              <div className="space-y-6 relative z-10">
+                <div className="flex flex-col sm:flex-row items-center gap-4 pb-6 border-b border-border/50">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-text">Right to Data Portability</p>
+                    <p className="text-xs text-text/40 mt-1">Download a comprehensive ZIP file containing JSON data and PDF summaries of all notes and sessions.</p>
+                  </div>
+                  <button 
+                    onClick={handleExport}
+                    disabled={isExporting}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white border border-border text-text text-sm font-semibold px-6 py-3 rounded-xl hover:bg-background transition-all shadow-sm active:scale-95 whitespace-nowrap disabled:opacity-50"
+                  >
+                    {isExporting ? <Clock className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                    {isExporting ? 'Exporting...' : 'Export All Data'}
+                  </button>
                 </div>
-                <button 
-                  onClick={() => toast.info('Export Patient PDF Coming Soon')}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white border border-border text-text text-sm font-semibold px-6 py-3 rounded-xl hover:bg-background transition-all shadow-sm active:scale-95 whitespace-nowrap"
-                >
-                  <FileText className="w-4 h-4" />
-                  Export Patient PDF
-                </button>
+
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-alert">Right to be Forgotten</p>
+                    <p className="text-xs text-text/40 mt-1">Permanently delete this patient and all associated records from the system. This cannot be undone.</p>
+                  </div>
+                  <button 
+                    onClick={() => setShowDeleteModal(true)}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-alert/5 border border-alert/20 text-alert text-sm font-semibold px-6 py-3 rounded-xl hover:bg-alert hover:text-white transition-all shadow-sm active:scale-95 whitespace-nowrap"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete Patient
+                  </button>
+                </div>
               </div>
             </div>
 
           </div>
         </div>
       </div>
+
+      {/* Deletion Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-6 bg-alert/5 border-b border-alert/10">
+              <div className="flex items-center gap-3 text-alert mb-2">
+                <AlertCircle className="w-6 h-6" />
+                <h3 className="text-lg font-bold font-bricolage">Delete Patient Record</h3>
+              </div>
+              <p className="text-sm text-alert/80">
+                You are about to permanently delete all data for <strong>{patient.full_name}</strong>.
+              </p>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div className="bg-background rounded-xl p-4 text-sm text-text/70 space-y-2">
+                <p className="font-semibold text-text mb-3">This action will cascade delete:</p>
+                <p className="flex items-center gap-2"><CheckCircle className="w-3 h-3 text-alert" /> {bookings.length} Bookings</p>
+                <p className="flex items-center gap-2"><CheckCircle className="w-3 h-3 text-alert" /> All associated SOAP notes</p>
+                <p className="flex items-center gap-2"><CheckCircle className="w-3 h-3 text-alert" /> {messages.length} WhatsApp message logs</p>
+                <p className="flex items-center gap-2"><CheckCircle className="w-3 h-3 text-alert" /> Consent and activity records</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-text/50 uppercase tracking-wider mb-2">
+                  Please type <span className="text-text font-bold select-none">{patient.full_name}</span> to confirm:
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder={patient.full_name}
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-white focus:outline-none focus:border-alert focus:ring-1 focus:ring-alert transition-all"
+                />
+              </div>
+            </div>
+
+            <div className="p-6 pt-0 flex gap-3">
+              <button
+                onClick={() => { setShowDeleteModal(false); setDeleteConfirmText(''); }}
+                className="flex-1 bg-white border border-border text-text font-bold py-3 rounded-xl hover:bg-gray-50 transition-colors"
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleteConfirmText !== patient.full_name || isDeleting}
+                className="flex-1 bg-alert text-white font-bold py-3 rounded-xl hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isDeleting ? <Clock className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                {isDeleting ? 'Deleting...' : 'Permanently Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   )
 }

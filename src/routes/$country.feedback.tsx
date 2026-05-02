@@ -1,9 +1,10 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useParams } from '@tanstack/react-router'
 import { DashboardLayout } from '../components/DashboardLayout'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 import { Star } from 'lucide-react'
+import { formatLocalTime } from '../lib/date'
 
 export const Route = createFileRoute('/$country/feedback')({
   component: FeedbackPage,
@@ -36,6 +37,7 @@ function avgColor(avg: number) {
 }
 
 function FeedbackPage() {
+  const { country } = useParams({ strict: false }) as { country: string }
   const [rows, setRows] = useState<FeedbackRow[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<Filter>('All')
@@ -171,7 +173,7 @@ function FeedbackPage() {
                         </span>
                       </td>
                       <td className="p-4 text-sm text-text/70 max-w-xs truncate">{row.comment || <span className="italic text-text/30">No comment</span>}</td>
-                      <td className="p-4 text-sm text-text/60 whitespace-nowrap">{new Date(row.created_at).toLocaleDateString()}</td>
+                      <td className="p-4 text-sm text-text/60 whitespace-nowrap">{formatLocalTime(row.created_at, country, 'MMM d, yyyy')}</td>
                       <td className="p-4">
                         {row.alert_triggered && (
                           <span className="text-xs font-semibold bg-alert/10 text-alert border border-alert/20 px-2 py-1 rounded-full">Alert Sent</span>

@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useParams } from '@tanstack/react-router'
 import { DashboardLayout } from '../components/DashboardLayout'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
@@ -7,6 +7,8 @@ import {
   Users, Calendar, MessageSquare, CreditCard,
   CheckCircle, AlertCircle, Clock, ChevronRight
 } from 'lucide-react'
+import { formatLocalTime } from '../lib/date'
+import { formatLocalTime } from '../lib/date'
 
 export const Route = createFileRoute('/$country/dashboard')({
   component: Dashboard,
@@ -43,6 +45,7 @@ function StatCard({ title, value, icon: Icon, color = 'text-primary', loading }:
 }
 
 function Dashboard() {
+  const { country } = useParams({ strict: false }) as { country: string }
   const [loading, setLoading] = useState(true)
 
   // Stats
@@ -186,7 +189,7 @@ function Dashboard() {
             <p className="text-text/50 text-sm mt-1">Here's what's happening today at your clinic.</p>
           </div>
           <div className="md:text-right">
-            <p className="text-sm font-semibold text-text">{new Date().toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+            <p className="text-sm font-semibold text-text">{formatLocalTime(new Date().toISOString(), country, 'EEEE, MMMM d')}</p>
             <p className="text-xs text-text/40 mt-0.5">Real-time metrics</p>
           </div>
         </div>
@@ -249,7 +252,7 @@ function Dashboard() {
                         <div className="flex items-start gap-4">
                           <div className="text-center min-w-[60px] pt-1">
                             <p className="text-sm font-bold text-primary font-bricolage">
-                              {new Date(booking.appointment_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
+                              {formatLocalTime(booking.appointment_time, country, 'HH:mm')}
                             </p>
                           </div>
                           <div>
@@ -332,7 +335,7 @@ function Dashboard() {
                       </div>
                       <p className="text-sm text-text/70 italic leading-relaxed">"{feedback.comment || 'No comment provided'}"</p>
                       <p className="text-[10px] text-text/40 mt-3 font-medium uppercase tracking-wider">
-                        {new Date(feedback.created_at).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {formatLocalTime(feedback.created_at, country, 'MMM d, yyyy')}
                       </p>
                     </div>
                   ))}

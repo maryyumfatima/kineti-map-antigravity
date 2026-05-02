@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 import { Clock, Save, Plug, ChevronDown } from 'lucide-react'
 import { useRef } from 'react'
+import { formatLocalTime } from '../lib/date'
 
 export const Route = createFileRoute('/$country/availability')({
   component: AvailabilityPage,
@@ -409,7 +410,7 @@ function AvailabilityPage() {
               {/* Group by Date */}
               {Object.entries(
                 upcomingBookings.reduce((acc: any, b) => {
-                  const date = new Date(b.appointment_time).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
+                  const date = formatLocalTime(b.appointment_time, country, 'EEEE, MMMM d')
                   if (!acc[date]) acc[date] = []
                   acc[date].push(b)
                   return acc
@@ -423,7 +424,7 @@ function AvailabilityPage() {
                         <div className="flex justify-between items-start mb-3">
                           <div className="flex flex-col">
                             <span className="font-bold text-text text-sm">{b.patients?.full_name || 'Unknown Patient'}</span>
-                            <span className="text-[11px] text-text/50">{new Date(b.appointment_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {b.duration || 30} mins</span>
+                            <span className="text-[11px] text-text/50">{formatLocalTime(b.appointment_time, country, 'h:mm a')} • {b.duration || 30} mins</span>
                           </div>
                           <span className={`px-2 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider ${
                             b.status === 'confirmed' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-orange-50 text-orange-600 border-orange-100'

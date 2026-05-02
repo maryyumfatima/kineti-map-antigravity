@@ -1,9 +1,10 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useParams } from '@tanstack/react-router'
 import { DashboardLayout } from '../components/DashboardLayout'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 import { Calendar, Plus, X } from 'lucide-react'
+import { formatLocalTime, toUtcString } from '../lib/date'
 
 export const Route = createFileRoute('/$country/sessions')({
   component: SessionsPage,
@@ -56,6 +57,7 @@ const statusLabels: Record<string, string> = {
 }
 
 function SessionsPage() {
+  const { country } = useParams({ strict: false }) as { country: string }
   const [bookings, setBookings] = useState<Booking[]>([])
   const [patients, setPatients] = useState<Patient[]>([])
   const [loading, setLoading] = useState(true)
@@ -162,7 +164,7 @@ function SessionsPage() {
     }
     setIsSaving(true)
     try {
-      const appointment_time = new Date(`${formData.date}T${formData.time}`).toISOString()
+      const appointment_time = toUtcString(`${formData.date}T${formData.time}`, country)
       const { error } = await supabase.from('bookings').insert([{
         clinic_id: clinicId,
         patient_id: formData.patient_id,
@@ -242,18 +244,18 @@ function SessionsPage() {
                 </thead>
                 <tbody>
                   {bookings.map((booking) => {
-                    const painAreas = booking.pain_data
+                      const painAreas = booking.pain_data
                       ? Object.keys(booking.pain_data).join(', ')
                       : '—'
-                    const dt = new Date(booking.appointment_time)
+                    
                     return (
                       <tr key={booking.id} className="border-b border-border last:border-0 hover:bg-background/30 transition-colors">
                         <td className="p-4 font-medium text-text">
                           {booking.patients?.full_name ?? '—'}
                         </td>
                         <td className="p-4 text-sm text-text/80 whitespace-nowrap">
-                          <div>{dt.toLocaleDateString()}</div>
-                          <div className="text-text/50">{dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                          <div>{formatLocalTime(booking.appointment_time, country, 'MMM d, yyyy')}</div>
+                          <div className="text-text/50">{formatLocalTime(booking.appointment_time, country, 'h:mm a')}</div>
                         </td>
                         <td className="p-4">
                           <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${typeColors[booking.appointment_type] ?? 'bg-gray-100 text-gray-700 border-gray-200'}`}>

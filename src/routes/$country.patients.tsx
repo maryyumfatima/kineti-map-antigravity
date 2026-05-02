@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 import { Search, Plus, Users, X, Upload, Sparkles, Loader2, Brain, ChevronRight, ChevronDown } from 'lucide-react'
+import { formatLocalTime } from '../lib/date'
 import { PhoneInput } from '../components/PhoneInput'
 import { generatePainSummary } from '../lib/groq'
 
@@ -575,7 +576,7 @@ function PatientsPage() {
                         </span>
                       </td>
                       <td className="p-4 text-text/40 text-xs">
-                        {patient.last_session_date ? new Date(patient.last_session_date).toLocaleDateString() : 'New Patient'}
+                        {patient.last_session_date ? formatLocalTime(patient.last_session_date, country, 'MMM d, yyyy') : 'New Patient'}
                       </td>
                       <td className="p-4" onClick={e => e.stopPropagation()}>
                         <button
@@ -913,7 +914,7 @@ function PatientsPage() {
                 {!isEditing && drawerFormData.last_session_date && (
                   <div className="pt-4 border-t border-border mt-4">
                     <p className="text-sm font-medium text-text/70 mb-1">Last session date</p>
-                    <p className="text-text">{new Date(drawerFormData.last_session_date).toLocaleDateString()}</p>
+                    <p className="text-text">{formatLocalTime(drawerFormData.last_session_date, country, 'MMM d, yyyy')}</p>
                   </div>
                 )}
               </form>

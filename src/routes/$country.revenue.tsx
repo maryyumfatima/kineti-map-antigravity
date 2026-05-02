@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useParams } from '@tanstack/react-router'
 import { DashboardLayout } from '../components/DashboardLayout'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
@@ -7,6 +7,7 @@ import { CheckCircle, DollarSign } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts'
+import { formatLocalTime } from '../lib/date'
 
 export const Route = createFileRoute('/$country/revenue')({
   component: RevenuePage,
@@ -63,6 +64,7 @@ const TYPE_LABELS: Record<string, string> = {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 function RevenuePage() {
+  const { country } = useParams({ strict: false }) as { country: string }
   const [ledger, setLedger] = useState<LedgerRow[]>([])
   const [upcomingCount, setUpcomingCount] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -236,7 +238,7 @@ function RevenuePage() {
                       <td className="p-4 font-medium text-text">{row.patients?.full_name ?? '—'}</td>
                       <td className="p-4 text-sm text-text/70">
                         {row.bookings?.appointment_time
-                          ? new Date(row.bookings.appointment_time).toLocaleDateString()
+                          ? formatLocalTime(row.bookings.appointment_time, country, 'MMM d, yyyy')
                           : '—'}
                       </td>
                       <td className="p-4 font-semibold text-text">

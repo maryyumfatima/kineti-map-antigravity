@@ -18,8 +18,10 @@ import {
   Save,
   Trash2,
   Loader2,
-  Clock
+  Clock,
+  ChevronRight
 } from 'lucide-react'
+import { formatLocalTime } from '../lib/date'
 import { generateSoapNoteFromAudio } from '../lib/groq'
 
 export const Route = createFileRoute('/$country/ai/soap-notes')({
@@ -133,7 +135,7 @@ function PreviousNotesSidebar({ notes, loading }: { notes: PreviousNote[], loadi
             <div key={note.id} className="p-3 bg-white border border-border rounded-xl shadow-sm hover:border-primary/20 transition-all group">
               <div className="flex justify-between items-center mb-1">
                 <span className="text-[10px] font-bold text-primary/60">
-                  {new Date(note.created_at).toLocaleDateString()}
+                  {formatLocalTime(note.created_at, country, 'MMM d, yyyy')}
                 </span>
                 <Clock className="w-3 h-3 text-text/20" />
               </div>
@@ -561,7 +563,7 @@ function AISoapNotesPage() {
   }
 
   const emailNote = () => {
-    const subject = `SOAP Note - ${new Date().toLocaleDateString()}`
+    const subject = `SOAP Note - ${formatLocalTime(new Date().toISOString(), country, 'MMM d, yyyy')}`
     const body = `Subjective (S): ${generatedNote.s}\n\nObjective (O): ${generatedNote.o}\n\nAssessment (A): ${generatedNote.a}\n\nPlan (P): ${generatedNote.p}`
     window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
   }

@@ -367,29 +367,35 @@ function SettingsPage() {
           <p className="text-xs text-text/50 mt-3">Manage multiple clinic branches from one account.</p>
         </div>
 
-        {/* ══════════ S6: Data & Privacy ══════════ */}
+        {/* ══════════ S6: Data Management (GDPR) ══════════ */}
         <div className={card}>
           <SectionTitle>
-            <span className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-primary" />Data & Privacy</span>
+            <span className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-primary" />Data Management (GDPR)</span>
           </SectionTitle>
-          <div className="flex flex-wrap gap-3 mb-4">
-            <button
-              onClick={() => toast.info('CSV export coming soon.')}
-              className="flex items-center gap-2 border text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-              style={{ borderColor: '#D9B29C', color: '#B88B71', backgroundColor: '#D9B29C18' }}
-            >
-              <FileText className="w-4 h-4" /> Export Patient Data (CSV)
-            </button>
-            <button
-              onClick={() => toast.info('PDF download coming soon.')}
-              className="flex items-center gap-2 border border-border text-text text-sm font-medium px-4 py-2 rounded-lg hover:bg-background transition-colors"
-            >
-              <Download className="w-4 h-4" /> Download My Data (PDF)
-            </button>
+          <div className="flex flex-col gap-4 mb-4">
+            <p className="text-sm text-text/70">
+              To exercise a patient's Right to Data Portability (export) or Right to be Forgotten (deletion), navigate to their specific patient profile.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Link
+                to="/$country/patients"
+                params={{ country: countryCode } as any}
+                className="flex items-center gap-2 border border-border text-text text-sm font-medium px-4 py-2 rounded-lg hover:bg-background transition-colors"
+              >
+                <Download className="w-4 h-4" /> Export Patient Data
+              </Link>
+              <Link
+                to="/$country/patients"
+                params={{ country: countryCode } as any}
+                className="flex items-center gap-2 border border-alert/20 text-alert bg-alert/5 text-sm font-medium px-4 py-2 rounded-lg hover:bg-alert hover:text-white transition-colors"
+              >
+                <Trash2 className="w-4 h-4" /> Delete Patient (GDPR)
+              </Link>
+            </div>
           </div>
           <p className="text-xs text-text/50 leading-relaxed bg-background rounded-lg px-4 py-3 border border-border">
             🔒 Your data is stored in EU servers and protected under UK GDPR.
-            Patients can request deletion at any time.
+            All deletions are cascaded across bookings, notes, and messages.
           </p>
         </div>
 
