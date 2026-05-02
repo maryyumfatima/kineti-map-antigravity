@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
 const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY')!
 
-serve(async (req) => {
+serve(async (req: Request) => {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -97,8 +97,9 @@ serve(async (req) => {
       )
     }
 
-  } catch (error) {
-    console.error('Groq Proxy Error:', error)
+  } catch (err: any) {
+    const error = err as Error
+    console.error('Groq Proxy Error:', error.message)
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

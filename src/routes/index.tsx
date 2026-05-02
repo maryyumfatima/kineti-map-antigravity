@@ -21,7 +21,7 @@ export const Route = createFileRoute('/')({
     const country = detectCountry()
     throw redirect({
       to: '/$country/login',
-      params: { country },
+      params: { country } as any,
     })
   },
   component: () => null,
