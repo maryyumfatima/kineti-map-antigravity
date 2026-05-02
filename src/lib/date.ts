@@ -54,5 +54,15 @@ export function getTimezoneAbbr(countryCode: string, date: Date = new Date(), cl
 }
 
 /**
- * Gets a zoned Date object for local calculations
+ * Gets a zoned Date object for local calculations (e.g. grouping bookings by local day)
+ */
+export function getZonedDate(date: Date | string, countryCode: string, clinicTimezone?: string) {
+  const timezone = getClinicTimezone(countryCode, clinicTimezone)
+  return toZonedTime(date, timezone)
+}
+
+/**
+ * TIP: For WhatsApp templates, format times with the clinic's timezone so patients
+ * see their local time, not UTC:
+ * formatLocalTime(booking.appointment_time, country, "EEEE, MMMM d, yyyy 'at' h:mm a zzz", clinic.timezone)
  */
