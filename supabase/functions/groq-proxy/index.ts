@@ -1,3 +1,5 @@
+/// <reference lib="deno.ns" />
+
 Deno.serve(async (req: Request) => {
   const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY')!
   const corsHeaders = {
