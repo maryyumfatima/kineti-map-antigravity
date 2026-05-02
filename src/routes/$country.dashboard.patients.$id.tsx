@@ -10,7 +10,7 @@ import {
   ChevronDown, ChevronUp, Download, Trash2, ShieldAlert
 } from 'lucide-react'
 import { exportPatientData, deletePatientData } from '../lib/gdpr'
-import { formatLocalTime } from '../lib/date'
+import { formatLocalTime, getTimezoneAbbr } from '../lib/date'
 
 export const Route = createFileRoute('/$country/dashboard/patients/$id')({
   component: PatientDetailPage,
@@ -388,7 +388,7 @@ function PatientDetailPage() {
                             </div>
                             <div>
                               <p className="text-sm font-bold text-text">{formatLocalTime(booking.appointment_time, country, 'EEE, MMM d, yyyy')}</p>
-                              <p className="text-xs text-text/40 mt-0.5">{formatLocalTime(booking.appointment_time, country, 'h:mm a')} · {booking.appointment_type?.replace('_', ' ')?.toUpperCase() ?? ''}</p>
+                              <p className="text-xs text-text/40 mt-0.5">{formatLocalTime(booking.appointment_time, country, 'h:mm a')} {getTimezoneAbbr(country, new Date(booking.appointment_time))} · {booking.appointment_type?.replace('_', ' ')?.toUpperCase() ?? ''}</p>
                             </div>
                           </div>
                           

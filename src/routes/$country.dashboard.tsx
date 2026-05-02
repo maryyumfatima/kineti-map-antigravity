@@ -7,7 +7,7 @@ import {
   Users, Calendar, MessageSquare, CreditCard,
   CheckCircle, AlertCircle, Clock, ChevronRight
 } from 'lucide-react'
-import { formatLocalTime } from '../lib/date'
+import { formatLocalTime, getTimezoneAbbr } from '../lib/date'
 
 export const Route = createFileRoute('/$country/dashboard')({
   component: Dashboard,
@@ -232,7 +232,10 @@ function Dashboard() {
                 <Clock className="w-4 h-4 text-primary" />
                 Today's Sessions
               </h2>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-text/30">{todayBookings.length} total</span>
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-text/30">{getTimezoneAbbr(country)}</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-text/30">{todayBookings.length} total</span>
+              </div>
             </div>
 
             <div className="flex-1">

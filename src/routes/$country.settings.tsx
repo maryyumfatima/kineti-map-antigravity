@@ -3,6 +3,7 @@ import { DashboardLayout } from '../components/DashboardLayout'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
+import { getTimezoneAbbr } from '../lib/date'
 import {
   Lock, Sparkles, MapPin, ShieldCheck, AlertTriangle, X,
   Download, FileText, LogOut, Trash2
@@ -267,6 +268,9 @@ function SettingsPage() {
                     <option key={tz}>{tz}</option>
                   ))}
                 </select>
+                <p className="text-[10px] text-text/40 mt-1 uppercase font-bold tracking-wider">
+                  Current: {timezone} ({getTimezoneAbbr(countryCode)})
+                </p>
               </div>
             </div>
             <div>

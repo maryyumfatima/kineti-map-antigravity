@@ -28,3 +28,13 @@ export function toUtcString(localDateStr: string, countryCode: string) {
     return new Date(localDateStr).toISOString()
   }
 }
+
+export function getTimezoneAbbr(countryCode: string, date: Date = new Date()) {
+  const timezone = getClinicTimezone(countryCode)
+  try {
+    // formatInTimeZone can give us the short name with 'zzz' or 'OOOO'
+    return formatInTimeZone(date, timezone, 'zzz')
+  } catch (e) {
+    return 'UTC'
+  }
+}

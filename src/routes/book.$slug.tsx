@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 import { Check, AlertCircle } from 'lucide-react'
 import { BodyMap } from '../components/BodyMap'
-import { formatLocalTime, toUtcString, getClinicTimezone } from '../lib/date'
+import { formatLocalTime, toUtcString, getClinicTimezone, getTimezoneAbbr } from '../lib/date'
 
 export const Route = createFileRoute('/book/$slug')({
   component: BookingPage,
@@ -649,7 +649,7 @@ function BookingPage() {
                       {formatLocalTime(selectedSlot, clinic.country, 'EEEE, MMMM d')}
                     </p>
                     <p className="text-lg font-bold" style={{ color: brandColor }}>
-                      {formatLocalTime(selectedSlot, clinic.country, 'h:mm a')}
+                      {formatLocalTime(selectedSlot, clinic.country, 'h:mm a')} {getTimezoneAbbr(clinic.country, new Date(selectedSlot))}
                     </p>
                   </div>
                 )}

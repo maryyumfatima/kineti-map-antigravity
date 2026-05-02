@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 import { Calendar, Plus, X } from 'lucide-react'
-import { formatLocalTime, toUtcString } from '../lib/date'
+import { formatLocalTime, toUtcString, getTimezoneAbbr } from '../lib/date'
 
 export const Route = createFileRoute('/$country/sessions')({
   component: SessionsPage,
@@ -255,7 +255,7 @@ function SessionsPage() {
                         </td>
                         <td className="p-4 text-sm text-text/80 whitespace-nowrap">
                           <div>{formatLocalTime(booking.appointment_time, country, 'MMM d, yyyy')}</div>
-                          <div className="text-text/50">{formatLocalTime(booking.appointment_time, country, 'h:mm a')}</div>
+                          <div className="text-text/50">{formatLocalTime(booking.appointment_time, country, 'h:mm a')} {getTimezoneAbbr(country, new Date(booking.appointment_time))}</div>
                         </td>
                         <td className="p-4">
                           <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${typeColors[booking.appointment_type] ?? 'bg-gray-100 text-gray-700 border-gray-200'}`}>
