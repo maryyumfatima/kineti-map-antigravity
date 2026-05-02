@@ -42,8 +42,18 @@ type ChartDatum = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const fmt = (n: number, currency = 'GBP') =>
-  new Intl.NumberFormat('en-GB', { style: 'currency', currency }).format(n)
+const CURRENCY_LOCALES: Record<string, string> = {
+  GBP: 'en-GB', PKR: 'ur-PK', AUD: 'en-AU', USD: 'en-US', EUR: 'en-DE',
+}
+
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  GBP: '£', PKR: '₨', AUD: 'A$', USD: '$', EUR: '€',
+}
+
+const fmt = (n: number, currency = 'GBP') => {
+  const locale = CURRENCY_LOCALES[currency] ?? 'en-GB'
+  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(n)
+}
 
 const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
@@ -70,6 +80,7 @@ function RevenuePage() {
   const [loading, setLoading] = useState(true)
   const [markingId, setMarkingId] = useState<string | null>(null)
   const [clinicTimezone, setClinicTimezone] = useState<string>('Europe/London')
+  const [clinicCurrency, setClinicCurrency] = useState<string>('GBP')
 
   useEffect(() => { fetchData() }, [])
 
@@ -83,8 +94,11 @@ function RevenuePage() {
       if (!cu) return
       const cid = cu.clinic_id
 
-      const { data: clinic } = await supabase.from('clinics').select('timezone').eq('id', cid).single()
-      if (clinic) setClinicTimezone(clinic.timezone || 'Europe/London')
+      const { data: clinic } = await supabase.from('clinics').select('timezone, currency').eq('id', cid).single()
+      if (clinic) {
+        setClinicTimezone(clinic.timezone || 'Europe/London')
+        if (clinic.currency) setClinicCurrency(clinic.currency)
+      }
 
       const [ledgerRes, upcomingRes] = await Promise.all([
         supabase
@@ -190,19 +204,19 @@ function RevenuePage() {
           />
           <StatCard
             label="Actual Collected"
-            value={fmt(totalCollected)}
+            value={fmt(totalCollected, clinicCurrency)}
             sub="all time"
           />
           <StatCard
             label="Unpaid Sessions"
             value={unpaid.length}
-            sub={`${fmt(unpaid.reduce((a, r) => a + r.amount, 0))} outstanding`}
+            sub={`${fmt(unpaid.reduce((a, r) => a + r.amount, 0), clinicCurrency)} outstanding`}
             amber
           />
           <StatCard
             label="This Month"
-            value={fmt(thisMonth)}
-            sub={new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}
+            value={fmt(thisMonth, clinicCurrency)}
+            sub={formatLocalTime(new Date().toISOString(), country, 'MMMM yyyy', clinicTimezone)}
           />
         </div>
 
@@ -275,7 +289,7 @@ function RevenuePage() {
               <BarChart data={chartData} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E0EEF0" vertical={false} />
                 <XAxis dataKey="type" tick={{ fontSize: 12, fill: '#2C1A12', opacity: 0.6 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 12, fill: '#2C1A12', opacity: 0.6 }} axisLine={false} tickLine={false} tickFormatter={v => `£${v}`} />
+                <YAxis tick={{ fontSize: 12, fill: '#2C1A12', opacity: 0.6 }} axisLine={false} tickLine={false} tickFormatter={v => `${CURRENCY_SYMBOLS[clinicCurrency] ?? '£'}${v}`} />
                 <Tooltip
                   formatter={(v: any) => v !== undefined ? [v.toString(), ''] : ['', '']}
                   contentStyle={{ borderRadius: 8, borderColor: '#E0EEF0', fontSize: 13 }}
@@ -308,10 +322,10 @@ function RevenuePage() {
                   <tr key={row.month} className="border-b border-border last:border-0 hover:bg-background/30 transition-colors">
                     <td className="p-4 font-medium text-text">{row.month}</td>
                     <td className="p-4 text-right text-text/80">{row.sessions}</td>
-                    <td className="p-4 text-right text-green-700 font-medium">{fmt(row.collected)}</td>
-                    <td className="p-4 text-right text-amber-600 font-medium">{fmt(row.unpaid)}</td>
+                    <td className="p-4 text-right text-green-700 font-medium">{fmt(row.collected, clinicCurrency)}</td>
+                    <td className="p-4 text-right text-amber-600 font-medium">{fmt(row.unpaid, clinicCurrency)}</td>
                     <td className={`p-4 text-right font-semibold ${row.net >= 0 ? 'text-text' : 'text-alert'}`}>
-                      {fmt(row.net)}
+                      {fmt(row.net, clinicCurrency)}
                     </td>
                   </tr>
                 ))}
