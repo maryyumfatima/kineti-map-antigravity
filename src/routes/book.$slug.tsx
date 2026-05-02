@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { Check, AlertCircle } from 'lucide-react'
 import { BodyMap } from '../components/BodyMap'
 
-export const Route = createFileRoute('/$slug')({
+export const Route = createFileRoute('/book/$slug')({
   component: BookingPage,
 })
 

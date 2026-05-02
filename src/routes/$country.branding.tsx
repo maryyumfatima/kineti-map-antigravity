@@ -274,7 +274,7 @@ function BrandingPage() {
 
   // Issue 3: Copy full URL and show toast
   const handleCopy = () => {
-    const fullUrl = `https://kinetimap.app/${form.slug || 'your-clinic'}`
+    const fullUrl = `https://kinetimap.app/book/${form.slug || 'your-clinic'}`
     navigator.clipboard.writeText(fullUrl).then(() => {
       setCopied(true)
       toast.success('Booking link copied!')
@@ -548,7 +548,7 @@ function BrandingPage() {
                 {form.slug ? (
                   <div className="flex items-center gap-2">
                     <div className="flex-1 px-3 py-2 rounded-lg border border-border bg-background text-sm text-text/70 font-mono truncate">
-                      kinetimap.app/<span className="text-primary font-semibold">{form.slug}</span>
+                      kinetimap.app/book/<span className="text-primary font-semibold">{form.slug}</span>
                     </div>
                     <button
                       onClick={handleCopy}
