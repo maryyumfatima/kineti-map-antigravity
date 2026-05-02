@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 import { 
   Phone, Mail, Calendar, Info, 
-  MessageSquare, History, FileText, ChevronRight,
+  MessageSquare, History, ChevronRight,
   CheckCircle, Clock, AlertCircle, ExternalLink,
   ChevronDown, ChevronUp, Download, Trash2, ShieldAlert
 } from 'lucide-react'
@@ -374,7 +374,6 @@ function PatientDetailPage() {
                 <div className="divide-y divide-border">
                   {bookings.map(booking => {
                     const isExpanded = expandedBooking === booking.id
-                    const dt = new Date(booking.appointment_time)
                     const painSummary = booking.pain_data ? Object.keys(booking.pain_data).join(', ') : 'No pain data'
                     
                     return (

@@ -8,7 +8,6 @@ import {
   CheckCircle, AlertCircle, Clock, ChevronRight
 } from 'lucide-react'
 import { formatLocalTime } from '../lib/date'
-import { formatLocalTime } from '../lib/date'
 
 export const Route = createFileRoute('/$country/dashboard')({
   component: Dashboard,

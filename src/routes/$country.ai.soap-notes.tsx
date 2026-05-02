@@ -18,8 +18,7 @@ import {
   Save,
   Trash2,
   Loader2,
-  Clock,
-  ChevronRight
+  Clock
 } from 'lucide-react'
 import { formatLocalTime } from '../lib/date'
 import { generateSoapNoteFromAudio } from '../lib/groq'
@@ -110,6 +109,7 @@ function InstructionBanner() {
 }
 
 function PreviousNotesSidebar({ notes, loading }: { notes: PreviousNote[], loading: boolean }) {
+  const { country } = useParams({ strict: false }) as { country: string }
   return (
     <div className="space-y-4 mb-6">
       <div className="flex items-center justify-between">
