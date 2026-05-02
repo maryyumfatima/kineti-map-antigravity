@@ -1,9 +1,9 @@
-import { createFileRoute, Link, useParams } from '@tanstack/react-router'
+import { createFileRoute, useParams, useNavigate } from '@tanstack/react-router'
 import { DashboardLayout } from '../components/DashboardLayout'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
-import { Search, Plus, Users, X, Upload, Sparkles, Loader2, Brain, ChevronRight } from 'lucide-react'
+import { Search, Plus, Users, X, Upload, Sparkles, Loader2, Brain, ChevronRight, ChevronDown } from 'lucide-react'
 import { PhoneInput } from '../components/PhoneInput'
 import { generatePainSummary } from '../lib/groq'
 
@@ -29,11 +29,14 @@ type Patient = {
 
 function PatientsPage() {
   const { country } = useParams({ strict: false }) as { country: string }
+  const navigate = useNavigate()
   const [patients, setPatients] = useState<Patient[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('All')
   const [segment, setSegment] = useState('All Time')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(20)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [clinicId, setClinicId] = useState<string | null>(null)
 
@@ -405,6 +408,13 @@ function PatientsPage() {
     return matchesSearch && matchesFilter && matchesSegment
   })
 
+  // Pagination logic
+  const totalPages = Math.ceil(filteredPatients.length / itemsPerPage)
+  const paginatedPatients = filteredPatients.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
   // Status calculation logic (Issue 6)
   const getCalculatedStatus = (p: Patient) => {
     if (p.status_tag === 'discharged') return 'discharged'
@@ -421,22 +431,28 @@ function PatientsPage() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-[28px] font-bold text-primary font-bricolage">Patients</h1>
-          <div className="flex gap-3">
+      <div className="max-w-7xl mx-auto animate-in fade-in duration-700">
+        {/* Background Decorative Element */}
+        <div className="fixed inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent pointer-events-none" />
+        
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+          <div>
+            <h1 className="text-[32px] font-bold text-primary font-bricolage leading-tight">Patient Directory</h1>
+            <p className="text-text/50 text-sm mt-1">Manage and track your clinic's patient records.</p>
+          </div>
+          <div className="flex gap-3 w-full md:w-auto">
             <button
               onClick={() => document.getElementById('csv-import-patients')?.click()}
-              className="bg-white border border-border hover:bg-gray-50 text-text px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
+              className="flex-1 md:flex-none bg-white border border-border hover:bg-gray-50 text-text px-4 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95"
             >
-              <Upload className="w-5 h-5" />
+              <Upload className="w-4 h-4" />
               Import CSV
             </button>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-1 md:flex-none">
               <input type="file" id="csv-import-patients" accept=".csv" className="hidden" onChange={handleCsvUpload} />
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="btn-premium bg-primary text-white px-6 py-2.5 rounded-lg shadow-lg shadow-primary/20 flex items-center gap-2 hover:opacity-90"
+                className="w-full btn-premium bg-primary text-white px-6 py-2.5 rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:opacity-90 active:scale-95"
               >
                 <Plus className="w-5 h-5" />
                 Add Patient
@@ -445,43 +461,47 @@ function PatientsPage() {
           </div>
         </div>
 
-        <div className="bg-card rounded-xl border border-border overflow-hidden card-shadow transition-premium">
-          <div className="p-4 border-b border-border flex flex-col sm:flex-row justify-between gap-4 items-center bg-white">
-            <div className="relative w-full sm:w-80">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text/50" />
-              <input
-                type="text"
-                placeholder="Search by name or phone..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 rounded-lg border border-border focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm"
-              />
-            </div>
-
-            <div className="flex bg-background p-1 rounded-lg w-full sm:w-auto overflow-x-auto gap-2">
-              <div className="flex bg-white border border-border rounded-lg p-0.5">
-                {['All', 'Active', 'Lapsed', 'Discharged'].map(f => (
-                  <button
-                    key={f}
-                    onClick={() => setFilter(f)}
-                    className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${filter === f ? 'bg-primary text-white shadow-sm' : 'text-text/50 hover:text-text'
-                      }`}
-                  >
-                    {f}
-                  </button>
-                ))}
+        <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-border overflow-hidden shadow-xl shadow-primary/5 transition-all">
+          {/* Advanced Filters Bar */}
+          <div className="p-5 border-b border-border space-y-4 bg-white/50">
+            <div className="flex flex-col lg:flex-row justify-between gap-4">
+              <div className="relative flex-1 group">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text/30 group-focus-within:text-primary transition-colors" />
+                <input
+                  type="text"
+                  placeholder="Search by name, phone, or status..."
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-background/50 focus:bg-white focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 text-sm transition-all"
+                />
               </div>
-              <div className="flex bg-white border border-border rounded-lg p-0.5">
-                {['All Time', 'Weekly', 'Monthly', 'Yearly'].map(s => (
-                  <button
-                    key={s}
-                    onClick={() => setSegment(s)}
-                    className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${segment === s ? 'bg-accent text-primary shadow-sm' : 'text-text/50 hover:text-text'
-                      }`}
-                  >
-                    {s}
-                  </button>
-                ))}
+
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex bg-background/50 p-1 rounded-xl border border-border/50">
+                  {['All', 'Active', 'Lapsed', 'Discharged'].map(f => (
+                    <button
+                      key={f}
+                      onClick={() => { setFilter(f); setCurrentPage(1); }}
+                      className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${filter === f ? 'bg-primary text-white shadow-md' : 'text-text/40 hover:text-text/70'
+                        }`}
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex bg-background/50 p-1 rounded-xl border border-border/50">
+                  {['All Time', 'Weekly', 'Monthly', 'Yearly'].map(s => (
+                    <button
+                      key={s}
+                      onClick={() => { setSegment(s); setCurrentPage(1); }}
+                      className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${segment === s ? 'bg-accent text-white shadow-md' : 'text-text/40 hover:text-text/70'
+                        }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -529,23 +549,38 @@ function PatientsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredPatients.map((patient) => (
-                    <tr key={patient.id} className="border-b border-border last:border-0 hover:bg-background/30 transition-colors">
-                      <td className="p-4 font-medium text-text">{patient.full_name}</td>
-                      <td className="p-4 text-text/80">{patient.phone_number}</td>
-                      <td className="p-4 text-text/80">{patient.primary_complaint}</td>
+                  {paginatedPatients.map((patient, idx) => (
+                    <tr 
+                      key={patient.id} 
+                      onClick={() => navigate({ to: '/$country/patients/$patientId', params: { country, patientId: patient.id } as any })}
+                      className={`
+                        border-b border-border last:border-0 cursor-pointer group transition-all duration-300
+                        ${idx % 2 === 0 ? 'bg-white' : 'bg-primary/[0.01]'}
+                        hover:bg-primary/[0.04]
+                      `}
+                    >
                       <td className="p-4">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${getStatusColor(getCalculatedStatus(patient))}`}>
-                          {getCalculatedStatus(patient).charAt(0).toUpperCase() + getCalculatedStatus(patient).slice(1)}
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-primary/5 flex items-center justify-center text-primary text-[10px] font-bold border border-primary/10 group-hover:bg-primary group-hover:text-white transition-all">
+                            {patient.full_name.charAt(0)}
+                          </div>
+                          <span className="font-bold text-text text-sm group-hover:text-primary transition-colors">{patient.full_name}</span>
+                        </div>
+                      </td>
+                      <td className="p-4 text-text/60 text-sm">{patient.phone_number}</td>
+                      <td className="p-4 text-text/60 text-sm font-medium">{patient.primary_complaint}</td>
+                      <td className="p-4">
+                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border uppercase tracking-wider ${getStatusColor(getCalculatedStatus(patient))}`}>
+                          {getCalculatedStatus(patient)}
                         </span>
                       </td>
-                      <td className="p-4 text-text/80">
-                        {patient.last_session_date ? new Date(patient.last_session_date).toLocaleDateString() : '-'}
+                      <td className="p-4 text-text/40 text-xs">
+                        {patient.last_session_date ? new Date(patient.last_session_date).toLocaleDateString() : 'New Patient'}
                       </td>
-                      <td className="p-4">
+                      <td className="p-4" onClick={e => e.stopPropagation()}>
                         <button
                           onClick={() => toggleConsent(patient.id, patient.gdpr_consent)}
-                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${patient.gdpr_consent ? 'bg-primary' : 'bg-gray-300'
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shadow-inner ${patient.gdpr_consent ? 'bg-primary' : 'bg-gray-200'
                             }`}
                         >
                           <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${patient.gdpr_consent ? 'translate-x-4' : 'translate-x-1'
@@ -553,18 +588,48 @@ function PatientsPage() {
                         </button>
                       </td>
                       <td className="p-4 text-right">
-                        <Link
-                          to="/$country/patients/$patientId"
-                          params={{ country, patientId: patient.id } as any}
-                          className="text-primary hover:underline text-sm font-bold flex items-center justify-end gap-1"
-                        >
-                          View Profile <ChevronRight className="w-3.5 h-3.5" />
-                        </Link>
+                        <ChevronRight className="w-4 h-4 text-text/20 group-hover:text-primary group-hover:translate-x-1 transition-all inline-block" />
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Pagination Footer */}
+          {!loading && totalPages > 1 && (
+            <div className="p-4 border-t border-border bg-gray-50/50 flex items-center justify-between">
+              <span className="text-xs text-text/40 font-medium">
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredPatients.length)} of {filteredPatients.length} patients
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 border border-border rounded-lg bg-white text-text/60 hover:text-primary disabled:opacity-30 transition-all"
+                >
+                  <ChevronDown className="w-4 h-4 rotate-90" />
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                    <button
+                      key={p}
+                      onClick={() => setCurrentPage(p)}
+                      className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${currentPage === p ? 'bg-primary text-white' : 'bg-white border border-border text-text/40 hover:text-primary'}`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="p-2 border border-border rounded-lg bg-white text-text/60 hover:text-primary disabled:opacity-30 transition-all"
+                >
+                  <ChevronDown className="w-4 h-4 -rotate-90" />
+                </button>
+              </div>
             </div>
           )}
         </div>

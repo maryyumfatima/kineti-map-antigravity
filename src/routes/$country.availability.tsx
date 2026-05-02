@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate, useParams } from '@tanstack/react-router'
 import { DashboardLayout } from '../components/DashboardLayout'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
@@ -130,16 +130,26 @@ const INTEGRATIONS: IntegrationCard[] = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 function AvailabilityPage() {
+  const { country } = useParams({ strict: false }) as { country: string }
+  const navigate = useNavigate()
   const [schedule, setSchedule] = useState<WeeklySchedule>(DEFAULT_SCHEDULE)
   const [saving, setSaving] = useState(false)
   const [clinicId, setClinicId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [upcomingBookings, setUpcomingBookings] = useState<any[]>([])
+  const [loadingBookings, setLoadingBookings] = useState(false)
   const [integrationsOpen, setIntegrationsOpen] = useState(false)
   const integrationsRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     loadSchedule()
   }, [])
+
+  useEffect(() => {
+    if (clinicId) {
+      fetchUpcomingBookings()
+    }
+  }, [clinicId])
 
   const loadSchedule = async () => {
     setLoading(true)
@@ -165,6 +175,28 @@ function AvailabilityPage() {
       console.error(e)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchUpcomingBookings = async () => {
+    setLoadingBookings(true)
+    try {
+      const now = new Date().toISOString()
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*, patients(full_name)')
+        .eq('clinic_id', clinicId)
+        .neq('status', 'cancelled')
+        .gt('appointment_time', now)
+        .order('appointment_time', { ascending: true })
+        .limit(20)
+
+      if (error) throw error
+      setUpcomingBookings(data || [])
+    } catch (e) {
+      console.error('Error fetching bookings:', e)
+    } finally {
+      setLoadingBookings(false)
     }
   }
 
@@ -348,6 +380,66 @@ function AvailabilityPage() {
                   </div>
                 )
               })}
+            </div>
+          )}
+        </div>
+
+        {/* ── Upcoming Bookings ── */}
+        <div className="mt-12 space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-text font-bricolage">Upcoming Appointments</h2>
+            <button 
+              onClick={() => navigate({ to: '/$country/sessions', params: { country } as any })}
+              className="text-sm font-bold text-primary hover:underline flex items-center gap-1"
+            >
+              View All <ChevronDown className="w-4 h-4 -rotate-90" />
+            </button>
+          </div>
+
+          {loadingBookings ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[1, 2].map(i => <div key={i} className="h-24 bg-card border border-border rounded-xl animate-pulse" />)}
+            </div>
+          ) : upcomingBookings.length === 0 ? (
+            <div className="p-12 bg-white border border-dashed border-border rounded-2xl text-center">
+              <p className="text-text/40 text-sm">No upcoming appointments scheduled.</p>
+            </div>
+          ) : (
+            <div className="space-y-8">
+              {/* Group by Date */}
+              {Object.entries(
+                upcomingBookings.reduce((acc: any, b) => {
+                  const date = new Date(b.appointment_time).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
+                  if (!acc[date]) acc[date] = []
+                  acc[date].push(b)
+                  return acc
+                }, {})
+              ).map(([date, dayBookings]: [string, any]) => (
+                <div key={date} className="space-y-4">
+                  <h3 className="text-[10px] font-bold text-text/30 uppercase tracking-widest pl-1">{date}</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {dayBookings.map((b: any) => (
+                      <div key={b.id} className="bg-white border border-border rounded-xl p-4 shadow-sm hover:border-primary/20 transition-all group">
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex flex-col">
+                            <span className="font-bold text-text text-sm">{b.patients?.full_name || 'Unknown Patient'}</span>
+                            <span className="text-[11px] text-text/50">{new Date(b.appointment_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {b.duration || 30} mins</span>
+                          </div>
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider ${
+                            b.status === 'confirmed' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-orange-50 text-orange-600 border-orange-100'
+                          }`}>
+                            {b.status}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between pt-3 border-t border-border/50">
+                          <span className="text-[10px] font-medium text-text/40">{b.appointment_type || 'Follow-up'}</span>
+                          <button className="text-[10px] font-bold text-primary group-hover:underline">Details</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

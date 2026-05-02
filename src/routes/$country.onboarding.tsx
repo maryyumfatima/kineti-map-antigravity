@@ -363,7 +363,7 @@ function OnboardingPage() {
   }
 
   const handleCopy = () => {
-    const fullUrl = `https://kinetimap.com/${slug || clinicId}`
+    const fullUrl = `https://kinetimap.app/${slug || clinicId}`
     navigator.clipboard.writeText(fullUrl).then(() => {
       setCopied(true)
       toast.success('Link copied!')
@@ -569,7 +569,7 @@ function OnboardingPage() {
                 <p className="text-xs font-semibold text-text/50 uppercase tracking-widest mb-2">Your Booking Link</p>
                 <div className="flex items-center gap-2 bg-white border border-border rounded-xl p-1 shadow-sm">
                   <div className="flex-1 px-3 py-2 text-sm text-text/80 font-mono truncate">
-                    kinetimap.com/<span className="text-primary font-semibold">{slug || clinicId}</span>
+                    kinetimap.app/<span className="text-primary font-semibold">{slug || clinicId}</span>
                   </div>
                   <button onClick={handleCopy} className="flex items-center gap-1.5 bg-primary text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#005560] transition-colors shrink-0">
                     {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}

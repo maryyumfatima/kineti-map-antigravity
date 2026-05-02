@@ -458,6 +458,8 @@ function AISoapNotesPage() {
 
   // Save Logic
   const handleSaveNote = async () => {
+    console.log('Attempting to save note for patient:', selectedPatientId)
+    
     if (!selectedPatientId) {
       toast.error('Please select a patient first')
       return
@@ -466,13 +468,19 @@ function AISoapNotesPage() {
     setIsSaving(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not authenticated')
+      if (!user) throw new Error('Authentication failed: No user found')
+      console.log('User authenticated:', user.id)
       
-      const { data: cu } = await supabase
+      const { data: cu, error: cuError } = await supabase
         .from('clinic_users').select('clinic_id').eq('auth_user_id', user.id).single()
-      if (!cu) throw new Error('Clinic not found')
+      
+      if (cuError || !cu) {
+        console.error('Clinic lookup error:', cuError)
+        throw new Error('Clinic context not found. Please re-login.')
+      }
+      console.log('Clinic found:', cu.clinic_id)
 
-      // Find the latest booking for this patient to link to (Issue 2)
+      // Find the latest booking
       const { data: latestBooking } = await supabase
         .from('bookings')
         .select('id')
@@ -480,31 +488,42 @@ function AISoapNotesPage() {
         .order('start_time', { ascending: false })
         .limit(1)
         .single()
+      
+      console.log('Linking to booking:', latestBooking?.id || 'None found')
 
       const fullNoteText = `Subjective (S): ${generatedNote.s}\nObjective (O): ${generatedNote.o}\nAssessment (A): ${generatedNote.a}\nPlan (P): ${generatedNote.p}`
 
-      const { error } = await supabase
-        .from('session_notes')
-        .insert([{
-          patient_id: selectedPatientId,
-          clinic_id: cu.clinic_id,
-          booking_id: latestBooking?.id || null,
-          s: generatedNote.s,
-          o: generatedNote.o,
-          a: generatedNote.a,
-          p: generatedNote.p,
-          note_text: fullNoteText,
-          type: 'soap',
-          full_content: JSON.stringify(generatedNote),
-          plan: generatedNote.p.substring(0, 500),
-          created_at: new Date().toISOString()
-        }])
-      
-      if (error) throw error
+      const payload = {
+        patient_id: selectedPatientId,
+        clinic_id: cu.clinic_id,
+        booking_id: latestBooking?.id || null,
+        s: generatedNote.s,
+        o: generatedNote.o,
+        a: generatedNote.a,
+        p: generatedNote.p,
+        note_text: fullNoteText,
+        type: 'soap',
+        full_content: JSON.stringify(generatedNote),
+        plan: generatedNote.p.substring(0, 500),
+        created_at: new Date().toISOString()
+      }
 
+      console.log('Saving payload:', payload)
+
+      const { data: savedData, error: saveError } = await supabase
+        .from('session_notes')
+        .insert([payload])
+        .select()
+      
+      if (saveError) {
+        console.error('Database save error:', saveError)
+        throw new Error(`DB Error: ${saveError.message}`)
+      }
+
+      console.log('Save successful:', savedData)
       toast.success('Note saved to patient history', {
         action: {
-          label: 'View Patient Profile',
+          label: 'View Profile',
           onClick: () => navigate({ 
             to: '/$country/patients/$patientId', 
             params: { country, patientId: selectedPatientId } as any 
@@ -512,18 +531,19 @@ function AISoapNotesPage() {
         }
       })
       
-      // Clear form or ask (Issue 2)
-      if (confirm("Note saved. Would you like to clear the form and start a new note?")) {
+      // Clear form logic
+      const shouldClear = confirm("Note saved. Would you like to clear the form to start another note?")
+      if (shouldClear) {
         setGeneratedNote({ s: '', o: '', a: '', p: '' })
         setAdditionalNotes('')
+        setSelectedPatientId('')
       }
 
-      // Refresh previous notes
       fetchPreviousNotes(selectedPatientId)
       
     } catch (e: any) {
-      console.error(e)
-      toast.error('Failed to save note')
+      console.error('Save flow caught error:', e)
+      toast.error(`Save failed: ${e.message || 'Unknown error'}`)
     } finally {
       setIsSaving(false)
     }

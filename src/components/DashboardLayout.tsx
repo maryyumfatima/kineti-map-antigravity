@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Menu, ChevronLeft } from 'lucide-react'
 
 export function DashboardLayout({ children, fullWidth = false }: { children: React.ReactNode, fullWidth?: boolean }) {
+  const [pageLoading, setPageLoading] = useState(true)
   // Desktop: collapsed shows icons only. Default = expanded.
   // Mobile: drawer is closed by default. Tap hamburger to open as overlay.
   const [collapsed, setCollapsed] = useState<boolean>(() => {
@@ -11,6 +12,11 @@ export function DashboardLayout({ children, fullWidth = false }: { children: Rea
     return localStorage.getItem('sidebarCollapsed') === 'true'
   })
   const [mobileOpen, setMobileOpen] = useState<boolean>(false)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setPageLoading(false), 2000)
+    return () => clearTimeout(timer)
+  }, [])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -29,7 +35,7 @@ export function DashboardLayout({ children, fullWidth = false }: { children: Rea
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="top-progress-bar" />
+      {pageLoading && <div className="top-progress-bar" />}
       <Toaster position="top-right" richColors />
 
       {!fullWidth && (
