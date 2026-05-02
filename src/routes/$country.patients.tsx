@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useParams } from '@tanstack/react-router'
 import { DashboardLayout } from '../components/DashboardLayout'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
@@ -28,6 +28,7 @@ type Patient = {
 // Removed PatientPhoneInput in favor of shared component
 
 function PatientsPage() {
+  const { country } = useParams({ strict: false }) as { country: string }
   const [patients, setPatients] = useState<Patient[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -155,13 +156,7 @@ function PatientsPage() {
     }
   }
 
-  const handleViewPatient = (patient: Patient) => {
-    setSelectedPatient(patient)
-    setDrawerFormData(patient)
-    setIsEditing(false)
-    setAiSummary(patient.ai_pain_summary || null)
-    setIsDrawerOpen(true)
-  }
+
 
   const handleGeneratePainSummary = async () => {
     if (!selectedPatient || !clinicId) return
@@ -540,8 +535,8 @@ function PatientsPage() {
                       <td className="p-4 text-text/80">{patient.phone_number}</td>
                       <td className="p-4 text-text/80">{patient.primary_complaint}</td>
                       <td className="p-4">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${getStatusColor(patient.status_tag)}`}>
-                          {(patient.status_tag ?? '').charAt(0).toUpperCase() + (patient.status_tag ?? '').slice(1)}
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${getStatusColor(getCalculatedStatus(patient))}`}>
+                          {getCalculatedStatus(patient).charAt(0).toUpperCase() + getCalculatedStatus(patient).slice(1)}
                         </span>
                       </td>
                       <td className="p-4 text-text/80">
