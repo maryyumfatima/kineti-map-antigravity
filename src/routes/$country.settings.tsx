@@ -269,7 +269,7 @@ function SettingsPage() {
                   ))}
                 </select>
                 <p className="text-[10px] text-text/40 mt-1 uppercase font-bold tracking-wider">
-                  Current: {timezone} ({getTimezoneAbbr(countryCode)})
+                  Current: {timezone} ({getTimezoneAbbr(countryCode, new Date(), timezone)})
                 </p>
               </div>
             </div>

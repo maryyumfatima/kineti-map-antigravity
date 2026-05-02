@@ -108,7 +108,7 @@ function InstructionBanner() {
   )
 }
 
-function PreviousNotesSidebar({ notes, loading }: { notes: PreviousNote[], loading: boolean }) {
+function PreviousNotesSidebar({ notes, loading, timezone }: { notes: PreviousNote[], loading: boolean, timezone: string }) {
   const { country } = useParams({ strict: false }) as { country: string }
   return (
     <div className="space-y-4 mb-6">
@@ -135,7 +135,7 @@ function PreviousNotesSidebar({ notes, loading }: { notes: PreviousNote[], loadi
             <div key={note.id} className="p-3 bg-white border border-border rounded-xl shadow-sm hover:border-primary/20 transition-all group">
               <div className="flex justify-between items-center mb-1">
                 <span className="text-[10px] font-bold text-primary/60">
-                  {formatLocalTime(note.created_at, country, 'MMM d, yyyy')}
+                  {formatLocalTime(note.created_at, country, 'MMM d, yyyy', timezone)}
                 </span>
                 <Clock className="w-3 h-3 text-text/20" />
               </div>
@@ -173,6 +173,7 @@ function AISoapNotesPage() {
   const [previousNotes, setPreviousNotes] = useState<PreviousNote[]>([])
   
   const [credits, setCredits] = useState({ used: 0, limit: 5 })
+  const [clinicTimezone, setClinicTimezone] = useState<string>('Europe/London')
   
   // Refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -227,21 +228,22 @@ function AISoapNotesPage() {
         .from('clinic_users').select('clinic_id').eq('auth_user_id', user.id).single()
       if (!cu) return
 
-      const { data: clinic } = await supabase
-        .from('clinics')
-        .select('ai_credits_used, subscription_plan')
-        .eq('id', cu.clinic_id)
-        .single()
-      
-      if (clinic) {
-        let limit = 5 // default trial
-        const plan = clinic.subscription_plan
-        if (plan === 'essentials') limit = 200
-        else if (plan === 'growth') limit = 600
-        else if (plan === 'scale') limit = 1500
+        const { data: clinic } = await supabase
+          .from('clinics')
+          .select('ai_credits_used, subscription_plan, timezone')
+          .eq('id', cu.clinic_id)
+          .single()
         
-        setCredits({ used: clinic.ai_credits_used || 0, limit })
-      }
+        if (clinic) {
+          let limit = 5 // default trial
+          const plan = clinic.subscription_plan
+          if (plan === 'essentials') limit = 200
+          else if (plan === 'growth') limit = 600
+          else if (plan === 'scale') limit = 1500
+          
+          setCredits({ used: clinic.ai_credits_used || 0, limit })
+          if (clinic.timezone) setClinicTimezone(clinic.timezone)
+        }
     } catch (e) {
       console.error('Error fetching credits:', e)
     }
@@ -563,7 +565,7 @@ function AISoapNotesPage() {
   }
 
   const emailNote = () => {
-    const subject = `SOAP Note - ${formatLocalTime(new Date().toISOString(), country, 'MMM d, yyyy')}`
+    const subject = `SOAP Note - ${formatLocalTime(new Date().toISOString(), country, 'MMM d, yyyy', clinicTimezone)}`
     const body = `Subjective (S): ${generatedNote.s}\n\nObjective (O): ${generatedNote.o}\n\nAssessment (A): ${generatedNote.a}\n\nPlan (P): ${generatedNote.p}`
     window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
   }
@@ -777,7 +779,7 @@ function AISoapNotesPage() {
             
             {/* Previous Notes Section */}
             <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
-              <PreviousNotesSidebar notes={previousNotes} loading={loadingPrevNotes} />
+              <PreviousNotesSidebar notes={previousNotes} loading={loadingPrevNotes} timezone={clinicTimezone} />
             </div>
 
             {/* Generated Output Card */}

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { exportPatientData, deletePatientData } from '../lib/gdpr'
 import { formatLocalTime, getTimezoneAbbr } from '../lib/date'
+import { sendFollowUpMessage, formatPhoneForWhatsApp } from '../lib/whatsapp-cloud'
 
 export const Route = createFileRoute('/$country/dashboard/patients/$id')({
   component: PatientDetailPage,
@@ -44,7 +45,9 @@ type WhatsAppMessage = {
   id: string
   message_type: string
   scheduled_for: string
-  status: 'sent' | 'pending' | 'failed'
+  status: 'sent' | 'pending' | 'failed' | 'delivered' | 'read' | 'received'
+  template_name?: string | null
+  inbound_text?: string | null
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -91,12 +94,15 @@ function PatientDetailPage() {
   const [messages, setMessages] = useState<WhatsAppMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [clinicId, setClinicId] = useState<string | null>(null)
+  const [clinicTimezone, setClinicTimezone] = useState('Europe/London')
+  const [clinicSlug, setClinicSlug] = useState('')
   const [expandedBooking, setExpandedBooking] = useState<string | null>(null)
   const [updatingBooking, setUpdatingBooking] = useState<string | null>(null)
   const [isExporting, setIsExporting] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
+  const [sendingWhatsApp, setSendingWhatsApp] = useState(false)
   const navigate = Route.useNavigate()
 
   useEffect(() => {
@@ -117,6 +123,18 @@ function PatientDetailPage() {
       
       if (!cu) return
       setClinicId(cu.clinic_id)
+
+      const { data: clinic } = await supabase
+        .from('clinics')
+        .select('timezone, slug, name')
+        .eq('id', cu.clinic_id)
+        .single()
+      
+      if (clinic) {
+        if (clinic.timezone) setClinicTimezone(clinic.timezone)
+        if (clinic.slug)     setClinicSlug(clinic.slug)
+        if (clinic.name)     setClinicName(clinic.name)
+      }
 
       // 1. Fetch Patient
       const { data: pData, error: pErr } = await supabase
@@ -189,11 +207,43 @@ function PatientDetailPage() {
     }
   }
 
+  const handleSendFollowUp = async () => {
+    if (!patient || !clinicId) return
+    if (!patient.gdpr_consent) {
+      toast.error('Cannot send — patient has not given GDPR consent.')
+      return
+    }
+    setSendingWhatsApp(true)
+    const lastCompleted = bookings.find(b => b.status === 'completed')
+    const sessionDate = lastCompleted
+      ? formatLocalTime(lastCompleted.appointment_time, country, 'EEEE, d MMMM yyyy', clinicTimezone)
+      : 'your recent session'
+    const bookingLink = clinicSlug
+      ? `https://kinetimap.app/book/${clinicSlug}`
+      : 'https://kinetimap.app'
+
+    const result = await sendFollowUpMessage({
+      to:          formatPhoneForWhatsApp(patient.phone_number),
+      patientName: patient.full_name.split(' ')[0],
+      sessionDate,
+      bookingLink,
+      patientId:   patient.id,
+      clinicId,
+    })
+    if (!result.success) {
+      toast.error(`WhatsApp send failed: ${result.error}`)
+    } else {
+      toast.success('Follow-up WhatsApp sent!')
+      fetchData()
+    }
+    setSendingWhatsApp(false)
+  }
+
   const handleExport = async () => {
     if (!patient || !clinicId) return
     setIsExporting(true)
     toast.info('Preparing patient data export...')
-    const result = await exportPatientData(patient.id, clinicId)
+    const result = await exportPatientData(patient.id, clinicId, country, clinicTimezone)
     if (result.success) {
       toast.success('Patient data exported successfully')
     } else {
@@ -330,28 +380,53 @@ function PatientDetailPage() {
 
             {/* 3. WHATSAPP MESSAGES STATUS (Automation Status) */}
             <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
-              <div className="flex items-center gap-2 mb-6">
-                <MessageSquare className="w-4 h-4 text-primary" />
-                <h2 className="font-bold text-text font-bricolage">Automation Status</h2>
+              <div className="flex items-center justify-between gap-2 mb-4">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-primary" />
+                  <h2 className="font-bold text-text font-bricolage">WhatsApp</h2>
+                </div>
+                <button
+                  onClick={handleSendFollowUp}
+                  disabled={sendingWhatsApp || !patient?.gdpr_consent}
+                  title={!patient?.gdpr_consent ? 'Patient must give GDPR consent first' : 'Send a follow-up message'}
+                  className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {sendingWhatsApp
+                    ? <><Clock className="w-3 h-3 animate-spin" /> Sending…</>
+                    : <><MessageSquare className="w-3 h-3" /> Follow-up</>}
+                </button>
               </div>
-              
+
               {messages.length === 0 ? (
-                <div className="py-8 text-center text-xs text-text/40 italic">No automated messages scheduled.</div>
+                <div className="py-6 text-center text-xs text-text/40 italic">No messages sent yet.</div>
               ) : (
-                <div className="space-y-3">
-                  {messages.map(msg => (
-                    <div key={msg.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-border bg-background/30">
-                      <div>
-                        <p className="text-xs font-semibold text-text uppercase tracking-tight">{msg.message_type?.replace(/_/g, ' ') ?? ''}</p>
-                        <p className="text-[10px] text-text/40 mt-0.5">{new Date(msg.scheduled_for).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</p>
+                <div className="space-y-2">
+                  {messages.map(msg => {
+                    const icon = () => {
+                      switch (msg.status) {
+                        case 'sent':      return <CheckCircle className="w-3.5 h-3.5 text-green-500" />
+                        case 'delivered': return <CheckCircle className="w-3.5 h-3.5 text-blue-500" />
+                        case 'read':      return <CheckCircle className="w-3.5 h-3.5 text-primary" />
+                        case 'received':  return <MessageSquare className="w-3.5 h-3.5 text-accent" />
+                        case 'failed':    return <AlertCircle className="w-3.5 h-3.5 text-red-500" />
+                        default:          return <Clock className="w-3.5 h-3.5 text-gray-400" />
+                      }
+                    }
+                    return (
+                      <div key={msg.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-border bg-background/30">
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-text uppercase tracking-tight truncate">
+                            {msg.message_type?.replace(/_/g, ' ') ?? ''}
+                            {msg.inbound_text && (
+                              <span className="ml-1 normal-case font-normal text-text/60">“{msg.inbound_text.slice(0, 28)}{msg.inbound_text.length > 28 ? '…' : ''}”</span>
+                            )}
+                          </p>
+                          <p className="text-[10px] text-text/40 mt-0.5">{formatLocalTime(msg.scheduled_for, country, 'PPp', clinicTimezone)}</p>
+                        </div>
+                        <div className="w-6 h-6 rounded-full bg-background border border-border flex items-center justify-center shrink-0">{icon()}</div>
                       </div>
-                      <div>
-                        {msg.status === 'sent' && <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center"><CheckCircle className="w-3.5 h-3.5 text-green-600" /></div>}
-                        {msg.status === 'pending' && <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center"><Clock className="w-3.5 h-3.5 text-gray-400" /></div>}
-                        {msg.status === 'failed' && <div className="w-6 h-6 rounded-full bg-red-50 flex items-center justify-center"><AlertCircle className="w-3.5 h-3.5 text-red-500" /></div>}
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>

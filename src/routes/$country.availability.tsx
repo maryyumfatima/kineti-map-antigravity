@@ -141,6 +141,7 @@ function AvailabilityPage() {
   const [loadingBookings, setLoadingBookings] = useState(false)
   const [integrationsOpen, setIntegrationsOpen] = useState(false)
   const integrationsRef = useRef<HTMLDivElement>(null)
+  const [clinicTimezone, setClinicTimezone] = useState<string>('Europe/London')
 
   useEffect(() => {
     loadSchedule()
@@ -167,11 +168,12 @@ function AvailabilityPage() {
 
       const { data } = await supabase
         .from('clinics')
-        .select('weekly_schedule')
+        .select('weekly_schedule, timezone')
         .eq('id', cu.clinic_id)
         .single()
 
       if (data?.weekly_schedule) setSchedule(data.weekly_schedule)
+      if (data?.timezone) setClinicTimezone(data.timezone)
     } catch (e) {
       console.error(e)
     } finally {
@@ -410,7 +412,7 @@ function AvailabilityPage() {
               {/* Group by Date */}
               {Object.entries(
                 upcomingBookings.reduce((acc: any, b) => {
-                  const date = formatLocalTime(b.appointment_time, country, 'EEEE, MMMM d')
+                  const date = formatLocalTime(b.appointment_time, country, 'EEEE, MMMM d', clinicTimezone)
                   if (!acc[date]) acc[date] = []
                   acc[date].push(b)
                   return acc
@@ -424,7 +426,7 @@ function AvailabilityPage() {
                         <div className="flex justify-between items-start mb-3">
                           <div className="flex flex-col">
                             <span className="font-bold text-text text-sm">{b.patients?.full_name || 'Unknown Patient'}</span>
-                            <span className="text-[11px] text-text/50">{formatLocalTime(b.appointment_time, country, 'h:mm a')} • {b.duration || 30} mins</span>
+                            <span className="text-[11px] text-text/50">{formatLocalTime(b.appointment_time, country, 'h:mm a', clinicTimezone)} • {b.duration || 30} mins</span>
                           </div>
                           <span className={`px-2 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider ${
                             b.status === 'confirmed' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-orange-50 text-orange-600 border-orange-100'

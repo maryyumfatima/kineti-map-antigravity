@@ -7,7 +7,7 @@ import { CheckCircle, DollarSign } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts'
-import { formatLocalTime } from '../lib/date'
+import { formatLocalTime, getZonedDate } from '../lib/date'
 
 export const Route = createFileRoute('/$country/revenue')({
   component: RevenuePage,
@@ -69,6 +69,7 @@ function RevenuePage() {
   const [upcomingCount, setUpcomingCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [markingId, setMarkingId] = useState<string | null>(null)
+  const [clinicTimezone, setClinicTimezone] = useState<string>('Europe/London')
 
   useEffect(() => { fetchData() }, [])
 
@@ -81,6 +82,9 @@ function RevenuePage() {
         .from('clinic_users').select('clinic_id').eq('auth_user_id', user.id).single()
       if (!cu) return
       const cid = cu.clinic_id
+
+      const { data: clinic } = await supabase.from('clinics').select('timezone').eq('id', cid).single()
+      if (clinic) setClinicTimezone(clinic.timezone || 'Europe/London')
 
       const [ledgerRes, upcomingRes] = await Promise.all([
         supabase
@@ -129,9 +133,9 @@ function RevenuePage() {
 
   const totalCollected = paid.reduce((a, r) => a + r.amount, 0)
 
-  const firstOfMonth = new Date()
-  firstOfMonth.setDate(1)
-  firstOfMonth.setHours(0, 0, 0, 0)
+  const nowZoned = getZonedDate(new Date(), clinicTimezone)
+  const firstOfMonth = new Date(nowZoned.getFullYear(), nowZoned.getMonth(), 1)
+  
   const thisMonth = paid
     .filter(r => new Date(r.recorded_at) >= firstOfMonth)
     .reduce((a, r) => a + r.amount, 0)
@@ -238,7 +242,7 @@ function RevenuePage() {
                       <td className="p-4 font-medium text-text">{row.patients?.full_name ?? '—'}</td>
                       <td className="p-4 text-sm text-text/70">
                         {row.bookings?.appointment_time
-                          ? formatLocalTime(row.bookings.appointment_time, country, 'MMM d, yyyy')
+                          ? formatLocalTime(row.bookings.appointment_time, country, 'MMM d, yyyy', clinicTimezone)
                           : '—'}
                       </td>
                       <td className="p-4 font-semibold text-text">

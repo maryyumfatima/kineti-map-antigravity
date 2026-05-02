@@ -1,8 +1,6 @@
-import { supabase } from './supabase'
-import JSZip from 'jszip'
-import jsPDF from 'jspdf'
+import { formatLocalTime } from './date'
 
-export async function exportPatientData(patientId: string, clinicId: string) {
+export async function exportPatientData(patientId: string, clinicId: string, country: string, clinicTimezone: string) {
   try {
     // 1. Fetch all patient data
     const { data: patient } = await supabase.from('patients').select('*').eq('id', patientId).single()
@@ -56,7 +54,8 @@ export async function exportPatientData(patientId: string, clinicId: string) {
       fullData.sessionNotes.forEach((note: any, index: number) => {
         const noteDoc = new jsPDF()
         noteDoc.setFontSize(16)
-        noteDoc.text(`Session Note - ${new Date(note.created_at).toLocaleDateString()}`, 20, 20)
+        const displayDate = formatLocalTime(note.created_at, country, 'MMM d, yyyy', clinicTimezone)
+        noteDoc.text(`Session Note - ${displayDate}`, 20, 20)
         noteDoc.setFontSize(12)
         noteDoc.text(`Subjective:`, 20, 30)
         noteDoc.text(note.s || 'N/A', 20, 40, { maxWidth: 170 })
@@ -67,7 +66,8 @@ export async function exportPatientData(patientId: string, clinicId: string) {
         noteDoc.text(`Plan:`, 20, 180)
         noteDoc.text(note.p || 'N/A', 20, 190, { maxWidth: 170 })
         
-        notesFolder.file(`session_note_${new Date(note.created_at).toISOString().split('T')[0]}_${index}.pdf`, noteDoc.output('blob'))
+        const fileDate = formatLocalTime(note.created_at, country, 'yyyy-MM-dd', clinicTimezone)
+        notesFolder.file(`session_note_${fileDate}_${index}.pdf`, noteDoc.output('blob'))
       })
     }
 
@@ -76,7 +76,8 @@ export async function exportPatientData(patientId: string, clinicId: string) {
     const url = window.URL.createObjectURL(content)
     const link = document.createElement('a')
     link.href = url
-    link.download = `export_${patient.full_name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.zip`
+    const exportDate = formatLocalTime(new Date().toISOString(), country, 'yyyy-MM-dd', clinicTimezone)
+    link.download = `export_${patient.full_name.replace(/\s+/g, '_')}_${exportDate}.zip`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)

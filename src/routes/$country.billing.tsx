@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useParams } from '@tanstack/react-router'
 import { DashboardLayout } from '../components/DashboardLayout'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
@@ -31,50 +31,14 @@ type RegionInfo = {
   flag: string
 }
 
-const REGIONS: RegionInfo[] = [
-  { currency: 'GBP', countryCode: 'GB', label: 'United Kingdom', flag: '🇬🇧' },
-  { currency: 'PKR', countryCode: 'PK', label: 'Pakistan',       flag: '🇵🇰' },
-  { currency: 'AUD', countryCode: 'AU', label: 'Australia',      flag: '🇦🇺' },
-]
-
-// Timezone → country code map (extend as needed)
-const TZ_COUNTRY: Record<string, string> = {
-  'Asia/Karachi':         'PK',
-  'Asia/Lahore':          'PK',
-  'Australia/Sydney':     'AU',
-  'Australia/Melbourne':  'AU',
-  'Australia/Brisbane':   'AU',
-  'Australia/Perth':      'AU',
-  'Australia/Adelaide':   'AU',
-  'Australia/Darwin':     'AU',
-  'Australia/Hobart':     'AU',
-  'Europe/London':        'GB',
+const REGIONS: Record<string, RegionInfo> = {
+  gb: { currency: 'GBP', countryCode: 'GB', label: 'United Kingdom', flag: '🇬🇧' },
+  pk: { currency: 'PKR', countryCode: 'PK', label: 'Pakistan',       flag: '🇵🇰' },
+  au: { currency: 'AUD', countryCode: 'AU', label: 'Australia',      flag: '🇦🇺' },
 }
 
-function detectRegion(): RegionInfo {
-  let countryCode = 'GB'
-  try {
-    // 1. Timezone is most reliable
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
-    if (tz && TZ_COUNTRY[tz]) {
-      countryCode = TZ_COUNTRY[tz]
-    } else if (tz?.startsWith('Australia/')) {
-      countryCode = 'AU'
-    } else if (tz?.startsWith('Asia/')) {
-      // fallback to language for Asia
-      const lang = navigator.language || ''
-      const region = lang.split('-')[1]?.toUpperCase()
-      if (region === 'PK') countryCode = 'PK'
-    } else {
-      // 2. Language fallback
-      const lang = navigator.language || ''
-      const region = lang.split('-')[1]?.toUpperCase()
-      if (region === 'PK') countryCode = 'PK'
-      else if (region === 'AU') countryCode = 'AU'
-      else if (region === 'GB') countryCode = 'GB'
-    }
-  } catch {}
-  return REGIONS.find(r => r.countryCode === countryCode) ?? REGIONS[0]
+function getRegionFromParam(country: string): RegionInfo {
+  return REGIONS[country?.toLowerCase()] || REGIONS.gb
 }
 
 // ─── Plan table config ──────────────────────────────────────────────────────
@@ -182,22 +146,21 @@ function FeatureTick({ yes }: { yes: boolean }) {
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 function BillingPage() {
+  const { country } = useParams({ strict: false }) as { country: string }
   const [clinic, setClinic] = useState<ClinicData | null>(null)
   const [clinicId, setClinicId] = useState<string | null>(null)
   const [sessionsThisMonth, setSessionsThisMonth] = useState(0)
   const [practitionerCount, setPractitionerCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [showTestModal, setShowTestModal] = useState(false)
-  const [region, setRegion] = useState<RegionInfo>(REGIONS[0])
-  const [showRegionMenu, setShowRegionMenu] = useState(false)
+  
+  const region = getRegionFromParam(country)
 
   const isTestMode = (import.meta as any).env.VITE_TEST_MODE === 'true'
 
   useEffect(() => {
-    const detected = detectRegion()
-    setRegion(detected)
-    fetchData(detected)
-  }, [])
+    fetchData(region)
+  }, [country])
 
   const fetchData = async (detectedRegion?: RegionInfo) => {
     setLoading(true)
@@ -212,7 +175,7 @@ function BillingPage() {
 
       const { data: clinicData } = await supabase
         .from('clinics')
-        .select('subscription_plan, trial_ends_at, whatsapp_journeys_used, whatsapp_journeys_limit, max_practitioners')
+        .select('subscription_plan, trial_ends_at, whatsapp_journeys_used, whatsapp_journeys_limit, max_practitioners, ai_credits_used')
         .eq('id', cid)
         .single()
       if (clinicData) setClinic(clinicData)
@@ -269,19 +232,7 @@ function BillingPage() {
     }
   }
 
-  const handleRegionChange = (r: RegionInfo) => {
-    setRegion(r)
-    setShowRegionMenu(false)
-    // Persist new manual selection to Supabase
-    if (clinicId) {
-      supabase.from('clinics').update({
-        country_code: r.countryCode,
-        currency: r.currency,
-      }).eq('id', clinicId).then(({ error }) => {
-        if (error) console.warn('[Billing] region persist error:', error.message)
-      })
-    }
-  }
+
 
   const plan = clinic?.subscription_plan ?? 'trial'
   const isTrial = plan === 'trial'
@@ -338,34 +289,10 @@ function BillingPage() {
               <p className="text-sm text-text/60">
                 {isTrial ? 'Your 14-day trial' : (PLAN_PRICES[plan]?.[currency] ?? '—')}
               </p>
-              {/* Change region inline */}
-              <div className="relative mt-2">
-                <button
-                  onClick={() => setShowRegionMenu(v => !v)}
-                  className="inline-flex items-center gap-1.5 text-xs text-text/50 hover:text-primary transition-colors"
-                >
+              <div className="mt-2">
+                <div className="inline-flex items-center gap-1.5 text-xs text-text/50">
                   <span>{region.flag} Prices shown in {region.currency}</span>
-                  <ChevronDown className="w-3 h-3" />
-                </button>
-                {showRegionMenu && (
-                  <div className="absolute top-7 left-0 z-20 bg-white border border-border rounded-xl shadow-lg py-1 min-w-[180px]">
-                    {REGIONS.map(r => (
-                      <button
-                        key={r.countryCode}
-                        onClick={() => handleRegionChange(r)}
-                        className={`flex items-center gap-2 w-full px-4 py-2 text-sm transition-colors ${
-                          region.countryCode === r.countryCode
-                            ? 'bg-primary/5 text-primary font-semibold'
-                            : 'text-text hover:bg-background'
-                        }`}
-                      >
-                        <span>{r.flag}</span>
-                        <span>{r.label}</span>
-                        <span className="ml-auto text-text/40 text-xs">{r.currency}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -494,7 +421,7 @@ function BillingPage() {
             <h2 className="font-bold text-text font-bricolage text-lg">Plan Comparison</h2>
             {/* Detected region label — no tab switcher (handled via Change region above) */}
             <span className="text-xs text-text/50 bg-background border border-border rounded-lg px-3 py-1.5">
-              {region.flag} Prices in {region.currency} · <button onClick={() => setShowRegionMenu(v => !v)} className="text-primary hover:underline">Change region</button>
+              {region.flag} Prices in {region.currency}
             </span>
           </div>
           <div className="overflow-x-auto">

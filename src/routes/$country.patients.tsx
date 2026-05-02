@@ -113,6 +113,10 @@ function PatientsPage() {
 
       if (error) throw error
       if (patientsData) setPatients(patientsData)
+
+      // Fetch timezone
+      const { data: clinic } = await supabase.from('clinics').select('timezone').eq('id', clinicUser.clinic_id).single()
+      if (clinic) setClinicData(prev => ({ ...prev, timezone: clinic.timezone }))
     } catch (error) {
       console.error(error)
       toast.error('Failed to load patients')
@@ -576,7 +580,7 @@ function PatientsPage() {
                         </span>
                       </td>
                       <td className="p-4 text-text/40 text-xs">
-                        {patient.last_session_date ? formatLocalTime(patient.last_session_date, country, 'MMM d, yyyy') : 'New Patient'}
+                        {patient.last_session_date ? formatLocalTime(patient.last_session_date, country, 'MMM d, yyyy', clinicData?.timezone) : 'New Patient'}
                       </td>
                       <td className="p-4" onClick={e => e.stopPropagation()}>
                         <button

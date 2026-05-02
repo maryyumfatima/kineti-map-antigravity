@@ -105,7 +105,7 @@ function BookingPage() {
   const generateAllSlots = (avail: any[], currentBookings: any[], clinicData: any) => {
     const slots: any[] = []
     const bookedTimes = new Set(currentBookings.map(b => b.appointment_time))
-    const timezone = getClinicTimezone(clinicData.country)
+    const timezone = getClinicTimezone(clinicData.country, clinicData.timezone)
 
     // Generate for next 14 days
     for (let i = 0; i < 14; i++) {
@@ -137,14 +137,14 @@ function BookingPage() {
           const localDateTimeStr = `${year}-${month}-${day}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`
           
           // Convert local clinic time to UTC
-          const utcIso = toUtcString(localDateTimeStr, clinicData.country)
+          const utcIso = toUtcString(localDateTimeStr, clinicData.country, clinicData.timezone)
           
           // Only show future slots
           if (new Date(utcIso) > new Date()) {
             slots.push({
               iso: utcIso,
-              time: formatLocalTime(utcIso, clinicData.country, 'h:mm a'),
-              date: formatLocalTime(utcIso, clinicData.country, 'EEE, MMM d'),
+              time: formatLocalTime(utcIso, clinicData.country, 'h:mm a', clinicData.timezone),
+              date: formatLocalTime(utcIso, clinicData.country, 'EEE, MMM d', clinicData.timezone),
               dateKey: localDateTimeStr.split('T')[0],
               isBooked: bookedTimes.has(utcIso)
             })
@@ -177,44 +177,6 @@ function BookingPage() {
       const fullWhatsapp = whatsapp.trim()
       const fullGuardianWhatsapp = isMinor ? guardianWhatsapp.trim() : null
 
-      // 1. Check duplicate patient
-      const { data: existing, error: existingErr } = await supabase
-        .from('patients')
-        .select('id')
-        .eq('phone_number', fullWhatsapp)
-        .eq('clinic_id', clinic.id)
-        .maybeSingle()
-
-      if (existingErr) throw existingErr
-
-      if (existing) {
-        toast.info("We already have your details. Your booking request has been received. Your physio will confirm shortly.", { duration: 6000 })
-        setStep(8)
-        setSaving(false)
-        return
-      }
-
-      // 2. Insert new patient
-      const { data: patient, error: patientErr } = await supabase.from('patients').insert({
-        clinic_id: clinic.id,
-        full_name: fullName,
-        phone_number: fullWhatsapp,
-        email: email || null,
-        date_of_birth: dob,
-        gdpr_consent: true,
-        consent_date: new Date().toISOString(),
-        status_tag: 'active',
-        primary_complaint: 'Online Booking',
-        referral_source: 'Online Booking',
-        guardian_name: isMinor ? guardianName : null,
-        guardian_whatsapp: fullGuardianWhatsapp,
-      }).select().single()
-
-      console.log("patient insert result:", patient, patientErr)
-      if (patientErr || !patient) throw patientErr
-
-      // 3. Format JSONs
-      const painDataJson = painData
       const redFlags = {
         weight_loss: q1,
         bladder_bowel: q2,
@@ -223,21 +185,37 @@ function BookingPage() {
       }
       const notes = `Surgeries: ${surgeries || 'none'} | Conditions: ${conditions || 'none'} | Meds: ${medications || 'none'} | Allergies: ${allergies || 'none'} | Occupation: ${occupation || 'none'}`
 
-      // 4. Insert Booking
-      const { data: bookingData, error: bookingErr } = await supabase.from('bookings').insert({
-        clinic_id: clinic.id,
-        patient_id: patient.id,
-        appointment_time: selectedSlot,
-        appointment_price: clinic.appointment_price ? parseInt(clinic.appointment_price) : null,
-        pain_data: painDataJson,
-        red_flags: redFlags,
-        status: 'upcoming',
-        appointment_type: 'initial',
-        notes: notes
-      }).select().single()
+      // Call the Edge Function for secure, rate-limited processing
+      const { data, error } = await supabase.functions.invoke('process-booking', {
+        body: {
+          clinicId: clinic.id,
+          fullName,
+          whatsapp: fullWhatsapp,
+          dob,
+          email: email || null,
+          guardianName: isMinor ? guardianName : null,
+          guardianWhatsapp: fullGuardianWhatsapp,
+          selectedSlot,
+          painData,
+          redFlags,
+          notes,
+          appointmentPrice: clinic.appointment_price ? parseInt(clinic.appointment_price) : null,
+        }
+      })
 
-      console.log("booking insert result:", bookingData, bookingErr)
-      if (bookingErr) throw bookingErr
+      if (error) {
+        if (error.message?.includes('429')) {
+          toast.error('Too many booking attempts. Please try again in an hour.');
+        } else {
+          throw error;
+        }
+        return;
+      }
+
+      if (data?.error) throw new Error(data.error)
+
+      // Insert Consents using the patient ID from the response or fetch it
+      const patientId = data.patientId || (await supabase.from('patients').select('id').eq('phone_number', fullWhatsapp).eq('clinic_id', clinic.id).single()).data?.id
 
       // 5. Insert Consents
       const consents = [
@@ -646,10 +624,10 @@ function BookingPage() {
                 {selectedSlot && (
                   <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-100 inline-block">
                     <p className="text-sm font-bold text-gray-900">
-                      {formatLocalTime(selectedSlot, clinic.country, 'EEEE, MMMM d')}
+                      {formatLocalTime(selectedSlot, clinic.country, 'EEEE, MMMM d', clinic.timezone)}
                     </p>
                     <p className="text-lg font-bold" style={{ color: brandColor }}>
-                      {formatLocalTime(selectedSlot, clinic.country, 'h:mm a')} {getTimezoneAbbr(clinic.country, new Date(selectedSlot))}
+                      {formatLocalTime(selectedSlot, clinic.country, 'h:mm a', clinic.timezone)} {getTimezoneAbbr(clinic.country, new Date(selectedSlot), clinic.timezone)}
                     </p>
                   </div>
                 )}

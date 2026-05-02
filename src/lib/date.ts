@@ -1,4 +1,4 @@
-import { formatInTimeZone, fromZonedTime } from 'date-fns-tz'
+import { formatInTimeZone, toZonedTime, fromZonedTime } from 'date-fns-tz'
 
 export const COUNTRY_TIMEZONES: Record<string, string> = {
   gb: 'Europe/London',
@@ -6,35 +6,53 @@ export const COUNTRY_TIMEZONES: Record<string, string> = {
   au: 'Australia/Sydney',
 }
 
-export function getClinicTimezone(countryCode: string) {
-  return COUNTRY_TIMEZONES[countryCode?.toLowerCase()] || 'Europe/London'
+export function getClinicTimezone(countryCode?: string, clinicTimezone?: string) {
+  if (clinicTimezone) return clinicTimezone
+  return COUNTRY_TIMEZONES[countryCode?.toLowerCase() || ''] || 'Europe/London'
 }
 
-export function formatLocalTime(utcDateStr: string, countryCode: string, formatStr: string = 'PPp') {
+/**
+ * Formats a UTC date string into a local clinic time
+ */
+export function formatLocalTime(utcDateStr: string, countryCode: string, formatStr: string = 'PPp', clinicTimezone?: string) {
   if (!utcDateStr) return ''
-  const timezone = getClinicTimezone(countryCode)
+  const timezone = getClinicTimezone(countryCode, clinicTimezone)
   try {
-    return formatInTimeZone(utcDateStr, timezone, formatStr)
+    return formatInTimeZone(new Date(utcDateStr), timezone, formatStr)
   } catch (e) {
+    console.error('formatLocalTime error:', e)
     return new Date(utcDateStr).toLocaleString() // fallback
   }
 }
 
-export function toUtcString(localDateStr: string, countryCode: string) {
-  const timezone = getClinicTimezone(countryCode)
+/**
+ * Converts a local date/time (e.g. from a picker) into a UTC ISO string for saving to DB
+ */
+export function toUtcString(localDateStr: string, countryCode: string, clinicTimezone?: string) {
+  if (!localDateStr) return ''
+  const timezone = getClinicTimezone(countryCode, clinicTimezone)
   try {
+    // Treat the input string as being in the clinic's timezone
     return fromZonedTime(localDateStr, timezone).toISOString()
   } catch (e) {
+    console.error('toUtcString error:', e)
     return new Date(localDateStr).toISOString()
   }
 }
 
-export function getTimezoneAbbr(countryCode: string, date: Date = new Date()) {
-  const timezone = getClinicTimezone(countryCode)
+/**
+ * Gets the timezone abbreviation (e.g. GMT, PKT, AEDT)
+ */
+export function getTimezoneAbbr(countryCode: string, date: Date = new Date(), clinicTimezone?: string) {
+  const timezone = getClinicTimezone(countryCode, clinicTimezone)
   try {
-    // formatInTimeZone can give us the short name with 'zzz' or 'OOOO'
+    // 'zzz' gives short specific timezone name
     return formatInTimeZone(date, timezone, 'zzz')
   } catch (e) {
     return 'UTC'
   }
 }
+
+/**
+ * Gets a zoned Date object for local calculations
+ */

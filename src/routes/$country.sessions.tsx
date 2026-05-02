@@ -65,6 +65,7 @@ function SessionsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [clinicTimezone, setClinicTimezone] = useState<string>('Europe/London')
 
   const [formData, setFormData] = useState({
     patient_id: '',
@@ -81,12 +82,22 @@ function SessionsPage() {
   const getClinicId = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return null
-    const { data: clinicUser } = await supabase
+    const { data: cu } = await supabase
       .from('clinic_users')
       .select('clinic_id')
       .eq('auth_user_id', user.id)
       .single()
-    return clinicUser?.clinic_id ?? null
+    
+    if (!cu) return null
+    
+    const { data: clinic } = await supabase
+      .from('clinics')
+      .select('id, timezone')
+      .eq('id', cu.clinic_id)
+      .single()
+    
+    if (clinic) setClinicTimezone(clinic.timezone || 'Europe/London')
+    return cu?.clinic_id ?? null
   }
 
   const fetchData = async () => {
@@ -164,7 +175,7 @@ function SessionsPage() {
     }
     setIsSaving(true)
     try {
-      const appointment_time = toUtcString(`${formData.date}T${formData.time}`, country)
+      const appointment_time = toUtcString(`${formData.date}T${formData.time}`, country, clinicTimezone)
       const { error } = await supabase.from('bookings').insert([{
         clinic_id: clinicId,
         patient_id: formData.patient_id,
@@ -254,8 +265,8 @@ function SessionsPage() {
                           {booking.patients?.full_name ?? '—'}
                         </td>
                         <td className="p-4 text-sm text-text/80 whitespace-nowrap">
-                          <div>{formatLocalTime(booking.appointment_time, country, 'MMM d, yyyy')}</div>
-                          <div className="text-text/50">{formatLocalTime(booking.appointment_time, country, 'h:mm a')} {getTimezoneAbbr(country, new Date(booking.appointment_time))}</div>
+                          <div>{formatLocalTime(booking.appointment_time, country, 'MMM d, yyyy', clinicTimezone)}</div>
+                          <div className="text-text/50">{formatLocalTime(booking.appointment_time, country, 'h:mm a', clinicTimezone)} {getTimezoneAbbr(country, new Date(booking.appointment_time), clinicTimezone)}</div>
                         </td>
                         <td className="p-4">
                           <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${typeColors[booking.appointment_type] ?? 'bg-gray-100 text-gray-700 border-gray-200'}`}>

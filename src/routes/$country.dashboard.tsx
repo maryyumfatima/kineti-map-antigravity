@@ -7,7 +7,7 @@ import {
   Users, Calendar, MessageSquare, CreditCard,
   CheckCircle, AlertCircle, Clock, ChevronRight
 } from 'lucide-react'
-import { formatLocalTime, getTimezoneAbbr } from '../lib/date'
+import { formatLocalTime, getTimezoneAbbr, toUtcString } from '../lib/date'
 
 export const Route = createFileRoute('/$country/dashboard')({
   component: Dashboard,
@@ -58,6 +58,7 @@ function Dashboard() {
   const [lowScoreAlerts, setLowScoreAlerts] = useState<any[]>([])
 
   const [updatingBooking, setUpdatingBooking] = useState<string | null>(null)
+  const [clinicTimezone, setClinicTimezone] = useState<string>('Europe/London')
 
   useEffect(() => {
     fetchDashboardData()
@@ -78,9 +79,21 @@ function Dashboard() {
       if (!cu) return
       const myClinicId = cu.clinic_id
 
-      const now = new Date()
-      const todayStart = new Date(now.setHours(0, 0, 0, 0)).toISOString()
-      const tomorrowStart = new Date(new Date(todayStart).getTime() + 24 * 60 * 60 * 1000).toISOString()
+      const { data: clinic } = await supabase
+        .from('clinics')
+        .select('timezone')
+        .eq('id', myClinicId)
+        .single()
+      
+      const tz = clinic?.timezone || 'Europe/London'
+      setClinicTimezone(tz)
+
+      // Calculate today's start/end in clinic timezone
+      const nowInClinic = new Date(new Date().toLocaleString('en-US', { timeZone: tz }))
+      nowInClinic.setHours(0,0,0,0)
+      
+      const todayStart = toUtcString(nowInClinic.toISOString().split('T')[0] + ' 00:00:00', country, tz)
+      const tomorrowStart = toUtcString(nowInClinic.toISOString().split('T')[0] + ' 23:59:59', country, tz)
       const thirtyDaysAgo = new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
 
       // 1. Today's Sessions Count
@@ -188,8 +201,8 @@ function Dashboard() {
             <p className="text-text/50 text-sm mt-1">Here's what's happening today at your clinic.</p>
           </div>
           <div className="md:text-right">
-            <p className="text-sm font-semibold text-text">{formatLocalTime(new Date().toISOString(), country, 'EEEE, MMMM d')}</p>
-            <p className="text-xs text-text/40 mt-0.5">Real-time metrics</p>
+            <p className="text-sm font-semibold text-text">{formatLocalTime(new Date().toISOString(), country, 'EEEE, MMMM d', clinicTimezone)}</p>
+            <p className="text-xs text-text/40 mt-0.5">Real-time metrics ({getTimezoneAbbr(country, new Date(), clinicTimezone)})</p>
           </div>
         </div>
 
@@ -233,7 +246,7 @@ function Dashboard() {
                 Today's Sessions
               </h2>
               <div className="flex items-center gap-3">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-text/30">{getTimezoneAbbr(country)}</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-text/30">{getTimezoneAbbr(country, new Date(), clinicTimezone)}</span>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-text/30">{todayBookings.length} total</span>
               </div>
             </div>
@@ -254,7 +267,7 @@ function Dashboard() {
                         <div className="flex items-start gap-4">
                           <div className="text-center min-w-[60px] pt-1">
                             <p className="text-sm font-bold text-primary font-bricolage">
-                              {formatLocalTime(booking.appointment_time, country, 'HH:mm')}
+                              {formatLocalTime(booking.appointment_time, country, 'HH:mm', clinicTimezone)}
                             </p>
                           </div>
                           <div>
@@ -337,7 +350,7 @@ function Dashboard() {
                       </div>
                       <p className="text-sm text-text/70 italic leading-relaxed">"{feedback.comment || 'No comment provided'}"</p>
                       <p className="text-[10px] text-text/40 mt-3 font-medium uppercase tracking-wider">
-                        {formatLocalTime(feedback.created_at, country, 'MMM d, yyyy')}
+                        {formatLocalTime(feedback.created_at, country, 'MMM d, yyyy', clinicTimezone)}
                       </p>
                     </div>
                   ))}
