@@ -388,10 +388,51 @@ function AISoapNotesPage() {
     try {
       const responseText = await generateSoapNoteFromAudio(textToUse, selectedLanguage)
       
-      // Parse S.O.A.P sections
-      const sections: SoapNote = { s: '', o: '', a: '', p: '' }
+      parseAndSetNote(responseText)
       
-      // Basic parser logic (looking for Subjective:, Objective:, etc.)
+      // Update credits in DB (Issue 1)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: cu } = await supabase.from('clinic_users').select('clinic_id').eq('auth_user_id', user.id).single()
+        if (cu) {
+          await supabase.rpc('increment_ai_credits', { clinic_id_param: cu.clinic_id })
+          // Alternatively, if RPC doesn't exist, use regular update:
+          await supabase.from('clinics').update({ 
+            ai_credits_used: credits.used + 1 
+          }).eq('id', cu.clinic_id)
+          
+          fetchCredits() // Refetch to ensure accuracy
+        }
+      }
+
+      toast.success('SOAP note generated!')
+      
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to generate note')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  // Improved Parsing Logic (Issue 3)
+  const parseAndSetNote = (responseText: string) => {
+    console.log('Raw AI Response:', responseText)
+    
+    const sections: SoapNote = { s: '', o: '', a: '', p: '' }
+    
+    // 1. Try regex matching for clear headers
+    const sMatch = responseText.match(/Subjective[:\s]+(.*?)(?=Objective|$)/is)
+    const oMatch = responseText.match(/Objective[:\s]+(.*?)(?=Assessment|$)/is)
+    const aMatch = responseText.match(/Assessment[:\s]+(.*?)(?=Plan|$)/is)
+    const pMatch = responseText.match(/Plan[:\s]+(.*?)$/is)
+
+    if (sMatch) sections.s = sMatch[1].trim()
+    if (oMatch) sections.o = oMatch[1].trim()
+    if (aMatch) sections.a = aMatch[1].trim()
+    if (pMatch) sections.p = pMatch[1].trim()
+
+    // 2. Fallback to numbered format or basic headers if regex fails
+    if (!sections.s && !sections.o && !sections.a && !sections.p) {
       const lines = responseText.split('\n')
       let currentSection: keyof SoapNote | null = null
       
@@ -405,23 +446,14 @@ function AISoapNotesPage() {
           sections[currentSection] += (sections[currentSection] ? '\n' : '') + line
         }
       })
-
-      // Fallback if parser fails to find headers
-      if (!sections.s && !sections.o && !sections.a && !sections.p) {
-        sections.s = responseText
-      }
-
-      setGeneratedNote(sections)
-      toast.success('SOAP note generated!')
-      
-      // Update credits (optimistic)
-      setCredits(prev => ({ ...prev, used: prev.used + 1 }))
-      
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to generate note')
-    } finally {
-      setIsGenerating(false)
     }
+
+    if (!sections.s && !sections.o && !sections.a && !sections.p) {
+      sections.s = responseText
+      toast.warning("Note generated but formatting unclear. Please review and edit sections manually.")
+    }
+
+    setGeneratedNote(sections)
   }
 
   // Save Logic
@@ -440,31 +472,52 @@ function AISoapNotesPage() {
         .from('clinic_users').select('clinic_id').eq('auth_user_id', user.id).single()
       if (!cu) throw new Error('Clinic not found')
 
+      // Find the latest booking for this patient to link to (Issue 2)
+      const { data: latestBooking } = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('patient_id', selectedPatientId)
+        .order('start_time', { ascending: false })
+        .limit(1)
+        .single()
+
+      const fullNoteText = `Subjective (S): ${generatedNote.s}\nObjective (O): ${generatedNote.o}\nAssessment (A): ${generatedNote.a}\nPlan (P): ${generatedNote.p}`
+
       const { error } = await supabase
         .from('session_notes')
         .insert([{
           patient_id: selectedPatientId,
           clinic_id: cu.clinic_id,
+          booking_id: latestBooking?.id || null,
           s: generatedNote.s,
           o: generatedNote.o,
           a: generatedNote.a,
           p: generatedNote.p,
+          note_text: fullNoteText,
+          type: 'soap',
           full_content: JSON.stringify(generatedNote),
-          plan: generatedNote.p.substring(0, 500) // Store for quick reference
+          plan: generatedNote.p.substring(0, 500),
+          created_at: new Date().toISOString()
         }])
       
       if (error) throw error
 
-      toast.success('SOAP Note saved successfully', {
+      toast.success('Note saved to patient history', {
         action: {
-          label: 'View in Records',
+          label: 'View Patient Profile',
           onClick: () => navigate({ 
-            to: '/$country/dashboard/patients/$id', 
-            params: { country, id: selectedPatientId } as any 
+            to: '/$country/patients/$patientId', 
+            params: { country, patientId: selectedPatientId } as any 
           })
         }
       })
       
+      // Clear form or ask (Issue 2)
+      if (confirm("Note saved. Would you like to clear the form and start a new note?")) {
+        setGeneratedNote({ s: '', o: '', a: '', p: '' })
+        setAdditionalNotes('')
+      }
+
       // Refresh previous notes
       fetchPreviousNotes(selectedPatientId)
       
@@ -757,20 +810,30 @@ function AISoapNotesPage() {
                 ) : (
                   <>
                     {[
-                      { key: 's', label: 'Subjective (S)' },
-                      { key: 'o', label: 'Objective (O)' },
-                      { key: 'a', label: 'Assessment (A)' },
-                      { key: 'p', label: 'Plan (P)' }
+                      { key: 's', label: 'Subjective (S)', color: 'bg-blue-50/30' },
+                      { key: 'o', label: 'Objective (O)', color: 'bg-green-50/30' },
+                      { key: 'a', label: 'Assessment (A)', color: 'bg-purple-50/30' },
+                      { key: 'p', label: 'Plan (P)', color: 'bg-orange-50/30' }
                     ].map(field => (
-                      <div key={field.key} className="space-y-2">
+                      <div key={field.key} className={`space-y-2 p-3 rounded-xl border border-border/50 ${field.color}`}>
                         <div className="flex items-center justify-between">
                           <h4 className="text-[10px] font-bold text-text/30 uppercase tracking-widest">{field.label}</h4>
+                          <button 
+                            onClick={() => {
+                              navigator.clipboard.writeText(generatedNote[field.key as keyof SoapNote])
+                              toast.success(`Copied ${field.label} section`)
+                            }}
+                            className="p-1.5 hover:bg-white/50 text-text/30 hover:text-primary rounded-md transition-all"
+                            title={`Copy ${field.label}`}
+                          >
+                            <Copy className="w-3 h-3" />
+                          </button>
                         </div>
                         <textarea 
                           value={generatedNote[field.key as keyof SoapNote]}
                           onChange={e => setGeneratedNote({ ...generatedNote, [field.key]: e.target.value })}
-                          className="w-full p-3 bg-primary/[0.02] border border-primary/5 rounded-xl text-sm leading-relaxed text-text outline-none focus:border-primary/20 transition-all resize-none min-h-[80px]"
-                          rows={Math.max(2, generatedNote[field.key as keyof SoapNote].split('\n').length)}
+                          className="w-full p-2 bg-transparent border-none text-sm leading-relaxed text-text outline-none transition-all resize-none min-h-[60px]"
+                          rows={Math.max(2, (generatedNote[field.key as keyof SoapNote] || '').split('\n').length)}
                           aria-label={`Edit ${field.label}`}
                         />
                       </div>

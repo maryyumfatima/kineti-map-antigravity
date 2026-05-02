@@ -1,9 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { DashboardLayout } from '../components/DashboardLayout'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
-import { Search, Plus, Users, X, Upload, Sparkles, Loader2, Brain } from 'lucide-react'
+import { Search, Plus, Users, X, Upload, Sparkles, Loader2, Brain, ChevronRight } from 'lucide-react'
 import { PhoneInput } from '../components/PhoneInput'
 import { generatePainSummary } from '../lib/groq'
 
@@ -32,6 +32,7 @@ function PatientsPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('All')
+  const [segment, setSegment] = useState('All Time')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [clinicId, setClinicId] = useState<string | null>(null)
 
@@ -386,10 +387,42 @@ function PatientsPage() {
 
   const filteredPatients = patients.filter(p => {
     const matchesSearch = (p.full_name ?? '').toLowerCase().includes((search ?? '').toLowerCase()) ||
-      (p.phone_number ?? '').includes(search)
+      (p.phone_number ?? '').includes(search) ||
+      (p.status_tag ?? '').toLowerCase().includes((search ?? '').toLowerCase())
+    
     const matchesFilter = filter === 'All' || (p.status_tag ?? '').toLowerCase() === (filter ?? '').toLowerCase()
-    return matchesSearch && matchesFilter
+    
+    // Segmentation filter logic
+    let matchesSegment = true
+    if (segment !== 'All Time') {
+      const now = new Date()
+      const lastSession = p.last_session_date ? new Date(p.last_session_date) : null
+      if (!lastSession) {
+        matchesSegment = false
+      } else {
+        const diffDays = Math.floor((now.getTime() - lastSession.getTime()) / (1000 * 60 * 60 * 24))
+        if (segment === 'Weekly') matchesSegment = diffDays <= 7
+        else if (segment === 'Monthly') matchesSegment = diffDays <= 30
+        else if (segment === 'Yearly') matchesSegment = diffDays <= 365
+      }
+    }
+
+    return matchesSearch && matchesFilter && matchesSegment
   })
+
+  // Status calculation logic (Issue 6)
+  const getCalculatedStatus = (p: Patient) => {
+    if (p.status_tag === 'discharged') return 'discharged'
+    if (!p.last_session_date) return 'active' // or 'new'
+    
+    const now = new Date()
+    const lastSession = new Date(p.last_session_date)
+    const diffDays = Math.floor((now.getTime() - lastSession.getTime()) / (1000 * 60 * 60 * 24))
+    
+    if (diffDays <= 30) return 'active'
+    if (diffDays <= 90) return 'lapsed'
+    return 'lapsed' // or 'inactive'
+  }
 
   return (
     <DashboardLayout>
@@ -430,17 +463,31 @@ function PatientsPage() {
               />
             </div>
 
-            <div className="flex bg-background p-1 rounded-lg w-full sm:w-auto overflow-x-auto">
-              {['All', 'Active', 'Lapsed', 'Discharged', 'No-Show'].map(f => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${filter === f ? 'bg-card text-primary shadow-sm' : 'text-text/70 hover:text-text'
-                    }`}
-                >
-                  {f}
-                </button>
-              ))}
+            <div className="flex bg-background p-1 rounded-lg w-full sm:w-auto overflow-x-auto gap-2">
+              <div className="flex bg-white border border-border rounded-lg p-0.5">
+                {['All', 'Active', 'Lapsed', 'Discharged'].map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setFilter(f)}
+                    className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${filter === f ? 'bg-primary text-white shadow-sm' : 'text-text/50 hover:text-text'
+                      }`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+              <div className="flex bg-white border border-border rounded-lg p-0.5">
+                {['All Time', 'Weekly', 'Monthly', 'Yearly'].map(s => (
+                  <button
+                    key={s}
+                    onClick={() => setSegment(s)}
+                    className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${segment === s ? 'bg-accent text-primary shadow-sm' : 'text-text/50 hover:text-text'
+                      }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -511,12 +558,13 @@ function PatientsPage() {
                         </button>
                       </td>
                       <td className="p-4 text-right">
-                        <button
-                          onClick={() => handleViewPatient(patient)}
-                          className="text-primary hover:underline text-sm font-medium"
+                        <Link
+                          to="/$country/patients/$patientId"
+                          params={{ country, patientId: patient.id } as any}
+                          className="text-primary hover:underline text-sm font-bold flex items-center justify-end gap-1"
                         >
-                          View
-                        </button>
+                          View Profile <ChevronRight className="w-3.5 h-3.5" />
+                        </Link>
                       </td>
                     </tr>
                   ))}
