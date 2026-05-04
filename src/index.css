@@ -127,6 +127,69 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* ── Patient Profile Page ── */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes gradientShimmer {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 109, 119, 0.15); }
+  50%      { box-shadow: 0 0 16px 4px rgba(0, 109, 119, 0.1); }
+}
+@keyframes expandDown {
+  from { opacity: 0; max-height: 0; }
+  to   { opacity: 1; max-height: 1200px; }
+}
+@keyframes collapseUp {
+  from { opacity: 1; max-height: 1200px; }
+  to   { opacity: 0; max-height: 0; }
+}
+
+.slide-up {
+  animation: slideUp 0.4s ease-out both;
+}
+.slide-up-delay-1 { animation-delay: 0.08s; }
+.slide-up-delay-2 { animation-delay: 0.16s; }
+.slide-up-delay-3 { animation-delay: 0.24s; }
+.slide-up-delay-4 { animation-delay: 0.32s; }
+
+.ai-gradient-bg {
+  background: linear-gradient(135deg, #006D77, #00565e, #004a51, #006D77);
+  background-size: 300% 300%;
+  animation: gradientShimmer 8s ease infinite;
+}
+
+.pulse-glow {
+  animation: pulseGlow 3s ease-in-out infinite;
+}
+
+.expand-section {
+  animation: expandDown 0.35s ease-out both;
+  overflow: hidden;
+}
+
+.sticky-patient-header {
+  position: sticky;
+  top: 56px; /* Below mobile top bar */
+  z-index: 15;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+@media (min-width: 1024px) {
+  .sticky-patient-header {
+    top: 0;
+  }
+}
+
+.tab-content-enter {
+  animation: slideUp 0.3s ease-out both;
+}
+
 /* ── react-phone-number-input overrides ── */
 .PhoneInput {
   display: flex;

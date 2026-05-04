@@ -107,20 +107,18 @@ export async function deletePatientData(patientId: string, clinicId: string, adm
     // or use an RPC. Since we can't easily deploy an RPC or Edge function right now without the user's terminal,
     // we will run the deletes from the client.
 
-    // 1. WhatsApp Messages
-    await supabase.from('whatsapp_messages').delete().eq('patient_id', patientId).catch(() => {})
-    // 2. Feedback
-    await supabase.from('feedback').delete().eq('patient_id', patientId).catch(() => {})
-    // 3. Session Notes
-    await supabase.from('session_notes').delete().eq('patient_id', patientId)
-    // 4. Consent Records
-    await supabase.from('consent_records').delete().eq('patient_id', patientId).catch(() => {})
-    // 5. Bookings
-    await supabase.from('bookings').delete().eq('patient_id', patientId)
-    // 6. Activity Log (delete all except the one we just created? Actually let's delete all)
-    await supabase.from('patient_activity_log').delete().eq('patient_id', patientId)
-    // 7. Finally, Patient
-    const { error } = await supabase.from('patients').delete().eq('id', patientId)
+    // GDPR "Right to be Forgotten" in a clinical context often means 
+    // "Soft Delete" to maintain medical records for legal/audit purposes
+    // while removing the patient from active views.
+    
+    const { error } = await supabase
+      .from('patients')
+      .update({ 
+        is_deleted: true,
+        status_tag: 'deleted'
+      })
+      .eq('id', patientId)
+
     if (error) throw error
 
     return { success: true }

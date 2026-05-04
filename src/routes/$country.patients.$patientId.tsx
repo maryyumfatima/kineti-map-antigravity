@@ -1,28 +1,13 @@
-import { createFileRoute, Link, useParams } from '@tanstack/react-router'
+import { createFileRoute, Link, useParams, useNavigate } from '@tanstack/react-router'
 import { DashboardLayout } from '../components/DashboardLayout'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
-import { 
-  Calendar, 
-  FileText, 
-  Files, 
-  History, 
-  ChevronRight, 
-  Filter, 
-  Download, 
-  Printer, 
-  Plus,
-  Clock,
-  Activity,
-  ArrowUpRight,
-  User,
-  Phone,
-  Mail,
-  MapPin,
-  Search
+import {
+  Calendar, FileText, Files, History, ChevronRight, Search, Printer, Download, Plus, Clock, Activity, ArrowUpRight, User, Phone, Mail, Sparkles, AlertTriangle, CheckCircle, Upload, MessageSquare, ChevronDown, ChevronUp, Archive, X
 } from 'lucide-react'
 import { formatLocalTime } from '../lib/date'
+import { generatePatientInsights } from '../lib/groq'
 
 export const Route = createFileRoute('/$country/patients/$patientId')({
   component: PatientProfilePage,
@@ -37,15 +22,20 @@ type Patient = {
   primary_complaint: string
   status_tag: string
   created_at: string
+  clinic_id: string
+  gdpr_consent: boolean
+  archived?: boolean
 }
 
-type Session = {
+type Booking = {
   id: string
   appointment_time: string
   status: string
+  appointment_type: string
   pain_data: any
   treatment_summary: string
   notes: string
+  session_notes?: SoapNote[]
 }
 
 type SoapNote = {
@@ -56,23 +46,47 @@ type SoapNote = {
   a: string
   p: string
   type: string
+  tags: string[]
+}
+
+type Message = {
+  id: string
+  created_at: string
+  status: string
+  inbound_text: string | null
+  message_type: string
 }
 
 function PatientProfilePage() {
   const { country, patientId } = useParams({ strict: false }) as { country: string, patientId: string }
+  const navigate = useNavigate()
+  
   const [patient, setPatient] = useState<Patient | null>(null)
-  const [sessions, setSessions] = useState<Session[]>([])
+  const [bookings, setBookings] = useState<Booking[]>([])
   const [soapNotes, setSoapNotes] = useState<SoapNote[]>([])
+  const [messages, setMessages] = useState<Message[]>([])
+  
   const [loading, setLoading] = useState(true)
   const [clinicTimezone, setClinicTimezone] = useState<string>('Europe/London')
-  const [activeTab, setActiveTab] = useState<'history' | 'soap' | 'docs' | 'activity'>('history')
-  const [dateFilter, setDateFilter] = useState('All Time')
+  const [activeTab, setActiveTab] = useState<'timeline' | 'soap' | 'docs' | 'communication'>('timeline')
+  
+  // Stats
+  const [stats, setStats] = useState({ total: 0, completed: 0, avgBefore: 0, avgAfter: 0, attendance: 0 })
+  
+  // AI Insights
+  const [aiInsights, setAiInsights] = useState<any>(null)
+  const [generatingInsights, setGeneratingInsights] = useState(false)
+  
+  // UI State
+  const [showArchiveModal, setShowArchiveModal] = useState(false)
+  const [isArchiving, setIsArchiving] = useState(false)
+  const [expandedSessions, setExpandedSessions] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
-    fetchPatientData()
+    fetchData()
   }, [patientId])
 
-  const fetchPatientData = async () => {
+  const fetchData = async () => {
     setLoading(true)
     try {
       // 1. Fetch Patient
@@ -84,16 +98,19 @@ function PatientProfilePage() {
       
       if (pData) setPatient(pData)
 
-      // 2. Fetch Sessions
-      const { data: sData } = await supabase
+      // 2. Fetch Bookings with notes
+      const { data: bData } = await supabase
         .from('bookings')
-        .select('*')
+        .select('*, session_notes(*)')
         .eq('patient_id', patientId)
         .order('appointment_time', { ascending: false })
       
-      if (sData) setSessions(sData)
+      if (bData) {
+        setBookings(bData)
+        calculateStats(bData)
+      }
 
-      // 3. Fetch SOAP Notes
+      // 3. Fetch independent SOAP Notes
       const { data: nData } = await supabase
         .from('session_notes')
         .select('*')
@@ -102,7 +119,16 @@ function PatientProfilePage() {
       
       if (nData) setSoapNotes(nData)
 
-      // 4. Fetch Clinic Timezone
+      // 4. Fetch Messages
+      const { data: mData } = await supabase
+        .from('whatsapp_messages')
+        .select('*')
+        .eq('patient_id', patientId)
+        .order('created_at', { ascending: false })
+      
+      if (mData) setMessages(mData)
+
+      // 5. Fetch Clinic
       if (pData?.clinic_id) {
         const { data: clinic } = await supabase.from('clinics').select('timezone').eq('id', pData.clinic_id).single()
         if (clinic) setClinicTimezone(clinic.timezone || 'Europe/London')
@@ -116,12 +142,89 @@ function PatientProfilePage() {
     }
   }
 
+  const calculateStats = (bks: Booking[]) => {
+    const total = bks.length
+    const completed = bks.filter(b => b.status === 'completed').length
+    const attendance = total > 0 ? Math.round((completed / total) * 100) : 0
+
+    let beforeSum = 0, afterSum = 0, count = 0
+    bks.forEach(b => {
+      if (b.pain_data && b.pain_data.pain_before !== undefined && b.pain_data.pain_after !== undefined) {
+        beforeSum += b.pain_data.pain_before
+        afterSum += b.pain_data.pain_after
+        count++
+      }
+    })
+
+    setStats({
+      total,
+      completed,
+      attendance,
+      avgBefore: count > 0 ? Math.round((beforeSum / count) * 10) / 10 : 0,
+      avgAfter: count > 0 ? Math.round((afterSum / count) * 10) / 10 : 0
+    })
+  }
+
+  const handleGenerateInsights = async () => {
+    if (!patient) return
+    setGeneratingInsights(true)
+    try {
+      const completed = bookings.filter(b => b.status === 'completed')
+      const painScores = completed.map(b => b.pain_data?.pain_after || 0).reverse()
+      const treatments = soapNotes.flatMap(n => n.tags || [])
+      
+      const insights = await generatePatientInsights({
+        patientName: patient.full_name,
+        complaint: patient.primary_complaint,
+        totalSessions: stats.total,
+        completedSessions: stats.completed,
+        avgPainBefore: stats.avgBefore,
+        avgPainAfter: stats.avgAfter,
+        painScores,
+        treatments,
+        attendanceRate: stats.attendance
+      })
+      setAiInsights(insights)
+      toast.success('Insights generated successfully')
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to generate insights')
+    } finally {
+      setGeneratingInsights(false)
+    }
+  }
+
+  const handleArchive = async () => {
+    if (!patient) return
+    setIsArchiving(true)
+    try {
+      const { error } = await supabase.from('patients').update({ archived: true, status_tag: 'archived' }).eq('id', patient.id)
+      if (error) throw error
+      toast.success('Patient archived successfully')
+      navigate({ to: '/$country/patients', params: { country } })
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to archive patient')
+    } finally {
+      setIsArchiving(false)
+      setShowArchiveModal(false)
+    }
+  }
+
+  const toggleSession = (id: string) => {
+    setExpandedSessions(prev => ({ ...prev, [id]: !prev[id] }))
+  }
+
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
-      case 'active': return 'bg-green-100 text-green-700 border-green-200'
-      case 'lapsed': return 'bg-orange-100 text-orange-700 border-orange-200'
+      case 'active': return 'bg-primary/10 text-primary border-primary/20'
+      case 'lapsed': return 'bg-amber-100 text-amber-700 border-amber-200'
       case 'discharged': return 'bg-gray-100 text-gray-700 border-gray-200'
-      default: return 'bg-blue-100 text-blue-700 border-blue-200'
+      case 'archived': return 'bg-gray-200 text-gray-600 border-gray-300'
+      case 'completed': return 'bg-green-100 text-green-700 border-green-200'
+      case 'upcoming': return 'bg-sky-100 text-sky-700 border-sky-200'
+      case 'no_show': return 'bg-alert/10 text-alert border-alert/20'
+      default: return 'bg-gray-100 text-gray-700 border-gray-200'
     }
   }
 
@@ -130,10 +233,8 @@ function PatientProfilePage() {
       <DashboardLayout>
         <div className="p-8 space-y-8 animate-pulse">
           <div className="h-32 bg-gray-100 rounded-2xl w-full" />
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            <div className="h-64 bg-gray-100 rounded-2xl" />
-            <div className="lg:col-span-3 h-64 bg-gray-100 rounded-2xl" />
-          </div>
+          <div className="h-48 bg-gray-100 rounded-2xl w-full" />
+          <div className="h-64 bg-gray-100 rounded-2xl w-full" />
         </div>
       </DashboardLayout>
     )
@@ -143,264 +244,396 @@ function PatientProfilePage() {
 
   return (
     <DashboardLayout fullWidth={true}>
-      <div className="max-w-7xl mx-auto pb-20">
+      <div className="max-w-5xl mx-auto pb-24 font-sans slide-up">
         
-        {/* Breadcrumbs & Actions */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-          <div className="flex items-center gap-2 text-sm text-text/50">
-            <Link to="/$country/patients" params={{ country } as any} className="hover:text-primary transition-colors">Patients</Link>
-            <ChevronRight className="w-4 h-4" />
-            <span className="text-text font-medium">{patient.full_name}</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <button className="px-4 py-2 bg-white border border-border rounded-lg text-sm font-medium hover:bg-gray-50 flex items-center gap-2">
-              <Download className="w-4 h-4" /> Export Report
-            </button>
-            <Link 
-              to="/$country/ai/soap-notes" 
-              params={{ country } as any}
-              className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:opacity-90 flex items-center gap-2 shadow-lg shadow-primary/20"
-            >
-              <Plus className="w-4 h-4" /> New SOAP Note
-            </Link>
-          </div>
-        </div>
-
-        {/* Header Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
-          {[
-            { label: 'Total Sessions', value: sessions.length, icon: Calendar, color: 'text-blue-600' },
-            { label: 'SOAP Notes', value: soapNotes.filter(n => n.type === 'soap').length, icon: FileText, color: 'text-purple-600' },
-            { label: 'Avg Pain Improvement', value: '35%', icon: Activity, color: 'text-green-600' },
-            { label: 'Attendance Rate', value: '94%', icon: Clock, color: 'text-orange-600' },
-          ].map((stat, i) => (
-            <div key={i} className="bg-white border border-border p-5 rounded-2xl shadow-sm hover:border-primary/20 transition-all group">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold text-text/40 uppercase tracking-widest">{stat.label}</span>
-                <stat.icon className={`w-4 h-4 ${stat.color} opacity-60 group-hover:scale-110 transition-transform`} />
+        {/* Sticky Header Section */}
+        <div className="sticky-patient-header pt-6 pb-4 bg-white/80 border-b border-border mb-8 px-4 -mx-4 sm:px-0 sm:mx-0 rounded-b-2xl sm:rounded-none">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-bold text-2xl font-bricolage border border-primary/20 shadow-sm shrink-0">
+                {patient.full_name.charAt(0)}
               </div>
-              <div className="text-2xl font-bold text-text font-bricolage">{stat.value}</div>
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl sm:text-[32px] font-bold text-text font-bricolage leading-tight tracking-tight">{patient.full_name}</h1>
+                  <select 
+                    className={`text-xs font-bold px-2 py-1 rounded-full outline-none cursor-pointer border ${getStatusColor(patient.status_tag)}`}
+                    value={patient.status_tag}
+                    onChange={async (e) => {
+                      const newStatus = e.target.value
+                      setPatient({ ...patient, status_tag: newStatus })
+                      await supabase.from('patients').update({ status_tag: newStatus }).eq('id', patient.id)
+                      toast.success('Status updated')
+                    }}
+                  >
+                    <option value="active">Active</option>
+                    <option value="lapsed">Lapsed</option>
+                    <option value="discharged">Discharged</option>
+                    <option value="archived">Archived</option>
+                  </select>
+                </div>
+                <div className="flex flex-wrap items-center gap-4 text-sm text-text/60 mt-1.5 font-medium">
+                  <span className="flex items-center gap-1.5"><Activity className="w-3.5 h-3.5 text-primary" /> {patient.primary_complaint}</span>
+                  <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" /> {patient.phone_number}</span>
+                  {patient.email && <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> {patient.email}</span>}
+                </div>
+              </div>
             </div>
-          ))}
-        </div>
-
-        {/* Main Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          
-          {/* Left Panel: Patient Info */}
-          <div className="space-y-6">
-            <div className="bg-white border border-border rounded-2xl p-6 shadow-sm sticky top-8">
-              <div className="flex flex-col items-center text-center mb-6">
-                <div className="w-20 h-20 bg-primary/5 rounded-full flex items-center justify-center mb-4 border border-primary/10">
-                  <User className="w-10 h-10 text-primary/40" />
-                </div>
-                <h2 className="text-xl font-bold text-text font-bricolage">{patient.full_name}</h2>
-                <span className={`mt-2 px-3 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider ${getStatusColor(patient.status_tag)}`}>
-                  {patient.status_tag || 'Active'}
-                </span>
-              </div>
-
-              <div className="space-y-4 pt-6 border-t border-border/50">
-                <div className="flex items-start gap-3">
-                  <Calendar className="w-4 h-4 text-text/30 mt-0.5" />
-                  <div>
-                    <p className="text-[10px] font-bold text-text/30 uppercase tracking-widest">Date of Birth</p>
-                    <p className="text-sm text-text/80">{patient.date_of_birth ? formatLocalTime(patient.date_of_birth, country, 'MMM d, yyyy', clinicTimezone) : 'Not provided'}</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Phone className="w-4 h-4 text-text/30 mt-0.5" />
-                  <div>
-                    <p className="text-[10px] font-bold text-text/30 uppercase tracking-widest">Phone</p>
-                    <p className="text-sm text-text/80">{patient.phone_number}</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Mail className="w-4 h-4 text-text/30 mt-0.5" />
-                  <div>
-                    <p className="text-[10px] font-bold text-text/30 uppercase tracking-widest">Email</p>
-                    <p className="text-sm text-text/80 truncate max-w-[180px]">{patient.email || 'Not provided'}</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <MapPin className="w-4 h-4 text-text/30 mt-0.5" />
-                  <div>
-                    <p className="text-[10px] font-bold text-text/30 uppercase tracking-widest">Complaint</p>
-                    <p className="text-sm text-text/80">{patient.primary_complaint}</p>
-                  </div>
-                </div>
-              </div>
-
-              <button className="w-full mt-8 py-2.5 bg-gray-50 border border-border rounded-xl text-sm font-medium hover:bg-gray-100 transition-colors flex items-center justify-center gap-2 text-text/60">
-                Edit Profile <ArrowUpRight className="w-3.5 h-3.5" />
+            
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 shrink-0">
+              <button className="whitespace-nowrap px-4 py-2 bg-white border border-border rounded-xl text-sm font-semibold hover:bg-gray-50 flex items-center gap-2 shadow-sm transition-all">
+                <Calendar className="w-4 h-4" /> Book Session
+              </button>
+              <button className="whitespace-nowrap px-4 py-2 bg-green-50 text-green-700 border border-green-200 rounded-xl text-sm font-semibold hover:bg-green-100 flex items-center gap-2 shadow-sm transition-all">
+                <MessageSquare className="w-4 h-4" /> WhatsApp
               </button>
             </div>
           </div>
+        </div>
 
-          {/* Right Panel: Content Area */}
-          <div className="lg:col-span-3 space-y-6">
-            
-            {/* Date Filters & Tab Selector */}
-            <div className="bg-white border border-border rounded-2xl shadow-sm overflow-hidden">
-              <div className="p-2 border-b border-border bg-gray-50/50 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex p-1 bg-white border border-border rounded-xl shadow-sm">
-                  {[
-                    { id: 'history', label: 'Session History', icon: Calendar },
-                    { id: 'soap', label: 'SOAP Notes', icon: FileText },
-                    { id: 'docs', label: 'Docs & Files', icon: Files },
-                    { id: 'activity', label: 'Activity', icon: History },
-                  ].map(tab => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id as any)}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === tab.id ? 'bg-primary text-white shadow-md' : 'text-text/50 hover:text-text'}`}
-                    >
-                      <tab.icon className="w-4 h-4" />
-                      <span className={activeTab === tab.id ? 'block' : 'hidden sm:block'}>{tab.label}</span>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="flex items-center gap-2 px-3">
-                  <Filter className="w-4 h-4 text-text/30" />
-                  <select 
-                    value={dateFilter}
-                    onChange={(e) => setDateFilter(e.target.value)}
-                    className="bg-transparent text-sm font-bold text-text/60 outline-none cursor-pointer"
-                  >
-                    {['Today', 'This Week', 'This Month', 'Last 3 Months', 'This Year', 'All Time'].map(f => (
-                      <option key={f} value={f}>{f}</option>
-                    ))}
-                  </select>
-                </div>
+        <div className="px-4 sm:px-0">
+          {/* Stats Cards Row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 slide-up-delay-1">
+            <div className="bg-white border border-border p-4 sm:p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-2 mb-2">
+                <Calendar className="w-4 h-4 text-primary opacity-70" />
+                <span className="text-xs font-bold text-text/50 uppercase tracking-wider">Sessions</span>
               </div>
-
-              {/* Tab Content */}
-              <div className="p-6">
-                
-                {activeTab === 'history' && (
-                  <div className="space-y-6 animate-in fade-in duration-500">
-                    {sessions.length === 0 ? (
-                      <div className="py-20 text-center flex flex-col items-center">
-                        <Calendar className="w-12 h-12 text-text/10 mb-4" />
-                        <p className="text-text/40 font-medium">No sessions recorded yet.</p>
-                      </div>
-                    ) : (
-                      sessions.map((session, i) => (
-                        <div key={session.id} className="relative pl-8 pb-8 last:pb-0 group">
-                          {/* Timeline connector */}
-                          {i !== sessions.length - 1 && (
-                            <div className="absolute left-[11px] top-[26px] bottom-0 w-0.5 bg-gray-100 group-hover:bg-primary/20 transition-colors" />
-                          )}
-                          <div className="absolute left-0 top-1.5 w-6 h-6 rounded-full border-2 border-white bg-gray-100 shadow-sm flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                            <div className="w-2 h-2 rounded-full bg-gray-400 group-hover:bg-primary transition-colors" />
-                          </div>
-
-                          <div className="bg-white border border-border rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-primary/20 transition-all">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
-                              <div className="flex items-center gap-3">
-                                <span className="font-bold text-text font-bricolage">{formatLocalTime(session.appointment_time, country, 'EEEE, MMMM d', clinicTimezone)}</span>
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase tracking-wider ${session.status === 'completed' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-gray-50 text-gray-400 border-gray-100'}`}>
-                                  {session.status}
-                                </span>
-                              </div>
-                              <span className="text-xs font-medium text-text/40">{formatLocalTime(session.appointment_time, country, 'h:mm a', clinicTimezone)}</span>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <p className="text-[10px] font-bold text-text/30 uppercase tracking-widest">Pain & Treatment</p>
-                                <p className="text-sm text-text/70 line-clamp-2">{session.treatment_summary || 'No summary provided.'}</p>
-                              </div>
-                              <div className="flex justify-end items-end">
-                                <button className="text-xs font-bold text-primary flex items-center gap-1 hover:underline">
-                                  View Full Session <ArrowUpRight className="w-3 h-3" />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-
-                {activeTab === 'soap' && (
-                  <div className="space-y-4 animate-in fade-in duration-500">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="relative w-full max-w-sm">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text/30" />
-                        <input 
-                          type="text" 
-                          placeholder="Search SOAP notes..."
-                          className="w-full pl-9 pr-4 py-2 border border-border rounded-xl text-sm focus:border-primary outline-none"
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button className="p-2 hover:bg-gray-100 rounded-lg text-text/50" title="Print All"><Printer className="w-4 h-4" /></button>
-                      </div>
-                    </div>
-
-                    {soapNotes.filter(n => n.type === 'soap').length === 0 ? (
-                      <div className="py-20 text-center flex flex-col items-center">
-                        <FileText className="w-12 h-12 text-text/10 mb-4" />
-                        <p className="text-text/40 font-medium">No SOAP notes found for this patient.</p>
-                      </div>
-                    ) : (
-                      soapNotes.filter(n => n.type === 'soap').map(note => (
-                        <div key={note.id} className="bg-white border border-border rounded-2xl overflow-hidden hover:shadow-md transition-all">
-                          <div className="p-4 border-b border-border bg-gray-50/30 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <span className="text-sm font-bold text-text">{formatLocalTime(note.created_at, country, 'MMM d, yyyy', clinicTimezone)}</span>
-                              <span className="text-[10px] font-bold text-primary uppercase tracking-widest px-2 py-0.5 bg-primary/5 rounded border border-primary/10">AI Assisted</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <button className="p-1.5 hover:bg-white text-text/30 hover:text-primary rounded transition-all"><Download className="w-3.5 h-3.5" /></button>
-                              <button className="p-1.5 hover:bg-white text-text/30 hover:text-primary rounded transition-all"><Printer className="w-3.5 h-3.5" /></button>
-                            </div>
-                          </div>
-                          <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <p className="text-[9px] font-bold text-text/30 uppercase tracking-widest mb-1">Subjective (S)</p>
-                              <p className="text-xs text-text/70 line-clamp-3">{note.s || '-'}</p>
-                            </div>
-                            <div>
-                              <p className="text-[9px] font-bold text-text/30 uppercase tracking-widest mb-1">Plan (P)</p>
-                              <p className="text-xs text-text/70 line-clamp-3">{note.p || '-'}</p>
-                            </div>
-                          </div>
-                          <div className="px-5 py-2 border-t border-border/50 flex justify-end">
-                            <button className="text-[10px] font-bold text-primary hover:underline">Expand Full Note</button>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-
-                {activeTab === 'docs' && (
-                  <div className="py-20 text-center flex flex-col items-center animate-in fade-in">
-                    <Files className="w-12 h-12 text-text/10 mb-4" />
-                    <p className="text-text/40 font-medium">No documents or files uploaded yet.</p>
-                    <button className="mt-4 px-6 py-2 bg-primary/5 text-primary border border-primary/10 rounded-xl text-sm font-bold hover:bg-primary/10 transition-all">
-                      Upload Document
-                    </button>
-                  </div>
-                )}
-
-                {activeTab === 'activity' && (
-                  <div className="py-20 text-center flex flex-col items-center animate-in fade-in">
-                    <History className="w-12 h-12 text-text/10 mb-4" />
-                    <p className="text-text/40 font-medium">Activity timeline coming soon.</p>
-                  </div>
-                )}
-
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl sm:text-3xl font-bold text-text font-bricolage">{stats.total}</span>
+                <span className="text-xs font-medium text-text/50">{stats.completed} done</span>
+              </div>
+            </div>
+            
+            <div className="bg-white border border-border p-4 sm:p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-2 mb-2">
+                <Activity className="w-4 h-4 text-accent opacity-70" />
+                <span className="text-xs font-bold text-text/50 uppercase tracking-wider">Avg Pain (Before)</span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl sm:text-3xl font-bold text-text font-bricolage">{stats.avgBefore}</span>
+                <span className="text-xs font-medium text-text/50">/ 10</span>
               </div>
             </div>
 
+            <div className="bg-white border border-border p-4 sm:p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-2 mb-2">
+                <Activity className="w-4 h-4 text-green-600 opacity-70" />
+                <span className="text-xs font-bold text-text/50 uppercase tracking-wider">Avg Pain (After)</span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl sm:text-3xl font-bold text-text font-bricolage">{stats.avgAfter}</span>
+                <span className="text-xs font-medium text-green-600 flex items-center">
+                  <ChevronDown className="w-3 h-3" /> {Math.abs(stats.avgBefore - stats.avgAfter).toFixed(1)}
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white border border-border p-4 sm:p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-2 mb-2">
+                <Clock className="w-4 h-4 text-blue-600 opacity-70" />
+                <span className="text-xs font-bold text-text/50 uppercase tracking-wider">Attendance</span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl sm:text-3xl font-bold text-text font-bricolage">{stats.attendance}%</span>
+              </div>
+            </div>
           </div>
+
+          {/* AI Insights Panel */}
+          <div className="mb-10 slide-up-delay-2">
+            <div className="ai-gradient-bg p-[1px] rounded-3xl shadow-lg pulse-glow">
+              <div className="bg-white/95 backdrop-blur-xl rounded-[23px] p-6 sm:p-8">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <Sparkles className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold text-text font-bricolage">Clinical AI Insights</h2>
+                      <p className="text-sm text-text/60">Automated analysis of session history and pain trends.</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={handleGenerateInsights}
+                    disabled={generatingInsights}
+                    className="px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70"
+                  >
+                    {generatingInsights ? <Clock className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                    {aiInsights ? 'Refresh Analysis' : 'Generate Report'}
+                  </button>
+                </div>
+
+                {aiInsights ? (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in duration-500">
+                    <div className="md:col-span-2 space-y-4">
+                      <div>
+                        <h3 className="text-xs font-bold text-text/50 uppercase tracking-wider mb-2">Progress Summary</h3>
+                        <p className="text-sm text-text/80 leading-relaxed font-medium bg-gray-50/50 p-4 rounded-xl border border-gray-100">{aiInsights.progressSummary}</p>
+                      </div>
+                      
+                      {aiInsights.riskFlags?.length > 0 && (
+                        <div>
+                          <h3 className="text-xs font-bold text-alert uppercase tracking-wider mb-2 flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> Risk Flags</h3>
+                          <ul className="space-y-2">
+                            {aiInsights.riskFlags.map((flag: string, i: number) => (
+                              <li key={i} className="text-sm text-alert/90 bg-alert/5 p-3 rounded-xl border border-alert/10 flex items-start gap-2">
+                                <span className="mt-0.5">•</span> {flag}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-xs font-bold text-text/50 uppercase tracking-wider mb-2">Recommended Next Steps</h3>
+                      <ul className="space-y-3">
+                        {aiInsights.recommendations?.map((rec: string, i: number) => (
+                          <li key={i} className="text-sm text-text/80 bg-primary/5 p-3 rounded-xl border border-primary/10 flex items-start gap-2">
+                            <CheckCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" /> <span>{rec}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      
+                      <div className="mt-4 p-4 rounded-xl border border-border flex items-center justify-between">
+                        <span className="text-xs font-bold text-text/50 uppercase tracking-wider">Overall Trend</span>
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold capitalize ${
+                          aiInsights.trend === 'improving' ? 'bg-green-100 text-green-700' : 
+                          aiInsights.trend === 'declining' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {aiInsights.trend || 'Stable'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-8 text-center bg-gray-50/50 rounded-xl border border-border border-dashed">
+                    <p className="text-text/40 text-sm font-medium">Click Generate Report to analyze {stats.total} sessions using AI.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Tabbed Content Area */}
+          <div className="slide-up-delay-3">
+            <div className="flex items-center gap-2 border-b border-border overflow-x-auto hide-scrollbar pb-px">
+              {[
+                { id: 'timeline', label: 'Timeline', icon: History },
+                { id: 'soap', label: 'SOAP Notes', icon: FileText },
+                { id: 'docs', label: 'Documents', icon: Files },
+                { id: 'communication', label: 'Communication', icon: MessageSquare }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap ${
+                    activeTab === tab.id 
+                      ? 'border-primary text-primary bg-primary/5' 
+                      : 'border-transparent text-text/50 hover:text-text hover:bg-gray-50'
+                  }`}
+                >
+                  <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? 'text-primary' : 'text-text/40'}`} />
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="py-8">
+              {/* TIMELINE TAB */}
+              {activeTab === 'timeline' && (
+                <div className="space-y-6 tab-content-enter">
+                  {bookings.length === 0 ? (
+                    <div className="text-center py-12 text-text/40">No sessions recorded.</div>
+                  ) : (
+                    bookings.map((booking, i) => {
+                      const isExpanded = expandedSessions[booking.id]
+                      const painDiff = (booking.pain_data?.pain_before ?? 0) - (booking.pain_data?.pain_after ?? 0)
+                      
+                      return (
+                        <div key={booking.id} className="relative pl-8 pb-4 group">
+                          {i !== bookings.length - 1 && (
+                            <div className="absolute left-[11px] top-8 bottom-[-16px] w-0.5 bg-border group-hover:bg-primary/30 transition-colors" />
+                          )}
+                          <div className="absolute left-0 top-6 w-6 h-6 rounded-full border-[3px] border-background bg-border flex items-center justify-center group-hover:bg-primary transition-colors">
+                            <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                          </div>
+
+                          <div className="bg-white border border-border rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                            <div 
+                              className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer hover:bg-gray-50/50"
+                              onClick={() => toggleSession(booking.id)}
+                            >
+                              <div>
+                                <div className="flex items-center gap-3 mb-1">
+                                  <span className="font-bold text-text">{formatLocalTime(booking.appointment_time, country, 'MMM d, yyyy')}</span>
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase tracking-wider ${getStatusColor(booking.status)}`}>
+                                    {booking.status}
+                                  </span>
+                                  <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200 text-[10px] font-bold uppercase tracking-wider">
+                                    {booking.appointment_type.replace('_', ' ')}
+                                  </span>
+                                </div>
+                                <span className="text-sm font-medium text-text/50">{formatLocalTime(booking.appointment_time, country, 'h:mm a', clinicTimezone)}</span>
+                              </div>
+
+                              {booking.pain_data && (
+                                <div className="flex items-center gap-3 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
+                                  <span className="text-xs font-bold text-text/40">PAIN:</span>
+                                  <div className="flex items-center gap-2 font-bricolage font-bold">
+                                    <span className="text-text/60">{booking.pain_data.pain_before}</span>
+                                    <ArrowUpRight className={`w-3.5 h-3.5 ${painDiff > 0 ? 'text-green-500 rotate-90' : painDiff < 0 ? 'text-red-500 -rotate-90' : 'text-gray-300 rotate-45'}`} />
+                                    <span className={painDiff > 0 ? 'text-green-600' : 'text-text'}>{booking.pain_data.pain_after}</span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className={`expand-section ${isExpanded ? 'max-h-[1200px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                              <div className="p-5 pt-0 border-t border-border bg-gray-50/30">
+                                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                  <div>
+                                    <h4 className="text-[10px] font-bold text-text/40 uppercase tracking-widest mb-2">Session Notes</h4>
+                                    <p className="text-sm text-text/80 whitespace-pre-wrap">{booking.notes || 'No notes available.'}</p>
+                                  </div>
+                                  <div>
+                                    <h4 className="text-[10px] font-bold text-text/40 uppercase tracking-widest mb-2">Treatments Applied</h4>
+                                    <p className="text-sm text-text/80">{booking.treatment_summary || 'None recorded.'}</p>
+                                  </div>
+                                </div>
+                                {booking.session_notes && booking.session_notes.length > 0 && (
+                                  <div className="mt-4 pt-4 border-t border-border/50">
+                                    <h4 className="text-[10px] font-bold text-text/40 uppercase tracking-widest mb-2 flex items-center gap-1"><Sparkles className="w-3 h-3" /> AI SOAP Note Attached</h4>
+                                    <button onClick={() => setActiveTab('soap')} className="text-sm text-primary font-bold hover:underline">View in SOAP Notes tab →</button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              )}
+
+              {/* SOAP NOTES TAB */}
+              {activeTab === 'soap' && (
+                <div className="space-y-6 tab-content-enter">
+                  <div className="flex items-center justify-between gap-4 mb-6">
+                    <div className="relative flex-1 max-w-md">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text/30" />
+                      <input type="text" placeholder="Search notes..." className="w-full pl-9 pr-4 py-2 border border-border rounded-xl text-sm outline-none focus:border-primary" />
+                    </div>
+                    <Link to="/$country/ai/soap-notes" params={{ country } as any} className="btn-premium bg-primary text-white text-sm flex items-center gap-2">
+                      <Plus className="w-4 h-4" /> New Note
+                    </Link>
+                  </div>
+
+                  {soapNotes.length === 0 ? (
+                    <div className="text-center py-12 text-text/40">No SOAP notes found.</div>
+                  ) : (
+                    <div className="grid gap-6">
+                      {soapNotes.map(note => (
+                        <div key={note.id} className="bg-white border border-border rounded-2xl p-5 shadow-sm">
+                          <div className="flex items-center justify-between border-b border-border pb-3 mb-4">
+                            <span className="font-bold text-text">{formatLocalTime(note.created_at, country, 'MMM d, yyyy')}</span>
+                            <div className="flex gap-2">
+                              <button className="p-1.5 text-text/40 hover:text-primary rounded"><Printer className="w-4 h-4" /></button>
+                              <button className="p-1.5 text-text/40 hover:text-primary rounded"><Download className="w-4 h-4" /></button>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div><h4 className="text-[10px] font-bold text-text/30 uppercase tracking-widest mb-1">Subjective</h4><p className="text-sm text-text/80">{note.s}</p></div>
+                            <div><h4 className="text-[10px] font-bold text-text/30 uppercase tracking-widest mb-1">Objective</h4><p className="text-sm text-text/80">{note.o}</p></div>
+                            <div><h4 className="text-[10px] font-bold text-text/30 uppercase tracking-widest mb-1">Assessment</h4><p className="text-sm text-text/80">{note.a}</p></div>
+                            <div><h4 className="text-[10px] font-bold text-text/30 uppercase tracking-widest mb-1">Plan</h4><p className="text-sm text-text/80">{note.p}</p></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* DOCUMENTS TAB */}
+              {activeTab === 'docs' && (
+                <div className="tab-content-enter text-center py-20 border-2 border-dashed border-border rounded-2xl bg-gray-50/50">
+                  <Files className="w-12 h-12 text-text/20 mx-auto mb-4" />
+                  <h3 className="font-bold text-text mb-1">No documents yet</h3>
+                  <p className="text-sm text-text/50 mb-6">Upload consent forms, scan results, or exercise sheets.</p>
+                  <button className="px-5 py-2.5 bg-white border border-border rounded-xl text-sm font-semibold hover:bg-gray-50 inline-flex items-center gap-2 shadow-sm">
+                    <Upload className="w-4 h-4" /> Upload Document
+                  </button>
+                </div>
+              )}
+
+              {/* COMMUNICATION TAB */}
+              {activeTab === 'communication' && (
+                <div className="tab-content-enter space-y-4">
+                  {messages.length === 0 ? (
+                    <div className="text-center py-12 text-text/40">No message history.</div>
+                  ) : (
+                    messages.map(msg => (
+                      <div key={msg.id} className="bg-white border border-border rounded-xl p-4 flex items-center justify-between gap-4">
+                        <div>
+                          <p className="font-bold text-sm text-text capitalize">{msg.message_type.replace('_', ' ')}</p>
+                          <p className="text-xs text-text/50 mt-1">{formatLocalTime(msg.created_at, country, 'PPp', clinicTimezone)}</p>
+                          {msg.inbound_text && <p className="text-sm text-text/70 mt-2 bg-gray-50 p-2 rounded-lg italic">"{msg.inbound_text}"</p>}
+                        </div>
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider ${
+                          msg.status === 'delivered' ? 'bg-blue-50 text-blue-600 border-blue-200' :
+                          msg.status === 'read' ? 'bg-green-50 text-green-600 border-green-200' :
+                          'bg-gray-50 text-gray-600 border-gray-200'
+                        }`}>
+                          {msg.status}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Admin Archive Section */}
+          <div className="mt-12 pt-8 border-t border-border flex justify-end slide-up-delay-4">
+            <button 
+              onClick={() => setShowArchiveModal(true)}
+              className="text-sm font-bold text-text/40 hover:text-alert flex items-center gap-2 transition-colors"
+            >
+              <Archive className="w-4 h-4" /> Archive Patient
+            </button>
+          </div>
+
         </div>
       </div>
+
+      {/* Archive Modal */}
+      {showArchiveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-border flex items-center justify-between">
+              <h3 className="text-lg font-bold text-text font-bricolage flex items-center gap-2"><Archive className="w-5 h-5 text-alert" /> Archive Patient</h3>
+              <button onClick={() => setShowArchiveModal(false)}><X className="w-5 h-5 text-text/40" /></button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-text/70 mb-4">Are you sure you want to archive <strong>{patient.full_name}</strong>? They will be removed from active lists but their data will be retained for legal compliance.</p>
+              <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 text-xs text-text/60 font-medium">
+                Data retention policy: Records are kept for 7 years from the last session date.
+              </div>
+            </div>
+            <div className="p-6 pt-0 flex gap-3">
+              <button onClick={() => setShowArchiveModal(false)} className="flex-1 px-4 py-2 bg-white border border-border rounded-xl font-bold text-text">Cancel</button>
+              <button onClick={handleArchive} disabled={isArchiving} className="flex-1 px-4 py-2 bg-alert text-white rounded-xl font-bold flex items-center justify-center gap-2">
+                {isArchiving ? 'Archiving...' : 'Confirm Archive'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </DashboardLayout>
   )
 }

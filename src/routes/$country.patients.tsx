@@ -661,6 +661,7 @@ function PatientsPage() {
                   <PhoneInput 
                     value={formData.phone_number} 
                     onChange={v => setFormData({...formData, phone_number: v || ''})} 
+                    defaultCountry={country ? country.toUpperCase() : 'GB'}
                     className="w-full px-3 py-1.5 rounded-lg border border-border bg-white focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary"
                   />
                 </div>
@@ -805,6 +806,7 @@ function PatientsPage() {
                     value={drawerFormData.phone_number || ''} 
                     onChange={v => setDrawerFormData({...drawerFormData, phone_number: v || ''})} 
                     disabled={!isEditing}
+                    defaultCountry={country ? country.toUpperCase() : 'GB'}
                     className="w-full px-3 py-1.5 rounded-lg border border-border bg-white focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary"
                   />
                 </div>

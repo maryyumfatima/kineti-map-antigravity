@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import ReactPhoneInput from 'react-phone-number-input'
 
 interface PhoneInputProps {
@@ -8,25 +8,11 @@ interface PhoneInputProps {
   disabled?: boolean;
   className?: string;
   placeholder?: string;
+  defaultCountry?: any;
 }
 
-export function PhoneInput({ value, onChange, onCountryChange, disabled, className = '', placeholder }: PhoneInputProps) {
+export function PhoneInput({ value, onChange, onCountryChange, disabled, className = '', placeholder, defaultCountry = 'GB' }: PhoneInputProps) {
   const [focused, setFocused] = useState(false)
-  const [defaultCountry, setDefaultCountry] = useState<any>('GB')
-
-  useEffect(() => {
-    try {
-      const locale = navigator.language || (navigator as any).userLanguage;
-      if (locale) {
-        const parts = locale.split('-');
-        if (parts.length > 1 && parts[1].length === 2) {
-          setDefaultCountry(parts[1].toUpperCase());
-        } else if (parts[0].length === 2) {
-          setDefaultCountry(parts[0].toUpperCase());
-        }
-      }
-    } catch (e) {}
-  }, [])
 
   return (
     <div

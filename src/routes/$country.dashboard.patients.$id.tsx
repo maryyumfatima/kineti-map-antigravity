@@ -133,7 +133,6 @@ function PatientDetailPage() {
       if (clinic) {
         if (clinic.timezone) setClinicTimezone(clinic.timezone)
         if (clinic.slug)     setClinicSlug(clinic.slug)
-        if (clinic.name)     setClinicName(clinic.name)
       }
 
       // 1. Fetch Patient
@@ -231,7 +230,7 @@ function PatientDetailPage() {
       clinicId,
     })
     if (!result.success) {
-      toast.error(`WhatsApp send failed: ${result.error}`)
+      toast.error(`WhatsApp send failed: ${('error' in result) ? result.error : 'Unknown error'}`)
     } else {
       toast.success('Follow-up WhatsApp sent!')
       fetchData()

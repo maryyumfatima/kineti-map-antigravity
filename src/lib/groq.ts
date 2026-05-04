@@ -79,6 +79,60 @@ Respond in ${language || 'English'}.`
   return data.content || ''
 }
 
+// Patient insights (comprehensive AI report for profile page)
+export async function generatePatientInsights(data: {
+  patientName: string
+  complaint: string
+  totalSessions: number
+  completedSessions: number
+  avgPainBefore: number
+  avgPainAfter: number
+  painScores: number[]
+  treatments: string[]
+  attendanceRate: number
+}) {
+  const prompt = `You are a physiotherapy clinical analyst. Based on the following patient data, generate a comprehensive clinical insights report. Be professional, concise, and actionable.
+
+Patient: ${data.patientName}
+Primary Complaint: ${data.complaint}
+Total Sessions: ${data.totalSessions} (${data.completedSessions} completed)
+Average Pain Before Treatment: ${data.avgPainBefore}/10
+Average Pain After Treatment: ${data.avgPainAfter}/10
+Pain Score Trend (oldest to newest): ${data.painScores.join(', ')}
+Common Treatments: ${data.treatments.join(', ') || 'Not recorded'}
+Attendance Rate: ${data.attendanceRate}%
+
+Respond in valid JSON with this exact structure (no markdown, no code fences):
+{
+  "progressSummary": "2-3 sentence clinical progress summary",
+  "riskFlags": ["array of risk flags, empty if none"],
+  "recommendations": ["array of 2-3 actionable next steps"],
+  "trend": "improving" | "stable" | "declining"
+}`
+
+  const { data: result, error } = await supabase.functions.invoke('groq-proxy', {
+    body: {
+      prompt,
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.2,
+      max_tokens: 512
+    }
+  })
+
+  if (error) throw new Error(error.message || 'Failed to generate patient insights')
+
+  try {
+    return JSON.parse(result.content || '{}')
+  } catch {
+    return {
+      progressSummary: result.content || 'Unable to parse insights.',
+      riskFlags: [],
+      recommendations: [],
+      trend: 'stable'
+    }
+  }
+}
+
 // Pain summary
 export async function generatePainSummary(scores: number[]) {
   const prompt = `You are a physiotherapy clinical analyst. Based on these pain scores over sessions, write a brief 3-4 sentence clinical summary of the patient's progress trend. Be professional and objective.

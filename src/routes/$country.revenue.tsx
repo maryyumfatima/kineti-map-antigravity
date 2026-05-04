@@ -50,9 +50,10 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   GBP: '£', PKR: '₨', AUD: 'A$', USD: '$', EUR: '€',
 }
 
-const fmt = (n: number, currency = 'GBP') => {
-  const locale = CURRENCY_LOCALES[currency] ?? 'en-GB'
-  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(n)
+const fmt = (n: number, currency?: string | null) => {
+  const c = currency || 'GBP'
+  const locale = CURRENCY_LOCALES[c] ?? 'en-GB'
+  return new Intl.NumberFormat(locale, { style: 'currency', currency: c }).format(n)
 }
 
 const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
@@ -260,7 +261,7 @@ function RevenuePage() {
                           : '—'}
                       </td>
                       <td className="p-4 font-semibold text-text">
-                        {fmt(row.amount, row.currency)}
+                        {fmt(row.amount, row.currency || clinicCurrency)}
                       </td>
                       <td className="p-4 text-right">
                         <button
@@ -291,7 +292,7 @@ function RevenuePage() {
                 <XAxis dataKey="type" tick={{ fontSize: 12, fill: '#2C1A12', opacity: 0.6 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 12, fill: '#2C1A12', opacity: 0.6 }} axisLine={false} tickLine={false} tickFormatter={v => `${CURRENCY_SYMBOLS[clinicCurrency] ?? '£'}${v}`} />
                 <Tooltip
-                  formatter={(v: any) => v !== undefined ? [v.toString(), ''] : ['', '']}
+                  formatter={(v: any) => v !== undefined ? [fmt(v as number, clinicCurrency), ''] : ['', '']}
                   contentStyle={{ borderRadius: 8, borderColor: '#E0EEF0', fontSize: 13 }}
                 />
                 <Bar dataKey="total" fill="#006D77" radius={[6, 6, 0, 0]} />

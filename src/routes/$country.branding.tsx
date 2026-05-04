@@ -65,6 +65,7 @@ const currencySymbol = (code: string) =>
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 function BrandingPage() {
+  const { country } = Route.useParams()
   const [form, setForm] = useState<ClinicForm>(DEFAULT_FORM)
   const [clinicId, setClinicId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -348,6 +349,7 @@ function BrandingPage() {
                     value={form.whatsapp_number}
                     onChange={v => set('whatsapp_number', v)}
                     placeholder="+447700900000"
+                    defaultCountry={country ? country.toUpperCase() : 'GB'}
                     className="w-full px-3 py-1.5 rounded-lg border border-border focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary outline-none text-sm bg-white"
                   />
                   <p className="text-xs text-text/40 mt-1">E.164 format — include country code</p>
@@ -371,6 +373,7 @@ function BrandingPage() {
                         value={form.contact_phone}
                         onChange={v => set('contact_phone', v)}
                         placeholder="+441234567890"
+                        defaultCountry={country ? country.toUpperCase() : 'GB'}
                         className="w-full px-3 py-1.5 rounded-lg border border-border focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary outline-none text-sm bg-white"
                       />
                     </div>

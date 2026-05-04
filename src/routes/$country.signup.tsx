@@ -278,6 +278,7 @@ function Signup() {
                 onChange={set('whatsapp')} 
                 onCountryChange={c => setForm(prev => ({ ...prev, country: c || 'Unknown' }))}
                 placeholder="WhatsApp number"
+                defaultCountry={country ? country.toUpperCase() : 'GB'}
                 className="w-full bg-[#F7F9FA] focus-within:bg-[#EDF6F9] px-[14px] rounded-[10px] h-[45px] transition-colors box-border"
               />
               <p style={{ fontSize: '11px', color: '#bbb', margin: '4px 0 0 4px' }}>WhatsApp number for verification</p>

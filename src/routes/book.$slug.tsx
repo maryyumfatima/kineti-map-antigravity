@@ -21,6 +21,32 @@ function calculateAge(dob: string) {
 
 import { PhoneInput } from '../components/PhoneInput'
 
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const DEMO_CLINIC = {
+  id: 'demo-clinic-id',
+  name: 'Demo Physio Clinic',
+  slug: 'demo',
+  bio: 'This is a demo booking page. Experience how your patients will book appointments.',
+  brand_color: '#006D77',
+  secondary_color: '#D9B29C',
+  text_color: '#2C1A12',
+  appointment_price: '60',
+  currency: '£',
+  timezone: 'Europe/London',
+  country: 'United Kingdom',
+  booking_page_mode: 'open',
+  logo_url: 'https://images.unsplash.com/photo-1629909613654-2871b88673dd?auto=format&fit=crop&q=80&w=200&h=200'
+}
+
+const DEMO_SLOTS = [
+  { day_of_week: 1, start_time: '09:00', end_time: '17:00', slot_duration_minutes: 60 },
+  { day_of_week: 2, start_time: '09:00', end_time: '17:00', slot_duration_minutes: 60 },
+  { day_of_week: 3, start_time: '09:00', end_time: '17:00', slot_duration_minutes: 60 },
+  { day_of_week: 4, start_time: '09:00', end_time: '17:00', slot_duration_minutes: 60 },
+  { day_of_week: 5, start_time: '09:00', end_time: '17:00', slot_duration_minutes: 60 },
+]
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 function BookingPage() {
@@ -76,6 +102,13 @@ function BookingPage() {
 
   const fetchClinic = async () => {
     try {
+      if (isDemo) {
+        setClinic(DEMO_CLINIC)
+        generateAllSlots(DEMO_SLOTS, [], DEMO_CLINIC)
+        setLoading(false)
+        return
+      }
+
       const { data: clinicData } = await supabase
         .from('clinics')
         .select('*')
@@ -105,7 +138,6 @@ function BookingPage() {
   const generateAllSlots = (avail: any[], currentBookings: any[], clinicData: any) => {
     const slots: any[] = []
     const bookedTimes = new Set(currentBookings.map(b => b.appointment_time))
-    const timezone = getClinicTimezone(clinicData.country, clinicData.timezone)
 
     // Generate for next 14 days
     for (let i = 0; i < 14; i++) {
@@ -219,9 +251,9 @@ function BookingPage() {
 
       // 5. Insert Consents
       const consents = [
-        { patient_id: patient.id, consent_type: 'data_processing', granted: consent1 },
-        { patient_id: patient.id, consent_type: 'whatsapp_reminders', granted: consent2 },
-        { patient_id: patient.id, consent_type: 'marketing', granted: consent3 },
+        { patient_id: patientId, consent_type: 'data_processing', granted: consent1 },
+        { patient_id: patientId, consent_type: 'whatsapp_reminders', granted: consent2 },
+        { patient_id: patientId, consent_type: 'marketing', granted: consent3 },
       ]
       const { error: consentErr } = await supabase.from('consent_records').insert(consents)
       if (consentErr) throw consentErr
@@ -341,6 +373,7 @@ function BookingPage() {
                   value={whatsapp}
                   onChange={setWhatsapp}
                   placeholder="+447700900000"
+                  defaultCountry={clinic?.country ? clinic.country.toUpperCase() : 'GB'}
                   className="w-full px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 focus-within:ring-primary/50 focus-within:border-primary transition-colors text-sm"
                 />
               </div>
@@ -368,6 +401,7 @@ function BookingPage() {
                       value={guardianWhatsapp}
                       onChange={setGuardianWhatsapp}
                       placeholder="+447700900000"
+                      defaultCountry={clinic?.country ? clinic.country.toUpperCase() : 'GB'}
                       className="w-full px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 focus-within:ring-primary/50 focus-within:border-primary transition-colors text-sm bg-white"
                     />
                   </div>
