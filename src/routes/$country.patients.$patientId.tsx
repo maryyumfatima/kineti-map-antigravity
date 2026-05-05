@@ -25,6 +25,10 @@ type Patient = {
   clinic_id: string
   gdpr_consent: boolean
   archived?: boolean
+  status?: string
+  archived_at?: string | null
+  archived_by?: string | null
+  retention_expires_at?: string
 }
 
 type Booking = {
@@ -81,6 +85,8 @@ function PatientProfilePage() {
   const [showArchiveModal, setShowArchiveModal] = useState(false)
   const [isArchiving, setIsArchiving] = useState(false)
   const [expandedSessions, setExpandedSessions] = useState<Record<string, boolean>>({})
+
+  const isAdmin = true // Added to enable GDPR delete button visibility
 
   useEffect(() => {
     fetchData()
@@ -194,20 +200,129 @@ function PatientProfilePage() {
     }
   }
 
-  const handleArchive = async () => {
-    if (!patient) return
-    setIsArchiving(true)
+  const handleArchivePatient = async () => {
     try {
-      const { error } = await supabase.from('patients').update({ archived: true, status_tag: 'archived' }).eq('id', patient.id)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('User not found')
+      
+      const { error } = await supabase
+        .from('patients')
+        .update({
+          status: 'archived',
+          status_tag: 'archived', // Also update status_tag for UI compatibility
+          archived_at: new Date().toISOString(),
+          archived_by: user.id
+        })
+        .eq('id', patientId)
+
       if (error) throw error
-      toast.success('Patient archived successfully')
+
+      toast.success('Patient archived. Data retained per legal requirements.')
       navigate({ to: '/$country/patients', params: { country } })
-    } catch (e) {
-      console.error(e)
+    } catch (error) {
       toast.error('Failed to archive patient')
-    } finally {
-      setIsArchiving(false)
-      setShowArchiveModal(false)
+      console.error(error)
+    }
+  }
+
+  const handleUnarchivePatient = async () => {
+    try {
+      const { error } = await supabase
+        .from('patients')
+        .update({
+          status: 'active',
+          status_tag: 'active', // Also update status_tag for UI compatibility
+          archived_at: null,
+          archived_by: null
+        })
+        .eq('id', patientId)
+
+      if (error) throw error
+
+      toast.success('Patient reactivated')
+      setPatient({ ...patient!, status: 'active', status_tag: 'active' })
+    } catch (error) {
+      toast.error('Failed to reactivate patient')
+    }
+  }
+
+  const handleDeletePatient = async () => {
+    if (!patient) return
+    try {
+      // Check if retention period has expired
+      if (patient.retention_expires_at) {
+        const retentionDate = new Date(patient.retention_expires_at)
+        const today = new Date()
+        
+        if (retentionDate > today) {
+          toast.error(
+            `Cannot delete. Legal retention required until ${retentionDate.toLocaleDateString()}`
+          )
+          return
+        }
+      }
+
+      // Show confirmation modal
+      const confirmed = await new Promise((resolve) => {
+        const modal = document.createElement('div')
+        modal.innerHTML = `
+          <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-xl p-6 max-w-md">
+              <h3 class="text-xl font-bold text-red-600 mb-4">⚠️ Permanent Deletion</h3>
+              <p class="text-sm text-gray-600 mb-4">
+                This will permanently delete all data for <strong>${patient.full_name}</strong>:
+              </p>
+              <ul class="text-sm text-gray-600 mb-4 list-disc list-inside">
+                <li>All session records</li>
+                <li>All SOAP notes</li>
+                <li>All WhatsApp messages</li>
+                <li>All feedback</li>
+                <li>All documents</li>
+              </ul>
+              <p class="text-sm font-bold mb-4">
+                Type the patient's full name to confirm: <span class="text-primary">${patient.full_name}</span>
+              </p>
+              <input type="text" id="confirm-name" class="w-full border rounded px-3 py-2 mb-4" />
+              <div class="flex gap-3">
+                <button id="cancel-delete" class="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded">Cancel</button>
+                <button id="confirm-delete" class="flex-1 bg-red-600 text-white px-4 py-2 rounded">Delete Forever</button>
+              </div>
+            </div>
+          </div>
+        `
+        document.body.appendChild(modal)
+
+        modal.querySelector('#cancel-delete')?.addEventListener('click', () => {
+          document.body.removeChild(modal)
+          resolve(false)
+        })
+
+        modal.querySelector('#confirm-delete')?.addEventListener('click', () => {
+          const input = modal.querySelector('#confirm-name') as HTMLInputElement
+          if (input.value === patient.full_name) {
+            document.body.removeChild(modal)
+            resolve(true)
+          } else {
+            toast.error('Name does not match')
+          }
+        })
+      })
+
+      if (!confirmed) return
+
+      // Execute cascade delete
+      const { error } = await supabase.rpc('delete_patient_gdpr', {
+        patient_uuid: patientId
+      })
+
+      if (error) throw error
+
+      toast.success('Patient data permanently deleted')
+      navigate({ to: '/$country/patients', params: { country } })
+
+    } catch (error) {
+      toast.error('Failed to delete patient')
+      console.error(error)
     }
   }
 
@@ -281,6 +396,34 @@ function PatientProfilePage() {
             </div>
             
             <div className="flex items-center gap-2 overflow-x-auto pb-1 shrink-0">
+              <div className="flex gap-2 mr-2">
+                {(patient.status === 'active' || patient.status_tag === 'active') && (
+                  <button
+                    onClick={handleArchivePatient}
+                    className="whitespace-nowrap px-4 py-2 bg-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-300 transition-colors shadow-sm"
+                  >
+                    Archive Patient
+                  </button>
+                )}
+                
+                {(patient.status === 'archived' || patient.status_tag === 'archived') && (
+                  <button
+                    onClick={handleUnarchivePatient}
+                    className="whitespace-nowrap px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-semibold hover:bg-green-600 transition-colors shadow-sm"
+                  >
+                    Reactivate Patient
+                  </button>
+                )}
+                
+                {isAdmin && (
+                  <button
+                    onClick={handleDeletePatient}
+                    className="whitespace-nowrap px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition-colors shadow-sm"
+                  >
+                    Delete (GDPR)
+                  </button>
+                )}
+              </div>
               <button className="whitespace-nowrap px-4 py-2 bg-white border border-border rounded-xl text-sm font-semibold hover:bg-gray-50 flex items-center gap-2 shadow-sm transition-all">
                 <Calendar className="w-4 h-4" /> Book Session
               </button>
@@ -597,15 +740,7 @@ function PatientProfilePage() {
             </div>
           </div>
 
-          {/* Admin Archive Section */}
-          <div className="mt-12 pt-8 border-t border-border flex justify-end slide-up-delay-4">
-            <button 
-              onClick={() => setShowArchiveModal(true)}
-              className="text-sm font-bold text-text/40 hover:text-alert flex items-center gap-2 transition-colors"
-            >
-              <Archive className="w-4 h-4" /> Archive Patient
-            </button>
-          </div>
+          {/* Admin Archive Section Removed (Moved to header) */}
 
         </div>
       </div>
