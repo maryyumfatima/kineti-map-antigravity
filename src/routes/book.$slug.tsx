@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 import { Check, AlertCircle } from 'lucide-react'
 import { BodyMap } from '../components/BodyMap'
-import { formatLocalTime, toUtcString, getClinicTimezone, getTimezoneAbbr } from '../lib/date'
+import { formatLocalTime, toUtcString, getTimezoneAbbr } from '../lib/date'
 
 export const Route = createFileRoute('/book/$slug')({
   component: BookingPage,
