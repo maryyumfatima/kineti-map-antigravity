@@ -94,7 +94,6 @@ function BookingPage() {
 
   // OTP
   const [otpCode, setOtpCode] = useState('')
-  const [generatedOtp, setGeneratedOtp] = useState('')
 
   useEffect(() => {
     fetchClinic()
@@ -259,16 +258,19 @@ function BookingPage() {
       if (consentErr) throw consentErr
 
       // 6. Generate OTP
-      const code = Math.floor(100000 + Math.random() * 900000).toString()
-      const { error: otpErr } = await supabase.from('otp_codes').insert({
-        phone_number: fullWhatsapp,
-        code
+      const { data: otpData, error: otpErr } = await supabase.rpc('request_otp', {
+        p_phone_number: fullWhatsapp,
       })
       if (otpErr) throw otpErr
+      if (!otpData.success) {
+        throw new Error(otpData.error)
+      }
 
-      setGeneratedOtp(code)
-      console.log('OTP CODE:', code)
-      toast.success(`[TEST MODE] OTP Code is: ${code}`, { duration: 8000 })
+      // In dev mode, data.code is provided for testing.
+      if (otpData.dev_mode && otpData.code) {
+        console.log('OTP CODE:', otpData.code)
+        toast.success(`[TEST MODE] OTP Code is: ${otpData.code}`, { duration: 8000 })
+      }
 
       setStep(7)
     } catch (err: any) {
@@ -280,10 +282,21 @@ function BookingPage() {
   }
 
   const verifyOtp = async () => {
-    if (otpCode === generatedOtp) {
+    try {
+      const fullWhatsapp = whatsapp.trim()
+      const { data, error } = await supabase.rpc('verify_otp', {
+        p_phone_number: fullWhatsapp,
+        p_code: otpCode,
+      })
+      
+      if (error) throw error
+      if (!data.success) {
+        throw new Error(data.error)
+      }
+      
       setStep(8)
-    } else {
-      toast.error('Invalid OTP code')
+    } catch (err: any) {
+      toast.error(err.message || 'Invalid OTP code')
     }
   }
 
