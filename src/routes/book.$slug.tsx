@@ -386,7 +386,7 @@ function BookingPage() {
                   value={whatsapp}
                   onChange={setWhatsapp}
                   placeholder="+447700900000"
-                  defaultCountry={clinic?.country ? clinic.country.toUpperCase() : 'GB'}
+                  defaultCountry="GB"
                   className="w-full px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 focus-within:ring-primary/50 focus-within:border-primary transition-colors text-sm"
                 />
               </div>
@@ -414,7 +414,7 @@ function BookingPage() {
                       value={guardianWhatsapp}
                       onChange={setGuardianWhatsapp}
                       placeholder="+447700900000"
-                      defaultCountry={clinic?.country ? clinic.country.toUpperCase() : 'GB'}
+                      defaultCountry="GB"
                       className="w-full px-4 py-2 rounded-xl border border-gray-200 bg-gray-50 focus-within:ring-primary/50 focus-within:border-primary transition-colors text-sm bg-white"
                     />
                   </div>

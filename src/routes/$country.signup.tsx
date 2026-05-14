@@ -138,10 +138,18 @@ function LeftPanel() {
 
 // ─── Signup page ──────────────────────────────────────────────────────────────
 
+const COUNTRY_MAP: Record<string, { iso: string; currency: string; timezone: string }> = {
+  uk: { iso: 'GB', currency: 'GBP', timezone: 'Europe/London' },
+  pk: { iso: 'PK', currency: 'PKR', timezone: 'Asia/Karachi' },
+  au: { iso: 'AU', currency: 'AUD', timezone: 'Australia/Sydney' },
+}
+
+const getCountryData = (c: string) => COUNTRY_MAP[c?.toLowerCase()] || COUNTRY_MAP.uk
+
 function Signup() {
   const [form, setForm] = useState({
     fullName: '', clinicName: '', email: '', password: '',
-    country: 'GB', whatsapp: '',
+    whatsapp: '',
   })
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -177,6 +185,8 @@ function Signup() {
       return
     }
 
+    const countryData = getCountryData(country)
+
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
@@ -184,7 +194,9 @@ function Signup() {
         data: {
           full_name: form.fullName,
           clinic_name: form.clinicName,
-          country: form.country,
+          country: countryData.iso,
+          currency: countryData.currency,
+          timezone: countryData.timezone,
           whatsapp_number: form.whatsapp,
         },
       },
@@ -276,9 +288,8 @@ function Signup() {
               <PhoneInput 
                 value={form.whatsapp} 
                 onChange={set('whatsapp')} 
-                onCountryChange={c => setForm(prev => ({ ...prev, country: c || 'Unknown' }))}
                 placeholder="WhatsApp number"
-                defaultCountry={country ? country.toUpperCase() : 'GB'}
+                defaultCountry={getCountryData(country).iso as any}
                 className="w-full bg-[#F7F9FA] focus-within:bg-[#EDF6F9] px-[14px] rounded-[10px] h-[45px] transition-colors box-border"
               />
               <p style={{ fontSize: '11px', color: '#bbb', margin: '4px 0 0 4px' }}>WhatsApp number for verification</p>

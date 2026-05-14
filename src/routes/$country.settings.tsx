@@ -254,14 +254,6 @@ function SettingsPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className={labelCls}>Country</label>
-                <select value={country} onChange={e => setCountry(e.target.value)} className={inputCls}>
-                  {['United Kingdom', 'Australia', 'Germany', 'France', 'Netherlands', 'Pakistan', 'Other'].map(c => (
-                    <option key={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
                 <label className={labelCls}>Timezone</label>
                 <select value={timezone} onChange={e => setTimezone(e.target.value)} className={inputCls}>
                   {['Europe/London', 'Australia/Sydney', 'Europe/Berlin', 'Europe/Paris', 'Asia/Karachi', 'UTC'].map(tz => (
@@ -272,12 +264,12 @@ function SettingsPage() {
                   Current: {timezone} ({getTimezoneAbbr(countryCode, new Date(), timezone)})
                 </p>
               </div>
-            </div>
-            <div>
-              <label className={labelCls}>Number of practitioners</label>
-              <select value={numPractitioners} onChange={e => setNumPractitioners(e.target.value)} className={`${inputCls} max-w-xs`}>
-                {['1', '2', '3', '4', '5+'].map(n => <option key={n}>{n}</option>)}
-              </select>
+              <div>
+                <label className={labelCls}>Number of practitioners</label>
+                <select value={numPractitioners} onChange={e => setNumPractitioners(e.target.value)} className={inputCls}>
+                  {['1', '2', '3', '4', '5+'].map(n => <option key={n}>{n}</option>)}
+                </select>
+              </div>
             </div>
             <button onClick={handleSaveClinic} disabled={savingClinic} className={saveBtnCls}>
               {savingClinic ? 'Saving…' : 'Save Clinic'}

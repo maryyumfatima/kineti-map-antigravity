@@ -31,13 +31,7 @@ type ClinicForm = {
   website_url: string
 }
 
-const CURRENCIES = [
-  { code: 'GBP', symbol: '£', label: 'GBP (£)' },
-  { code: 'AUD', symbol: 'A$', label: 'AUD ($)' },
-  { code: 'EUR', symbol: '€', label: 'EUR (€)' },
-  { code: 'PKR', symbol: '₨', label: 'PKR (₨)' },
-  { code: 'USD', symbol: '$', label: 'USD ($)' },
-]
+// Removed CURRENCIES array for UK-only launch
 
 const DURATIONS = [30, 45, 60, 90]
 
@@ -59,8 +53,7 @@ const DEFAULT_FORM: ClinicForm = {
   website_url: '',
 }
 
-const currencySymbol = (code: string) =>
-  CURRENCIES.find(c => c.code === code)?.symbol ?? '£'
+// currencySymbol removed
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -349,7 +342,7 @@ function BrandingPage() {
                     value={form.whatsapp_number}
                     onChange={v => set('whatsapp_number', v)}
                     placeholder="+447700900000"
-                    defaultCountry={country ? country.toUpperCase() : 'GB'}
+                    defaultCountry="GB"
                     className="w-full px-3 py-1.5 rounded-lg border border-border focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary outline-none text-sm bg-white"
                   />
                   <p className="text-xs text-text/40 mt-1">E.164 format — include country code</p>
@@ -373,7 +366,7 @@ function BrandingPage() {
                         value={form.contact_phone}
                         onChange={v => set('contact_phone', v)}
                         placeholder="+441234567890"
-                        defaultCountry={country ? country.toUpperCase() : 'GB'}
+                        defaultCountry="GB"
                         className="w-full px-3 py-1.5 rounded-lg border border-border focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary outline-none text-sm bg-white"
                       />
                     </div>
@@ -484,7 +477,7 @@ function BrandingPage() {
                     <label className={labelClass}>Appointment price</label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text/50">
-                        {currencySymbol(form.currency)}
+                        £
                       </span>
                       <input
                         type="number" min="0" step="0.01" value={form.appointment_price}
@@ -493,12 +486,7 @@ function BrandingPage() {
                       />
                     </div>
                   </div>
-                  <div>
-                    <label className={labelClass}>Currency</label>
-                    <select value={form.currency} onChange={e => set('currency', e.target.value)} className={inputClass}>
-                      {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
-                    </select>
-                  </div>
+                  {/* Currency selector removed for UK-only launch */}
                 </div>
                 <div>
                   <label className={labelClass}>Default slot duration</label>
@@ -620,7 +608,7 @@ function BrandingPage() {
                     {form.appointment_price && (
                       <div className="flex justify-center">
                         <span className="text-xs font-semibold px-3 py-1 rounded-full text-white" style={{ backgroundColor: form.brand_color }}>
-                          {currencySymbol(form.currency)}{form.appointment_price} · {form.default_slot_duration} min
+                          {new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(Number(form.appointment_price))} · {form.default_slot_duration} min
                         </span>
                       </div>
                     )}
