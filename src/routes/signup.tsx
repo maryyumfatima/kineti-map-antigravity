@@ -5,7 +5,7 @@ import { Mail, Lock, User, Building2, Eye, EyeOff, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { PhoneInput } from '../components/PhoneInput'
 
-export const Route = createFileRoute('/$country/signup')({
+export const Route = createFileRoute('/signup')({
   component: Signup,
 })
 
@@ -152,7 +152,7 @@ function Signup() {
   const [loading, setLoading] = useState(false)
   const [shaking, setShaking] = useState(false)
   const navigate = useNavigate()
-  const { country } = useParams({ strict: false }) as { country: string }
+  const { country } = useParams({ strict: false }) as { }
 
   const set = (key: keyof typeof form) => (val: string) =>
     setForm(prev => ({ ...prev, [key]: val }))
@@ -190,7 +190,6 @@ function Signup() {
         data: {
           full_name: form.fullName,
           clinic_name: form.clinicName,
-          country: countryData.iso,
           currency: countryData.currency,
           timezone: countryData.timezone,
           whatsapp_number: form.whatsapp,
@@ -206,7 +205,7 @@ function Signup() {
         toast.error('An account with this email already exists. Please sign in instead.', {
           action: {
             label: 'Sign in →',
-            onClick: () => navigate({ to: '/$country/login', params: { country } as any })
+            onClick: () => navigate({ to: '/login' })
           }
         })
         return
@@ -214,7 +213,7 @@ function Signup() {
       setError(signUpError.message)
       return 
     }
-    if (data.session) navigate({ to: '/$country/onboarding', params: { country } as any })
+    if (data.session) navigate({ to: '/onboarding' })
     else { setSuccess(true); setLoading(false) }
   }
 
@@ -233,7 +232,7 @@ function Signup() {
                 We sent a confirmation link to <strong style={{ color: '#2C1A12' }}>{form.email}</strong>.
                 Click it to activate your account.
               </p>
-              <Link to="/$country/login" params={{ country } as any} style={{ display: 'block', marginTop: '20px', color: '#006D77', fontSize: '13px', textDecoration: 'none', fontWeight: 500 }}>
+              <Link to="/login"  style={{ display: 'block', marginTop: '20px', color: '#006D77', fontSize: '13px', textDecoration: 'none', fontWeight: 500 }}>
                 ← Back to Sign In
               </Link>
             </div>
@@ -303,7 +302,7 @@ function Signup() {
 
           <p style={{ textAlign: 'center', fontSize: '13px', color: '#888', marginTop: '10px' }}>
             Already have an account?{' '}
-            <Link to="/$country/login" params={{ country } as any} style={{ color: '#006D77', fontWeight: 500, textDecoration: 'none' }}>Sign in →</Link>
+            <Link to="/login"  style={{ color: '#006D77', fontWeight: 500, textDecoration: 'none' }}>Sign in →</Link>
           </p>
         </div>
       </div>

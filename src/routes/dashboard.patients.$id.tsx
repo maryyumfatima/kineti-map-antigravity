@@ -13,7 +13,7 @@ import { exportPatientData, deletePatientData } from '../lib/gdpr'
 import { formatLocalTime, getTimezoneAbbr } from '../lib/date'
 import { sendFollowUpMessage, formatPhoneForWhatsApp } from '../lib/whatsapp-cloud'
 
-export const Route = createFileRoute('/$country/dashboard/patients/$id')({
+export const Route = createFileRoute('/dashboard/patients/$id')({
   component: PatientDetailPage,
 })
 
@@ -88,7 +88,7 @@ const getBookingStatusColor = (status: string) => {
 
 function PatientDetailPage() {
   const { id } = Route.useParams()
-  const { country } = useParams({ strict: false }) as { country: string }
+  const { country } = useParams({ strict: false }) as { }
   const [patient, setPatient] = useState<Patient | null>(null)
   const [bookings, setBookings] = useState<Booking[]>([])
   const [messages, setMessages] = useState<WhatsAppMessage[]>([])
@@ -259,7 +259,7 @@ function PatientDetailPage() {
     const result = await deletePatientData(patient.id, clinicId, user?.id || 'unknown')
     if (result.success) {
       toast.success('Patient completely removed from system.')
-      navigate({ to: '/$country/patients', params: { country } as any })
+      navigate({ to: '/patients' })
     } else {
       toast.error(`Deletion failed: ${result.error}`)
       setIsDeleting(false)
@@ -280,7 +280,7 @@ function PatientDetailPage() {
         <div className="flex flex-col items-center justify-center h-64 text-text/50">
           <AlertCircle className="w-12 h-12 mb-4 opacity-20" />
           <p className="font-medium">Patient not found.</p>
-          <Link to="/$country/patients" params={{ country } as any} className="mt-4 text-primary hover:underline text-sm font-medium">Back to Patients</Link>
+          <Link to="/patients"  className="mt-4 text-primary hover:underline text-sm font-medium">Back to Patients</Link>
         </div>
       </DashboardLayout>
     )
@@ -306,8 +306,8 @@ function PatientDetailPage() {
             </div>
           </div>
           <Link 
-            to="/$country/patients" 
-            params={{ country } as any}
+            to="/patients" 
+            
           >
             <ChevronRight className="w-4 h-4 rotate-180" />
             Back to Patients

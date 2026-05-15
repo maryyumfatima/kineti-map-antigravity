@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { Star } from 'lucide-react'
 import { formatLocalTime } from '../lib/date'
 
-export const Route = createFileRoute('/$country/feedback')({
+export const Route = createFileRoute('/feedback')({
   component: FeedbackPage,
 })
 
@@ -37,7 +37,7 @@ function avgColor(avg: number) {
 }
 
 function FeedbackPage() {
-  const { country } = useParams({ strict: false }) as { country: string }
+  const { country } = useParams({ strict: false }) as { }
   const [rows, setRows] = useState<FeedbackRow[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<Filter>('All')

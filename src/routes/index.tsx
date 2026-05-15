@@ -33,8 +33,7 @@ export const Route = createFileRoute('/')({
   beforeLoad: async () => {
     const country = await detectCountry()
     throw redirect({
-      to: '/$country/login',
-      params: { country } as any,
+      to: '/login',
     })
   },
   component: () => null,

@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { Copy, Upload, Check, Building2, Eye, EyeOff } from 'lucide-react'
 import { PhoneInput } from '../components/PhoneInput'
 
-export const Route = createFileRoute('/$country/branding')({
+export const Route = createFileRoute('/branding')({
   component: BrandingPage,
 })
 

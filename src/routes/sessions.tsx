@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { Calendar, Plus, X } from 'lucide-react'
 import { formatLocalTime, toUtcString, getTimezoneAbbr } from '../lib/date'
 
-export const Route = createFileRoute('/$country/sessions')({
+export const Route = createFileRoute('/sessions')({
   component: SessionsPage,
 })
 
@@ -57,7 +57,7 @@ const statusLabels: Record<string, string> = {
 }
 
 function SessionsPage() {
-  const { country } = useParams({ strict: false }) as { country: string }
+  const { country } = useParams({ strict: false }) as { }
   const [bookings, setBookings] = useState<Booking[]>([])
   const [patients, setPatients] = useState<Patient[]>([])
   const [loading, setLoading] = useState(true)

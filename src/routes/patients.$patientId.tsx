@@ -9,7 +9,7 @@ import {
 import { formatLocalTime } from '../lib/date'
 import { generatePatientInsights } from '../lib/groq'
 
-export const Route = createFileRoute('/$country/patients/$patientId')({
+export const Route = createFileRoute('/patients/$patientId')({
   component: PatientProfilePage,
 })
 
@@ -62,7 +62,7 @@ type Message = {
 }
 
 function PatientProfilePage() {
-  const { country, patientId } = useParams({ strict: false }) as { country: string, patientId: string }
+  const { country, patientId } = useParams({ strict: false }) as { patientId: string }
   const navigate = useNavigate()
   
   const [patient, setPatient] = useState<Patient | null>(null)
@@ -218,7 +218,7 @@ function PatientProfilePage() {
       if (error) throw error
 
       toast.success('Patient archived. Data retained per legal requirements.')
-      navigate({ to: '/$country/patients', params: { country } })
+      navigate({ to: '/patients',  })
     } catch (error) {
       toast.error('Failed to archive patient')
       console.error(error)
@@ -318,7 +318,7 @@ function PatientProfilePage() {
       if (error) throw error
 
       toast.success('Patient data permanently deleted')
-      navigate({ to: '/$country/patients', params: { country } })
+      navigate({ to: '/patients',  })
 
     } catch (error) {
       toast.error('Failed to delete patient')
@@ -669,7 +669,7 @@ function PatientProfilePage() {
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text/30" />
                       <input type="text" placeholder="Search notes..." className="w-full pl-9 pr-4 py-2 border border-border rounded-xl text-sm outline-none focus:border-primary" />
                     </div>
-                    <Link to="/$country/ai/soap-notes" params={{ country } as any} className="btn-premium bg-primary text-white text-sm flex items-center gap-2">
+                    <Link to="/ai/soap-notes"  className="btn-premium bg-primary text-white text-sm flex items-center gap-2">
                       <Plus className="w-4 h-4" /> New Note
                     </Link>
                   </div>

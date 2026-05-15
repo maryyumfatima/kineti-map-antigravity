@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import { formatLocalTime, getTimezoneAbbr, toUtcString } from '../lib/date'
 
-export const Route = createFileRoute('/$country/dashboard')({
+export const Route = createFileRoute('/dashboard')({
   component: Dashboard,
 })
 
@@ -44,7 +44,7 @@ function StatCard({ title, value, icon: Icon, color = 'text-primary', loading }:
 }
 
 function Dashboard() {
-  const { country } = useParams({ strict: false }) as { country: string }
+  const { country } = useParams({ strict: false }) as { }
   const [loading, setLoading] = useState(true)
 
   // Stats

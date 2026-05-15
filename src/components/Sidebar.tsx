@@ -40,7 +40,7 @@ interface SidebarProps {
 export function Sidebar({ collapsed, onToggleCollapsed, mobileOpen, onMobileClose }: SidebarProps) {
   const [email, setEmail] = useState<string | null>(null)
   const router = useRouter()
-  const { country } = useParams({ strict: false }) as { country: string }
+  const { country } = useParams({ strict: false }) as { }
 
   useEffect(() => {
     const getUser = async () => {
@@ -54,7 +54,7 @@ export function Sidebar({ collapsed, onToggleCollapsed, mobileOpen, onMobileClos
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
-    router.navigate({ to: '/$country/login', params: { country } })
+    router.navigate({ to: '/login',  })
   }
 
   // Width classes based on state

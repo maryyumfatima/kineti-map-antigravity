@@ -23,7 +23,7 @@ import {
 import { formatLocalTime } from '../lib/date'
 import { generateSoapNoteFromAudio } from '../lib/groq'
 
-export const Route = createFileRoute('/$country/ai/soap-notes')({
+export const Route = createFileRoute('/ai/soap-notes')({
   component: AISoapNotesPage,
 })
 
@@ -109,7 +109,7 @@ function InstructionBanner() {
 }
 
 function PreviousNotesSidebar({ notes, loading, timezone }: { notes: PreviousNote[], loading: boolean, timezone: string }) {
-  const { country } = useParams({ strict: false }) as { country: string }
+  const { country } = useParams({ strict: false }) as { }
   return (
     <div className="space-y-4 mb-6">
       <div className="flex items-center justify-between">
@@ -153,7 +153,7 @@ function PreviousNotesSidebar({ notes, loading, timezone }: { notes: PreviousNot
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 function AISoapNotesPage() {
-  const { country } = useParams({ strict: false }) as { country: string }
+  const { country } = useParams({ strict: false }) as { }
   const navigate = useNavigate()
   
   // State
@@ -529,7 +529,7 @@ function AISoapNotesPage() {
         action: {
           label: 'View Profile',
           onClick: () => navigate({ 
-            to: '/$country/patients/$patientId', 
+            to: '/patients/$patientId', 
             params: { country, patientId: selectedPatientId } as any 
           })
         }

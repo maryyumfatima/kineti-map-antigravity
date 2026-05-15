@@ -9,7 +9,7 @@ import {
   Download, FileText, LogOut, Trash2
 } from 'lucide-react'
 
-export const Route = createFileRoute('/$country/settings')({
+export const Route = createFileRoute('/settings')({
   component: SettingsPage,
 })
 
@@ -61,7 +61,7 @@ function SectionTitle({ children, badge }: { children: React.ReactNode; badge?: 
 
 function SettingsPage() {
   const navigate = useNavigate()
-  const { country: countryCode } = useParams({ strict: false }) as { country: string }
+  const { } = useParams({ strict: false }) as { }
 
   // Auth / clinic state
 
@@ -200,7 +200,7 @@ function SettingsPage() {
   // ── Sign out all devices ────────────────────────────────────────────────────
   const handleSignOutAll = async () => {
     await supabase.auth.signOut()
-    navigate({ to: '/$country/login', params: { country: countryCode } as any })
+    navigate({ to: '/login', params: { } as any })
   }
 
   // ── Delete account ──────────────────────────────────────────────────────────
@@ -323,7 +323,7 @@ function SettingsPage() {
                   </div>
                 </div>
                 <div className="flex items-center justify-between border-t border-border pt-3">
-                  <Link to="/$country/billing" params={{ country: countryCode } as any} className="text-xs text-primary hover:underline font-medium">Upgrade to unlock →</Link>
+                  <Link to="/billing" params={{ } as any} className="text-xs text-primary hover:underline font-medium">Upgrade to unlock →</Link>
                   <Toggle checked={false} onChange={() => {}} disabled />
                 </div>
               </div>
@@ -371,15 +371,15 @@ function SettingsPage() {
             </p>
             <div className="flex flex-wrap gap-3">
               <Link
-                to="/$country/patients"
-                params={{ country: countryCode } as any}
+                to="/patients"
+                params={{ } as any}
                 className="flex items-center gap-2 border border-border text-text text-sm font-medium px-4 py-2 rounded-lg hover:bg-background transition-colors"
               >
                 <Download className="w-4 h-4" /> Export Patient Data
               </Link>
               <Link
-                to="/$country/patients"
-                params={{ country: countryCode } as any}
+                to="/patients"
+                params={{ } as any}
                 className="flex items-center gap-2 border border-alert/20 text-alert bg-alert/5 text-sm font-medium px-4 py-2 rounded-lg hover:bg-alert hover:text-white transition-colors"
               >
                 <Trash2 className="w-4 h-4" /> Delete Patient (GDPR)

@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 import { Check, Minus, AlertTriangle, ShieldCheck, MessageCircle, Users, Calendar, X, ChevronDown, Sparkles } from 'lucide-react'
 
-export const Route = createFileRoute('/$country/billing')({
+export const Route = createFileRoute('/billing')({
   component: BillingPage,
 })
 
@@ -35,7 +35,7 @@ const REGIONS: Record<string, RegionInfo> = {
   gb: { currency: 'GBP', countryCode: 'GB', label: 'United Kingdom', flag: '🇬🇧' }
 }
 
-function getRegionFromParam(_country: string): RegionInfo {
+function getRegionFromParam(_): RegionInfo {
   return REGIONS.gb
 }
 
@@ -144,7 +144,7 @@ function FeatureTick({ yes }: { yes: boolean }) {
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 function BillingPage() {
-  const { country } = useParams({ strict: false }) as { country: string }
+  const { country } = useParams({ strict: false }) as { }
   const [clinic, setClinic] = useState<ClinicData | null>(null)
   const [clinicId, setClinicId] = useState<string | null>(null)
   const [sessionsThisMonth, setSessionsThisMonth] = useState(0)

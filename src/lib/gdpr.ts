@@ -1,6 +1,6 @@
 import { formatLocalTime } from './date'
 
-export async function exportPatientData(patientId: string, clinicId: string, country: string, clinicTimezone: string) {
+export async function exportPatientData(patientId: string, clinicId: string, clinicTimezone: string) {
   try {
     // 1. Fetch all patient data
     const { data: patient } = await supabase.from('patients').select('*').eq('id', patientId).single()

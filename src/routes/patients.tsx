@@ -8,7 +8,7 @@ import { formatLocalTime } from '../lib/date'
 import { PhoneInput } from '../components/PhoneInput'
 import { generatePainSummary } from '../lib/groq'
 
-export const Route = createFileRoute('/$country/patients')({
+export const Route = createFileRoute('/patients')({
   component: PatientsPage,
 })
 
@@ -29,7 +29,7 @@ type Patient = {
 // Removed PatientPhoneInput in favor of shared component
 
 function PatientsPage() {
-  const { country } = useParams({ strict: false }) as { country: string }
+  const { country } = useParams({ strict: false }) as { }
   const navigate = useNavigate()
   const [patients, setPatients] = useState<Patient[]>([])
   const [loading, setLoading] = useState(true)
@@ -557,7 +557,7 @@ function PatientsPage() {
                   {paginatedPatients.map((patient, idx) => (
                     <tr 
                       key={patient.id} 
-                      onClick={() => navigate({ to: '/$country/patients/$patientId', params: { country, patientId: patient.id } as any })}
+                      onClick={() => navigate({ to: '/patients/$patientId', params: { country, patientId: patient.id } as any })}
                       className={`
                         border-b border-border last:border-0 cursor-pointer group transition-all duration-300
                         ${idx % 2 === 0 ? 'bg-white' : 'bg-primary/[0.01]'}

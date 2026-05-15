@@ -7,7 +7,7 @@ import { Clock, Save, Plug, ChevronDown } from 'lucide-react'
 import { useRef } from 'react'
 import { formatLocalTime } from '../lib/date'
 
-export const Route = createFileRoute('/$country/availability')({
+export const Route = createFileRoute('/availability')({
   component: AvailabilityPage,
 })
 
@@ -131,7 +131,7 @@ const INTEGRATIONS: IntegrationCard[] = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 function AvailabilityPage() {
-  const { country } = useParams({ strict: false }) as { country: string }
+  const { country } = useParams({ strict: false }) as { }
   const navigate = useNavigate()
   const [schedule, setSchedule] = useState<WeeklySchedule>(DEFAULT_SCHEDULE)
   const [saving, setSaving] = useState(false)
@@ -392,7 +392,7 @@ function AvailabilityPage() {
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-text font-bricolage">Upcoming Appointments</h2>
             <button 
-              onClick={() => navigate({ to: '/$country/sessions', params: { country } as any })}
+              onClick={() => navigate({ to: '/sessions' })}
               className="text-sm font-bold text-primary hover:underline flex items-center gap-1"
             >
               View All <ChevronDown className="w-4 h-4 -rotate-90" />

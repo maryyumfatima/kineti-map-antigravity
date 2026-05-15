@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { Mail, Lock, Eye, EyeOff, Check } from 'lucide-react'
 
-export const Route = createFileRoute('/$country/login')({
+export const Route = createFileRoute('/login')({
   component: Login,
 })
 
@@ -153,7 +153,7 @@ function Login() {
     setLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) { setError(error.message); setLoading(false); triggerShake() }
-    else navigate({ to: '/$country/dashboard', params: { country } as any })
+    else navigate({ to: '/dashboard' })
   }
 
   return (
@@ -195,7 +195,7 @@ function Login() {
 
           <p style={{ textAlign: 'center', fontSize: '13px', color: '#888', marginTop: '20px' }}>
             Don't have an account?{' '}
-            <Link to="/$country/signup" params={{ country } as any} style={{ color: '#006D77', fontWeight: 500, textDecoration: 'none' }}>Sign up →</Link>
+            <Link to="/signup"  style={{ color: '#006D77', fontWeight: 500, textDecoration: 'none' }}>Sign up →</Link>
           </p>
         </div>
       </div>
