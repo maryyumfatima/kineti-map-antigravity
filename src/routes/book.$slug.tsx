@@ -32,9 +32,6 @@ const DEMO_CLINIC = {
   secondary_color: '#D9B29C',
   text_color: '#2C1A12',
   appointment_price: '60',
-  currency: '£',
-  timezone: 'Europe/London',
-  country: 'United Kingdom',
   booking_page_mode: 'open',
   logo_url: 'https://images.unsplash.com/photo-1629909613654-2871b88673dd?auto=format&fit=crop&q=80&w=200&h=200'
 }
@@ -168,14 +165,14 @@ function BookingPage() {
           const localDateTimeStr = `${year}-${month}-${day}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`
           
           // Convert local clinic time to UTC
-          const utcIso = toUtcString(localDateTimeStr, clinicData.country, clinicData.timezone)
+          const utcIso = toUtcString(localDateTimeStr, 'GB')
           
           // Only show future slots
           if (new Date(utcIso) > new Date()) {
             slots.push({
               iso: utcIso,
-              time: formatLocalTime(utcIso, clinicData.country, 'h:mm a', clinicData.timezone),
-              date: formatLocalTime(utcIso, clinicData.country, 'EEE, MMM d', clinicData.timezone),
+              time: formatLocalTime(utcIso, 'GB', 'h:mm a'),
+              date: formatLocalTime(utcIso, 'GB', 'EEE, MMM d'),
               dateKey: localDateTimeStr.split('T')[0],
               isBooked: bookedTimes.has(utcIso)
             })
@@ -501,7 +498,7 @@ function BookingPage() {
                     <div className="mt-4 p-4 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-between">
                       <span className="text-sm text-gray-500 font-medium">Appointment Price</span>
                       <span className="text-base font-bold text-gray-900">
-                        {clinic.currency || '£'}{clinic.appointment_price}
+                        £{clinic.appointment_price}
                       </span>
                     </div>
                   )}
@@ -671,10 +668,10 @@ function BookingPage() {
                 {selectedSlot && (
                   <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-100 inline-block">
                     <p className="text-sm font-bold text-gray-900">
-                      {formatLocalTime(selectedSlot, clinic.country, 'EEEE, MMMM d', clinic.timezone)}
+                      {formatLocalTime(selectedSlot, 'GB', 'EEEE, MMMM d')}
                     </p>
                     <p className="text-lg font-bold" style={{ color: brandColor }}>
-                      {formatLocalTime(selectedSlot, clinic.country, 'h:mm a', clinic.timezone)} {getTimezoneAbbr(clinic.country, new Date(selectedSlot), clinic.timezone)}
+                      {formatLocalTime(selectedSlot, 'GB', 'h:mm a')} {getTimezoneAbbr('GB', new Date(selectedSlot))}
                     </p>
                   </div>
                 )}

@@ -22,7 +22,7 @@ type ClinicData = {
 
 // ─── Currency / region detection ────────────────────────────────────────────
 
-type Currency = 'GBP' | 'PKR' | 'AUD'
+type Currency = 'GBP'
 
 type RegionInfo = {
   currency: Currency
@@ -32,13 +32,11 @@ type RegionInfo = {
 }
 
 const REGIONS: Record<string, RegionInfo> = {
-  gb: { currency: 'GBP', countryCode: 'GB', label: 'United Kingdom', flag: '🇬🇧' },
-  pk: { currency: 'PKR', countryCode: 'PK', label: 'Pakistan',       flag: '🇵🇰' },
-  au: { currency: 'AUD', countryCode: 'AU', label: 'Australia',      flag: '🇦🇺' },
+  gb: { currency: 'GBP', countryCode: 'GB', label: 'United Kingdom', flag: '🇬🇧' }
 }
 
-function getRegionFromParam(country: string): RegionInfo {
-  return REGIONS[country?.toLowerCase()] || REGIONS.gb
+function getRegionFromParam(_country: string): RegionInfo {
+  return REGIONS.gb
 }
 
 // ─── Plan table config ──────────────────────────────────────────────────────
@@ -47,7 +45,7 @@ const PLANS = [
   {
     id: 'essentials',
     name: 'Essentials',
-    price: { GBP: '£49', PKR: 'PKR 5,000', AUD: 'A$79' },
+    price: '£49',
     practitioners: '1',
     journeys: '300',
     aiSoap: '200 / mo',
@@ -61,7 +59,7 @@ const PLANS = [
   {
     id: 'growth',
     name: 'Growth',
-    price: { GBP: '£89', PKR: 'PKR 9,000', AUD: 'A$139' },
+    price: '£89',
     practitioners: '2–3',
     journeys: '1,000',
     aiSoap: '600 / mo',
@@ -75,7 +73,7 @@ const PLANS = [
   {
     id: 'scale',
     name: 'Scale',
-    price: { GBP: '£179', PKR: 'PKR 16,000', AUD: 'A$279' },
+    price: '£179',
     practitioners: 'Unlimited',
     journeys: '3,000',
     aiSoap: '1,500 / mo',
@@ -89,7 +87,7 @@ const PLANS = [
   {
     id: 'enterprise',
     name: 'Enterprise',
-    price: { GBP: 'Custom', PKR: 'Custom', AUD: 'Custom' },
+    price: 'Custom',
     practitioners: 'Unlimited',
     journeys: 'Unlimited',
     aiSoap: 'Custom',
@@ -103,17 +101,17 @@ const PLANS = [
 ]
 
 const AI_PACKS = [
-  { id: 'small',  label: 'Small Pack',  credits: 100, price: { GBP: '£8',  PKR: '700',   AUD: '15' } },
-  { id: 'medium', label: 'Medium Pack', credits: 300, price: { GBP: '£18', PKR: '1,500', AUD: '32' } },
-  { id: 'large',  label: 'Large Pack',  credits: 500, price: { GBP: '£25', PKR: '2,200', AUD: '45' } },
+  { id: 'small',  label: 'Small Pack',  credits: 100, price: '£8' },
+  { id: 'medium', label: 'Medium Pack', credits: 300, price: '£18' },
+  { id: 'large',  label: 'Large Pack',  credits: 500, price: '£25' },
 ]
 
-const PLAN_PRICES: Record<string, Record<Currency, string>> = {
-  essentials: { GBP: '£49/mo', PKR: 'PKR 5,000/mo', AUD: 'A$79/mo' },
-  growth:     { GBP: '£89/mo', PKR: 'PKR 9,000/mo', AUD: 'A$139/mo' },
-  scale:      { GBP: '£179/mo', PKR: 'PKR 16,000/mo', AUD: 'A$279/mo' },
-  enterprise: { GBP: 'Custom', PKR: 'Custom', AUD: 'Custom' },
-  trial:      { GBP: 'Free Trial', PKR: 'Free Trial', AUD: 'Free Trial' },
+const PLAN_PRICES: Record<string, string> = {
+  essentials: '£49/mo',
+  growth:     '£89/mo',
+  scale:      '£179/mo',
+  enterprise: 'Custom',
+  trial:      'Free Trial',
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -249,7 +247,7 @@ function BillingPage() {
 
   // Feature rows for comparison table
   const featureRows = [
-    { label: 'Price / month', values: PLANS.map(p => p.price[currency]) },
+    { label: 'Price / month', values: PLANS.map(p => p.price) },
     { label: 'Practitioners', values: PLANS.map(p => p.practitioners) },
     { label: 'WhatsApp Journeys', values: PLANS.map(p => p.journeys) },
     { label: 'AI SOAP Notes', values: PLANS.map(p => p.aiSoap) },
@@ -287,7 +285,7 @@ function BillingPage() {
                 )}
               </div>
               <p className="text-sm text-text/60">
-                {isTrial ? 'Your 14-day trial' : (PLAN_PRICES[plan]?.[currency] ?? '—')}
+                {isTrial ? 'Your 14-day trial' : (PLAN_PRICES[plan] ?? '—')}
               </p>
               <div className="mt-2">
                 <div className="inline-flex items-center gap-1.5 text-xs text-text/50">
@@ -405,7 +403,7 @@ function BillingPage() {
                 <div className="text-xs font-bold text-primary/60 uppercase tracking-wider mb-1">{pack.label}</div>
                 <div className="text-2xl font-bold text-text mb-4">+{pack.credits} Credits</div>
                 <div className="flex items-center justify-between">
-                  <span className="text-lg font-bold text-text/80">{pack.price[currency]} {currency}</span>
+                  <span className="text-lg font-bold text-text/80">{pack.price}</span>
                   <button className="bg-background hover:bg-primary hover:text-white border border-border group-hover:border-primary text-text px-4 py-1.5 rounded-lg text-sm font-bold transition-all">
                     Add Now
                   </button>
@@ -433,7 +431,7 @@ function BillingPage() {
                     <th key={p.id} className={`p-3 text-center ${plan === p.id ? 'border-x-2 border-t-2 border-primary rounded-t-lg bg-primary/5' : ''}`}>
                       <div className="font-bold text-text font-bricolage">{p.name}</div>
                       <div className={`text-xs font-normal mt-0.5 ${plan === p.id ? 'text-primary font-semibold' : 'text-text/50'}`}>
-                        {p.price[currency]}{p.id !== 'enterprise' ? '/mo' : ''}
+                        {p.price}{p.id !== 'enterprise' ? '/mo' : ''}
                       </div>
                       {plan === p.id && (
                         <span className="inline-block mt-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary text-white">Current</span>
@@ -515,9 +513,9 @@ function BillingPage() {
             </div>
             <div className="p-5 flex flex-col gap-3">
               {[
-                { id: 'essentials', label: 'Essentials', sub: `${PLAN_PRICES.essentials[currency]}` },
-                { id: 'growth', label: 'Growth', sub: `${PLAN_PRICES.growth[currency]}` },
-                { id: 'scale', label: 'Scale', sub: `${PLAN_PRICES.scale[currency]}` },
+                { id: 'essentials', label: 'Essentials', sub: PLAN_PRICES.essentials },
+                { id: 'growth', label: 'Growth', sub: PLAN_PRICES.growth },
+                { id: 'scale', label: 'Scale', sub: PLAN_PRICES.scale },
               ].map(p => (
                 <button
                   key={p.id}

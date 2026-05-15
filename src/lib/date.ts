@@ -1,14 +1,9 @@
 import { formatInTimeZone, toZonedTime, fromZonedTime } from 'date-fns-tz'
 
-export const COUNTRY_TIMEZONES: Record<string, string> = {
-  gb: 'Europe/London',
-  pk: 'Asia/Karachi',
-  au: 'Australia/Sydney',
-}
+export const CLINIC_TIMEZONE = 'Europe/London'
 
-export function getClinicTimezone(countryCode?: string, clinicTimezone?: string) {
-  if (clinicTimezone) return clinicTimezone
-  return COUNTRY_TIMEZONES[countryCode?.toLowerCase() || ''] || 'Europe/London'
+export function getClinicTimezone(_countryCode?: string, clinicTimezone?: string) {
+  return clinicTimezone || CLINIC_TIMEZONE
 }
 
 /**
@@ -56,8 +51,9 @@ export function getTimezoneAbbr(countryCode: string, date: Date = new Date(), cl
 /**
  * Gets a zoned Date object for local calculations (e.g. grouping bookings by local day)
  */
-export function getZonedDate(date: Date | string, countryCode: string, clinicTimezone?: string) {
-  const timezone = getClinicTimezone(countryCode, clinicTimezone)
+export function getZonedDate(date: Date | string, _countryCodeOrTimezone?: string, clinicTimezone?: string) {
+  // UK-only: countryCode param is ignored; pass clinicTimezone directly if needed
+  const timezone = getClinicTimezone(undefined, clinicTimezone)
   return toZonedTime(date, timezone)
 }
 

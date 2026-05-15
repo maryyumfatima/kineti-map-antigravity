@@ -79,8 +79,9 @@ function SettingsPage() {
 
   // Section 2: Clinic
   const [clinicName, setClinicName] = useState('')
-  const [country, setCountry] = useState('United Kingdom')
-  const [timezone, setTimezone] = useState('Europe/London')
+  // UK only
+  const country = 'GB'
+  const timezone = 'Europe/London'
   const [numPractitioners, setNumPractitioners] = useState('1')
   const [savingClinic, setSavingClinic] = useState(false)
 
@@ -120,8 +121,6 @@ function SettingsPage() {
 
       if (clinic) {
         setClinicName(clinic.name ?? '')
-        setCountry(clinic.country ?? 'United Kingdom')
-        setTimezone(clinic.timezone ?? 'Europe/London')
         setNumPractitioners(clinic.num_practitioners ? String(clinic.num_practitioners) : '1')
         if (clinic.notification_prefs) setNotifs(clinic.notification_prefs)
       }
@@ -169,8 +168,8 @@ function SettingsPage() {
     try {
       const { error } = await supabase.from('clinics').update({
         name: clinicName,
-        country,
-        timezone,
+        country: 'GB',
+        timezone: 'Europe/London',
         num_practitioners: Number(numPractitioners?.replace('+', '') ?? '0') || 1,
       }).eq('id', clinicId)
       if (error) throw error
@@ -255,13 +254,11 @@ function SettingsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className={labelCls}>Timezone</label>
-                <select value={timezone} onChange={e => setTimezone(e.target.value)} className={inputCls}>
-                  {['Europe/London', 'Australia/Sydney', 'Europe/Berlin', 'Europe/Paris', 'Asia/Karachi', 'UTC'].map(tz => (
-                    <option key={tz}>{tz}</option>
-                  ))}
-                </select>
-                <p className="text-[10px] text-text/40 mt-1 uppercase font-bold tracking-wider">
-                  Current: {timezone} ({getTimezoneAbbr(countryCode, new Date(), timezone)})
+                <div className="px-3 py-2 rounded-lg border border-border bg-background text-sm text-text/70">
+                  {timezone} ({getTimezoneAbbr('GB', new Date(), timezone)})
+                </div>
+                <p className="text-[10px] text-text/40 mt-1 uppercase tracking-wider">
+                  Locked to UK timezone
                 </p>
               </div>
               <div>

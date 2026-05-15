@@ -138,13 +138,9 @@ function LeftPanel() {
 
 // ─── Signup page ──────────────────────────────────────────────────────────────
 
-const COUNTRY_MAP: Record<string, { iso: string; currency: string; timezone: string }> = {
-  uk: { iso: 'GB', currency: 'GBP', timezone: 'Europe/London' },
-  pk: { iso: 'PK', currency: 'PKR', timezone: 'Asia/Karachi' },
-  au: { iso: 'AU', currency: 'AUD', timezone: 'Australia/Sydney' },
-}
+const UK_COUNTRY = { iso: 'GB', currency: 'GBP', timezone: 'Europe/London' }
 
-const getCountryData = (c: string) => COUNTRY_MAP[c?.toLowerCase()] || COUNTRY_MAP.uk
+const getCountryData = (_c?: string) => UK_COUNTRY
 
 function Signup() {
   const [form, setForm] = useState({

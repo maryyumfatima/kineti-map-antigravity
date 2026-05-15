@@ -20,7 +20,7 @@ export function PhoneInput({ value, onChange, onCountryChange, disabled, classNa
     >
       <ReactPhoneInput
         international
-        countries={['GB', 'AU', 'DE', 'FR', 'NL', 'PK']}
+        countries={['GB', 'DE', 'FR', 'NL']}
         defaultCountry={defaultCountry}
         value={value}
         onChange={(v) => onChange(v || '')}
