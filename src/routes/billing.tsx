@@ -35,7 +35,7 @@ const REGIONS: Record<string, RegionInfo> = {
   gb: { currency: 'GBP', countryCode: 'GB', label: 'United Kingdom', flag: '🇬🇧' }
 }
 
-function getRegionFromParam(_): RegionInfo {
+function getRegionInfo(): RegionInfo {
   return REGIONS.gb
 }
 
@@ -151,13 +151,13 @@ function BillingPage() {
   const [loading, setLoading] = useState(true)
   const [showTestModal, setShowTestModal] = useState(false)
   
-  const region = getRegionFromParam(country)
+  const region = getRegionInfo()
 
   const isTestMode = (import.meta as any).env.VITE_TEST_MODE === 'true'
 
   useEffect(() => {
     fetchData(region)
-  }, [country])
+  }, [])
 
   const fetchData = async (detectedRegion?: RegionInfo) => {
     setLoading(true)

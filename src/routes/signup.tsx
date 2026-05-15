@@ -179,7 +179,7 @@ function Signup() {
       return
     }
 
-    const countryData = getCountryData(country)
+    const countryData = UK_COUNTRY
 
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: form.email,
@@ -282,7 +282,7 @@ function Signup() {
                 value={form.whatsapp} 
                 onChange={set('whatsapp')} 
                 placeholder="WhatsApp number"
-                defaultCountry={getCountryData(country).iso as any}
+                defaultCountry={UK_COUNTRY.iso as any}
                 className="w-full bg-[#F7F9FA] focus-within:bg-[#EDF6F9] px-[14px] rounded-[10px] h-[45px] transition-colors box-border"
               />
               <p style={{ fontSize: '11px', color: '#bbb', margin: '4px 0 0 4px' }}>WhatsApp number for verification</p>
