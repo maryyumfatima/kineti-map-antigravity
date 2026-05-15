@@ -109,8 +109,7 @@ function InstructionBanner() {
 }
 
 function PreviousNotesSidebar({ notes, loading, timezone }: { notes: PreviousNote[], loading: boolean, timezone: string }) {
-  const { country } = useParams({ strict: false }) as { }
-  return (
+    return (
     <div className="space-y-4 mb-6">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold text-text/60 uppercase tracking-widest flex items-center gap-2">
@@ -153,8 +152,7 @@ function PreviousNotesSidebar({ notes, loading, timezone }: { notes: PreviousNot
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 function AISoapNotesPage() {
-  const { country } = useParams({ strict: false }) as { }
-  const navigate = useNavigate()
+    const navigate = useNavigate()
   
   // State
   const [patients, setPatients] = useState<Patient[]>([])

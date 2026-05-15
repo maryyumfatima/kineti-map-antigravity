@@ -140,9 +140,7 @@ function Login() {
   const [loading, setLoading] = useState(false)
   const [shaking, setShaking] = useState(false)
   const navigate = useNavigate()
-  const { country } = Route.useParams()
-
-  const triggerShake = () => {
+    const triggerShake = () => {
     setShaking(true)
     setTimeout(() => setShaking(false), 450)
   }

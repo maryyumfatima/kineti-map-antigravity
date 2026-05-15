@@ -44,8 +44,7 @@ function StatCard({ title, value, icon: Icon, color = 'text-primary', loading }:
 }
 
 function Dashboard() {
-  const { country } = useParams({ strict: false }) as { }
-  const [loading, setLoading] = useState(true)
+    const [loading, setLoading] = useState(true)
 
   // Stats
   const [todaySessionsCount, setTodaySessionsCount] = useState(0)

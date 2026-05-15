@@ -144,8 +144,7 @@ function FeatureTick({ yes }: { yes: boolean }) {
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 function BillingPage() {
-  const { country } = useParams({ strict: false }) as { }
-  const [clinic, setClinic] = useState<ClinicData | null>(null)
+    const [clinic, setClinic] = useState<ClinicData | null>(null)
   const [clinicId, setClinicId] = useState<string | null>(null)
   const [sessionsThisMonth, setSessionsThisMonth] = useState(0)
   const [practitionerCount, setPractitionerCount] = useState(0)

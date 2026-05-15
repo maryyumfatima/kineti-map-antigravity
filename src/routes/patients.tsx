@@ -29,8 +29,7 @@ type Patient = {
 // Removed PatientPhoneInput in favor of shared component
 
 function PatientsPage() {
-  const { country } = useParams({ strict: false }) as { }
-  const navigate = useNavigate()
+    const navigate = useNavigate()
   const [patients, setPatients] = useState<Patient[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')

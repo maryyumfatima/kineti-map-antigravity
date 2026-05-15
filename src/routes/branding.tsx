@@ -58,8 +58,7 @@ const DEFAULT_FORM: ClinicForm = {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 function BrandingPage() {
-  const { country } = Route.useParams()
-  const [form, setForm] = useState<ClinicForm>(DEFAULT_FORM)
+    const [form, setForm] = useState<ClinicForm>(DEFAULT_FORM)
   const [clinicId, setClinicId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)

@@ -57,8 +57,7 @@ const statusLabels: Record<string, string> = {
 }
 
 function SessionsPage() {
-  const { country } = useParams({ strict: false }) as { }
-  const [bookings, setBookings] = useState<Booking[]>([])
+    const [bookings, setBookings] = useState<Booking[]>([])
   const [patients, setPatients] = useState<Patient[]>([])
   const [loading, setLoading] = useState(true)
   const [clinicId, setClinicId] = useState<string | null>(null)

@@ -37,8 +37,7 @@ function avgColor(avg: number) {
 }
 
 function FeedbackPage() {
-  const { country } = useParams({ strict: false }) as { }
-  const [rows, setRows] = useState<FeedbackRow[]>([])
+    const [rows, setRows] = useState<FeedbackRow[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<Filter>('All')
 

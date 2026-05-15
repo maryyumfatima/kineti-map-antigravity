@@ -65,8 +65,7 @@ const TYPE_LABELS: Record<string, string> = {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 function RevenuePage() {
-  const { country } = useParams({ strict: false }) as { }
-  const [ledger, setLedger] = useState<LedgerRow[]>([])
+    const [ledger, setLedger] = useState<LedgerRow[]>([])
   const [upcomingCount, setUpcomingCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [markingId, setMarkingId] = useState<string | null>(null)

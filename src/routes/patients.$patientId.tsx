@@ -62,7 +62,7 @@ type Message = {
 }
 
 function PatientProfilePage() {
-  const { country, patientId } = useParams({ strict: false }) as { patientId: string }
+  const { patientId } = useParams({ strict: false }) as { patientId: string }
   const navigate = useNavigate()
   
   const [patient, setPatient] = useState<Patient | null>(null)

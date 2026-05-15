@@ -152,9 +152,7 @@ function Signup() {
   const [loading, setLoading] = useState(false)
   const [shaking, setShaking] = useState(false)
   const navigate = useNavigate()
-  const { country } = useParams({ strict: false }) as { }
-
-  const set = (key: keyof typeof form) => (val: string) =>
+    const set = (key: keyof typeof form) => (val: string) =>
     setForm(prev => ({ ...prev, [key]: val }))
 
   const triggerShake = () => {

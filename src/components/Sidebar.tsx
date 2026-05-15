@@ -40,9 +40,7 @@ interface SidebarProps {
 export function Sidebar({ collapsed, onToggleCollapsed, mobileOpen, onMobileClose }: SidebarProps) {
   const [email, setEmail] = useState<string | null>(null)
   const router = useRouter()
-  const { country } = useParams({ strict: false }) as { }
-
-  useEffect(() => {
+    useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {

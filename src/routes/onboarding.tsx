@@ -77,9 +77,7 @@ function OnboardingPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const navigate = useNavigate()
-  const { country } = useParams({ strict: false }) as { }
-
-  // Step 1 Data
+    // Step 1 Data
   const [name, setName] = useState('')
   const [bio, setBio] = useState('')
   const [brandColor, setBrandColor] = useState('#006D77')

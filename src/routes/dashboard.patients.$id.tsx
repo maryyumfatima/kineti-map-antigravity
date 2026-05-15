@@ -88,8 +88,7 @@ const getBookingStatusColor = (status: string) => {
 
 function PatientDetailPage() {
   const { id } = Route.useParams()
-  const { country } = useParams({ strict: false }) as { }
-  const [patient, setPatient] = useState<Patient | null>(null)
+    const [patient, setPatient] = useState<Patient | null>(null)
   const [bookings, setBookings] = useState<Booking[]>([])
   const [messages, setMessages] = useState<WhatsAppMessage[]>([])
   const [loading, setLoading] = useState(true)
