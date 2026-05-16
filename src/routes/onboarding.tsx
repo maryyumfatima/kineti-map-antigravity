@@ -198,8 +198,8 @@ function OnboardingPage() {
     setUploading(true)
     try {
       const ext = file.name.split('.').pop()
-      const path = `${clinicId}/logo.${ext}`
-      const { error } = await supabase.storage.from('clinic-logos').upload(path, file, { upsert: true })
+      const path = `${clinicId}/logo-${Date.now()}.${ext}`
+      const { error } = await supabase.storage.from('clinic-logos').upload(path, file, { upsert: false })
       if (error) throw error
       const { data } = supabase.storage.from('clinic-logos').getPublicUrl(path)
       setLogoUrl(data.publicUrl)
