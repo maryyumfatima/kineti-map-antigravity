@@ -131,7 +131,8 @@ const INTEGRATIONS: IntegrationCard[] = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 function AvailabilityPage() {
-    const navigate = useNavigate()
+  const navigate = useNavigate()
+  const country = 'GB'
   const [schedule, setSchedule] = useState<WeeklySchedule>(DEFAULT_SCHEDULE)
   const [saving, setSaving] = useState(false)
   const [clinicId, setClinicId] = useState<string | null>(null)

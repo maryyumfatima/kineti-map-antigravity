@@ -94,6 +94,7 @@ function PatientDetailPage() {
   const [loading, setLoading] = useState(true)
   const [clinicId, setClinicId] = useState<string | null>(null)
   const [clinicTimezone, setClinicTimezone] = useState('Europe/London')
+  const [country, setCountry] = useState('GB')
   const [clinicSlug, setClinicSlug] = useState('')
   const [expandedBooking, setExpandedBooking] = useState<string | null>(null)
   const [updatingBooking, setUpdatingBooking] = useState<string | null>(null)
@@ -125,13 +126,14 @@ function PatientDetailPage() {
 
       const { data: clinic } = await supabase
         .from('clinics')
-        .select('timezone, slug, name')
+        .select('timezone, slug, name, country')
         .eq('id', cu.clinic_id)
         .single()
       
       if (clinic) {
         if (clinic.timezone) setClinicTimezone(clinic.timezone)
         if (clinic.slug)     setClinicSlug(clinic.slug)
+        if (clinic.country)  setCountry(clinic.country)
       }
 
       // 1. Fetch Patient

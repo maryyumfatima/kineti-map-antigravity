@@ -556,7 +556,7 @@ function PatientsPage() {
                   {paginatedPatients.map((patient, idx) => (
                     <tr 
                       key={patient.id} 
-                      onClick={() => navigate({ to: '/patients/$patientId', params: { country, patientId: patient.id } as any })}
+                      onClick={() => navigate({ to: '/patients/$patientId', params: { country: 'GB', patientId: patient.id } as any })}
                       className={`
                         border-b border-border last:border-0 cursor-pointer group transition-all duration-300
                         ${idx % 2 === 0 ? 'bg-white' : 'bg-primary/[0.01]'}
@@ -579,7 +579,7 @@ function PatientsPage() {
                         </span>
                       </td>
                       <td className="p-4 text-text/40 text-xs">
-                        {patient.last_session_date ? formatLocalTime(patient.last_session_date, country, 'MMM d, yyyy', clinicData?.timezone) : 'New Patient'}
+                        {patient.last_session_date ? formatLocalTime(patient.last_session_date, 'GB', 'MMM d, yyyy', clinicData?.timezone) : 'New Patient'}
                       </td>
                       <td className="p-4" onClick={e => e.stopPropagation()}>
                         <button
@@ -660,7 +660,7 @@ function PatientsPage() {
                   <PhoneInput 
                     value={formData.phone_number} 
                     onChange={v => setFormData({...formData, phone_number: v || ''})} 
-                    defaultCountry={country ? country.toUpperCase() : 'GB'}
+                    defaultCountry={'GB'}
                     className="w-full px-3 py-1.5 rounded-lg border border-border bg-white focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary"
                   />
                 </div>
@@ -805,7 +805,7 @@ function PatientsPage() {
                     value={drawerFormData.phone_number || ''} 
                     onChange={v => setDrawerFormData({...drawerFormData, phone_number: v || ''})} 
                     disabled={!isEditing}
-                    defaultCountry={country ? country.toUpperCase() : 'GB'}
+                    defaultCountry={'GB'}
                     className="w-full px-3 py-1.5 rounded-lg border border-border bg-white focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary"
                   />
                 </div>
@@ -919,7 +919,7 @@ function PatientsPage() {
                 {!isEditing && drawerFormData.last_session_date && (
                   <div className="pt-4 border-t border-border mt-4">
                     <p className="text-sm font-medium text-text/70 mb-1">Last session date</p>
-                    <p className="text-text">{formatLocalTime(drawerFormData.last_session_date, country, 'MMM d, yyyy')}</p>
+                    <p className="text-text">{formatLocalTime(drawerFormData.last_session_date, 'GB', 'MMM d, yyyy')}</p>
                   </div>
                 )}
               </form>

@@ -109,6 +109,7 @@ function InstructionBanner() {
 }
 
 function PreviousNotesSidebar({ notes, loading, timezone }: { notes: PreviousNote[], loading: boolean, timezone: string }) {
+  const country = 'GB'
     return (
     <div className="space-y-4 mb-6">
       <div className="flex items-center justify-between">
@@ -152,7 +153,8 @@ function PreviousNotesSidebar({ notes, loading, timezone }: { notes: PreviousNot
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 function AISoapNotesPage() {
-    const navigate = useNavigate()
+  const navigate = useNavigate()
+  const country = 'GB'
   
   // State
   const [patients, setPatients] = useState<Patient[]>([])
@@ -171,6 +173,7 @@ function AISoapNotesPage() {
   const [previousNotes, setPreviousNotes] = useState<PreviousNote[]>([])
   
   const [credits, setCredits] = useState({ used: 0, limit: 5 })
+  const [clinicId, setClinicId] = useState('')
   const [clinicTimezone, setClinicTimezone] = useState<string>('Europe/London')
   
   // Refs
@@ -225,6 +228,7 @@ function AISoapNotesPage() {
       const { data: cu } = await supabase
         .from('clinic_users').select('clinic_id').eq('auth_user_id', user.id).single()
       if (!cu) return
+      setClinicId(cu.clinic_id)
 
         const { data: clinic } = await supabase
           .from('clinics')
@@ -315,7 +319,7 @@ function AISoapNotesPage() {
   const transcribeAudioBlob = async (audioBlob: Blob) => {
     setIsTranscribing(true)
     try {
-      const fileName = `audio-${Date.now()}.webm`
+      const fileName = `${clinicId}/audio-${Date.now()}.webm`
       const { error: uploadError } = await supabase.storage
         .from('temp-audio')
         .upload(fileName, audioBlob, {
@@ -326,14 +330,16 @@ function AISoapNotesPage() {
 
       if (uploadError) throw uploadError
 
-      const { data: { publicUrl } } = supabase.storage
+      const { data: signedData, error: signedError } = await supabase.storage
         .from('temp-audio')
-        .getPublicUrl(fileName)
+        .createSignedUrl(fileName, 3600)
+
+      if (signedError || !signedData?.signedUrl) throw signedError || new Error('Failed to generate signed URL')
 
       const { data, error } = await supabase.functions.invoke('groq-proxy', {
         body: {
           type: 'transcribe',
-          audioUrl: publicUrl,
+          audioUrl: signedData.signedUrl,
           language: selectedLanguage
         }
       })

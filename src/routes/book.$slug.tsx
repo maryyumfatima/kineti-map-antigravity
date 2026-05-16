@@ -106,7 +106,7 @@ function BookingPage() {
       }
 
       const { data: clinicData } = await supabase
-        .from('clinics')
+        .from('public_clinic_info')
         .select('*')
         .eq('slug', slug)
         .maybeSingle()

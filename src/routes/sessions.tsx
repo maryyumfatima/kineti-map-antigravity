@@ -174,7 +174,7 @@ function SessionsPage() {
     }
     setIsSaving(true)
     try {
-      const appointment_time = toUtcString(`${formData.date}T${formData.time}`, country, clinicTimezone)
+      const appointment_time = toUtcString(`${formData.date}T${formData.time}`, 'GB', clinicTimezone)
       const { error } = await supabase.from('bookings').insert([{
         clinic_id: clinicId,
         patient_id: formData.patient_id,
@@ -264,8 +264,8 @@ function SessionsPage() {
                           {booking.patients?.full_name ?? '—'}
                         </td>
                         <td className="p-4 text-sm text-text/80 whitespace-nowrap">
-                          <div>{formatLocalTime(booking.appointment_time, country, 'MMM d, yyyy', clinicTimezone)}</div>
-                          <div className="text-text/50">{formatLocalTime(booking.appointment_time, country, 'h:mm a', clinicTimezone)} {getTimezoneAbbr(country, new Date(booking.appointment_time), clinicTimezone)}</div>
+                          <div>{formatLocalTime(booking.appointment_time, 'GB', 'MMM d, yyyy', clinicTimezone)}</div>
+                          <div className="text-text/50">{formatLocalTime(booking.appointment_time, 'GB', 'h:mm a', clinicTimezone)} {getTimezoneAbbr('GB', new Date(booking.appointment_time), clinicTimezone)}</div>
                         </td>
                         <td className="p-4">
                           <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${typeColors[booking.appointment_type] ?? 'bg-gray-100 text-gray-700 border-gray-200'}`}>

@@ -159,7 +159,7 @@ function BrandingPage() {
     setUploading(true)
     try {
       const ext = file.name.split('.').pop()?.toLowerCase() || 'png'
-      const path = `${clinicId}/logo.${ext}`
+      const path = `${clinicId}/logo-${Date.now()}.${ext}`
       console.log('[Branding] Uploading logo:', { path, size: file.size, type: file.type })
 
       const { error: upErr } = await supabase.storage

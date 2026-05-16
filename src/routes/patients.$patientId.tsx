@@ -64,6 +64,7 @@ type Message = {
 function PatientProfilePage() {
   const { patientId } = useParams({ strict: false }) as { patientId: string }
   const navigate = useNavigate()
+  const country = 'GB'
   
   const [patient, setPatient] = useState<Patient | null>(null)
   const [bookings, setBookings] = useState<Booking[]>([])

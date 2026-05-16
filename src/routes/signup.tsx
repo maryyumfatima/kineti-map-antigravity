@@ -167,7 +167,7 @@ function Signup() {
     setLoading(true)
 
     const { data: existing } = await supabase
-      .from('clinics')
+      .from('public_clinic_info')
       .select('id')
       .eq('whatsapp_number', form.whatsapp)
       .maybeSingle()
