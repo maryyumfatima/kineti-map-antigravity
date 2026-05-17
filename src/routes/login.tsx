@@ -25,7 +25,7 @@ function AuthInput({
         onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
         style={{
           background: focused ? '#EDF6F9' : '#F7F9FA', border: 'none', borderRadius: '10px',
-          padding: '12px 14px 12px 40px', fontSize: '14px', color: '#2C1A12',
+          padding: '12px 14px 12px 40px', fontSize: '14px', color: '#32323f',
           width: '100%', outline: 'none', transition: 'background 0.2s ease', boxSizing: 'border-box',
         }}
       />
@@ -46,7 +46,7 @@ function PasswordInput({ value, onChange }: { value: string; onChange: (v: strin
         onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
         style={{
           background: focused ? '#EDF6F9' : '#F7F9FA', border: 'none', borderRadius: '10px',
-          padding: '12px 40px 12px 40px', fontSize: '14px', color: '#2C1A12',
+          padding: '12px 40px 12px 40px', fontSize: '14px', color: '#32323f',
           width: '100%', outline: 'none', transition: 'background 0.2s ease', boxSizing: 'border-box',
         }}
       />
@@ -167,7 +167,7 @@ function Login() {
           className={`auth-card-in ${shaking ? 'shake' : ''}`}
           style={{ width: '100%', maxWidth: '380px' }}
         >
-          <h2 style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: '22px', fontWeight: 700, color: '#2C1A12', margin: '0 0 4px' }}>
+          <h2 style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: '22px', fontWeight: 700, color: '#32323f', margin: '0 0 4px' }}>
             Welcome back
           </h2>
           <p style={{ color: '#888', fontSize: '14px', margin: '0 0 28px' }}>Sign in to continue</p>

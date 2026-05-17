@@ -8,7 +8,7 @@
   --color-background: #EDF6F9;
   --color-card: #FFFFFF;
   --color-accent: #D9B29C;
-  --color-text: #2C1A12;
+  --color-text: #32323f;
   --color-border: #E0EEF0;
   --color-alert: #C0392B;
 }
@@ -220,7 +220,7 @@ h1, h2, h3, h4, h5, h6 {
   background: transparent;
   outline: none;
   font-size: 14px;
-  color: #2C1A12;
+  color: #32323f;
   padding: 12px 0;
 }
 .PhoneInputInput:focus {

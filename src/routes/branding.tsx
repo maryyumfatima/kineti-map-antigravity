@@ -42,7 +42,7 @@ const DEFAULT_FORM: ClinicForm = {
   logo_url: '',
   brand_color: '#006D77',
   secondary_color: '#D9B29C',
-  text_color: '#2C1A12',
+  text_color: '#32323f',
   appointment_price: '',
   currency: 'GBP',
   default_slot_duration: 60,
@@ -113,7 +113,7 @@ function BrandingPage() {
           logo_url: data.logo_url ?? '',
           brand_color: data.brand_color ?? '#006D77',
           secondary_color: data.secondary_color ?? '#D9B29C',
-          text_color: data.text_color ?? '#2C1A12',
+          text_color: data.text_color ?? '#32323f',
           appointment_price: data.appointment_price != null ? String(data.appointment_price) : '',
           currency: data.currency ?? 'GBP',
           default_slot_duration: data.default_slot_duration ?? 60,
@@ -458,7 +458,7 @@ function BrandingPage() {
                       type="text" value={form.text_color}
                       onChange={e => set('text_color', e.target.value)}
                       className={`${inputClass} w-36 font-mono uppercase`}
-                      maxLength={7} placeholder="#2C1A12"
+                      maxLength={7} placeholder="#32323f"
                     />
                     <div className="w-10 h-10 rounded-lg border border-border shadow-sm flex-shrink-0" style={{ backgroundColor: form.text_color }} />
                   </div>

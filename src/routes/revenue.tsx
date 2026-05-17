@@ -270,8 +270,8 @@ function RevenuePage() {
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={chartData} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E0EEF0" vertical={false} />
-                <XAxis dataKey="type" tick={{ fontSize: 12, fill: '#2C1A12', opacity: 0.6 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 12, fill: '#2C1A12', opacity: 0.6 }} axisLine={false} tickLine={false} tickFormatter={v => `£${v}`} />
+                <XAxis dataKey="type" tick={{ fontSize: 12, fill: '#32323f', opacity: 0.6 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 12, fill: '#32323f', opacity: 0.6 }} axisLine={false} tickLine={false} tickFormatter={v => `£${v}`} />
                 <Tooltip
                   formatter={(v: any) => v !== undefined ? [fmt(v as number), ''] : ['', '']}
                   contentStyle={{ borderRadius: 8, borderColor: '#E0EEF0', fontSize: 13 }}

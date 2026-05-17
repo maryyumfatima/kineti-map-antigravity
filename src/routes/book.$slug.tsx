@@ -30,7 +30,7 @@ const DEMO_CLINIC = {
   bio: 'This is a demo booking page. Experience how your patients will book appointments.',
   brand_color: '#006D77',
   secondary_color: '#D9B29C',
-  text_color: '#2C1A12',
+  text_color: '#32323f',
   appointment_price: '60',
   booking_page_mode: 'open',
   logo_url: 'https://images.unsplash.com/photo-1629909613654-2871b88673dd?auto=format&fit=crop&q=80&w=200&h=200'
@@ -327,7 +327,7 @@ function BookingPage() {
 
   const brandColor = clinic.brand_color || '#006D77'
   const secondaryColor = clinic.secondary_color || '#D9B29C'
-  const textColor = clinic.text_color || '#2C1A12'
+  const textColor = clinic.text_color || '#32323f'
   const isMinor = calculateAge(dob) < 16
 
   const inputClass = "w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 outline-none text-sm bg-gray-50 transition-colors"

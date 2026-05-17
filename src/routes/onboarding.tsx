@@ -139,7 +139,7 @@ function OnboardingPage() {
           whatsapp_number: meta.whatsapp_number || null,
           brand_color: '#006D77',
           secondary_color: '#D9B29C',
-          text_color: '#2C1A12',
+          text_color: '#32323f',
           appointment_price: 50,
           currency: 'GBP',
           default_slot_duration: 60,

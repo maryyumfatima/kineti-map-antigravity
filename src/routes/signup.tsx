@@ -28,7 +28,7 @@ function AuthInput({
         onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
         style={{
           background: focused ? '#EDF6F9' : '#F7F9FA', border: 'none', borderRadius: '10px',
-          padding: '12px 14px 12px 40px', fontSize: '14px', color: '#2C1A12',
+          padding: '12px 14px 12px 40px', fontSize: '14px', color: '#32323f',
           width: '100%', outline: 'none', transition: 'background 0.2s ease', boxSizing: 'border-box',
         }}
       />
@@ -51,7 +51,7 @@ function PasswordInput({ value, onChange }: { value: string; onChange: (v: strin
         onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
         style={{
           background: focused ? '#EDF6F9' : '#F7F9FA', border: 'none', borderRadius: '10px',
-          padding: '12px 40px 12px 40px', fontSize: '14px', color: '#2C1A12',
+          padding: '12px 40px 12px 40px', fontSize: '14px', color: '#32323f',
           width: '100%', outline: 'none', transition: 'background 0.2s ease', boxSizing: 'border-box',
         }}
       />
@@ -227,7 +227,7 @@ function Signup() {
               </div>
               <h2 style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: '20px', fontWeight: 700, color: '#006D77', marginBottom: '8px' }}>Check your email</h2>
               <p style={{ color: '#888', fontSize: '14px', lineHeight: 1.6 }}>
-                We sent a confirmation link to <strong style={{ color: '#2C1A12' }}>{form.email}</strong>.
+                We sent a confirmation link to <strong style={{ color: '#32323f' }}>{form.email}</strong>.
                 Click it to activate your account.
               </p>
               <Link to="/login"  style={{ display: 'block', marginTop: '20px', color: '#006D77', fontSize: '13px', textDecoration: 'none', fontWeight: 500 }}>
@@ -254,7 +254,7 @@ function Signup() {
           className={`auth-card-in ${shaking ? 'shake' : ''}`}
           style={{ width: '100%', maxWidth: '380px' }}
         >
-          <h2 style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: '22px', fontWeight: 700, color: '#2C1A12', margin: '0 0 4px' }}>
+          <h2 style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: '22px', fontWeight: 700, color: '#32323f', margin: '0 0 4px' }}>
             Create your account
           </h2>
           <p style={{ color: '#888', fontSize: '14px', margin: '0 0 6px' }}>Free 14-day trial · No credit card</p>
