@@ -101,17 +101,17 @@ const PLANS = [
 ]
 
 const AI_PACKS = [
-  { id: 'small',  label: 'Small Pack',  credits: 100, price: '£8' },
+  { id: 'small', label: 'Small Pack', credits: 100, price: '£8' },
   { id: 'medium', label: 'Medium Pack', credits: 300, price: '£18' },
-  { id: 'large',  label: 'Large Pack',  credits: 500, price: '£25' },
+  { id: 'large', label: 'Large Pack', credits: 500, price: '£25' },
 ]
 
 const PLAN_PRICES: Record<string, string> = {
   essentials: '£49/mo',
-  growth:     '£89/mo',
-  scale:      '£179/mo',
+  growth: '£89/mo',
+  scale: '£179/mo',
   enterprise: 'Custom',
-  trial:      'Free Trial',
+  trial: 'Free Trial',
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -144,13 +144,13 @@ function FeatureTick({ yes }: { yes: boolean }) {
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 function BillingPage() {
-    const [clinic, setClinic] = useState<ClinicData | null>(null)
+  const [clinic, setClinic] = useState<ClinicData | null>(null)
   const [clinicId, setClinicId] = useState<string | null>(null)
   const [sessionsThisMonth, setSessionsThisMonth] = useState(0)
   const [practitionerCount, setPractitionerCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [showTestModal, setShowTestModal] = useState(false)
-  
+
   const region = getRegionInfo()
 
   const isTestMode = (import.meta as any).env.VITE_TEST_MODE === 'true'
@@ -219,9 +219,12 @@ function BillingPage() {
   const handleTestUpgrade = async (planId: string) => {
     if (!clinicId) return
     try {
-      const { error } = await supabase.from('clinics').update({ subscription_plan: planId }).eq('id', clinicId)
+      const { error } = await supabase.from('clinics').update({
+        subscription_plan: planId,
+        ai_soap_enabled: true
+      }).eq('id', clinicId)
       if (error) throw error
-      toast.success(`Test Mode: Plan updated to ${planId}`)
+      toast.success(`Test Mode: Plan updated to ${planId} (AI SOAP enabled)`)
       setShowTestModal(false)
       fetchData()
     } catch (e) {
@@ -391,7 +394,7 @@ function BillingPage() {
         <div className={card}>
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-xl font-bold text-text font-bricolage">Add-Ons Agar Zyada Chahiye</h2>
+              <h2 className="text-xl font-bold text-text font-bricolage">Add-Ons</h2>
               <p className="text-sm text-text/50 mt-1">Boost your AI credits instantly when you need a little more magic.</p>
             </div>
             <Sparkles className="w-8 h-8 text-primary opacity-20" />

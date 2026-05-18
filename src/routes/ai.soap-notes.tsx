@@ -18,7 +18,8 @@ import {
   Save,
   Trash2,
   Loader2,
-  Clock
+  Clock,
+  Info
 } from 'lucide-react'
 import { formatLocalTime } from '../lib/date'
 import { generateSoapNoteFromAudio } from '../lib/groq'
@@ -39,6 +40,7 @@ type SoapNote = {
   o: string
   a: string
   p: string
+  continuity_notes?: string
 }
 
 type PreviousNote = {
@@ -163,7 +165,8 @@ function AISoapNotesPage() {
   const [inputMode, setInputMode] = useState<'ai' | 'manual'>('ai')
   
   const [additionalNotes, setAdditionalNotes] = useState('')
-  const [generatedNote, setGeneratedNote] = useState<SoapNote>({ s: '', o: '', a: '', p: '' })
+  const [generatedNote, setGeneratedNote] = useState<SoapNote>({ s: '', o: '', a: '', p: '', continuity_notes: '' })
+  const [activeDraftId, setActiveDraftId] = useState<string | null>(null)
   
   const [isRecording, setIsRecording] = useState(false)
   const [isTranscribing, setIsTranscribing] = useState(false)
@@ -255,7 +258,7 @@ function AISoapNotesPage() {
     setLoadingPrevNotes(true)
     try {
       const { data } = await supabase
-        .from('session_notes')
+        .from('soap_notes')
         .select('id, created_at, plan')
         .eq('patient_id', pId)
         .order('created_at', { ascending: false })
@@ -263,7 +266,7 @@ function AISoapNotesPage() {
       
       if (data) setPreviousNotes(data)
     } catch (e) {
-      console.warn('Could not fetch previous notes. session_notes table might be missing.')
+      console.warn('Could not fetch previous notes. soap_notes table might be missing.')
     } finally {
       setLoadingPrevNotes(false)
     }
@@ -382,6 +385,11 @@ function AISoapNotesPage() {
   // Generation Logic
   const handleGenerateNote = async (overrideText?: string) => {
     const textToUse = overrideText || additionalNotes
+    if (!selectedPatientId) {
+      toast.error('Please select a patient first')
+      return
+    }
+
     if (!textToUse.trim()) {
       toast.error('Please record or enter some notes first')
       return
@@ -394,26 +402,36 @@ function AISoapNotesPage() {
 
     setIsGenerating(true)
     try {
-      const responseText = await generateSoapNoteFromAudio(textToUse, selectedLanguage)
-      
-      parseAndSetNote(responseText)
-      
-      // Update credits in DB (Issue 1)
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data: cu } = await supabase.from('clinic_users').select('clinic_id').eq('auth_user_id', user.id).single()
-        if (cu) {
-          await supabase.rpc('increment_ai_credits', { clinic_id_param: cu.clinic_id })
-          // Alternatively, if RPC doesn't exist, use regular update:
-          await supabase.from('clinics').update({ 
-            ai_credits_used: credits.used + 1 
-          }).eq('id', cu.clinic_id)
-          
-          fetchCredits() // Refetch to ensure accuracy
-        }
-      }
+      // Find the latest booking to link the note & fetch pain scores
+      const { data: latestBooking } = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('patient_id', selectedPatientId)
+        .order('appointment_time', { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
-      toast.success('SOAP note generated!')
+      const result = await generateSoapNoteFromAudio({
+        transcript: textToUse,
+        patient_id: selectedPatientId,
+        booking_id: latestBooking?.id || null,
+        clinic_id: clinicId
+      })
+
+      if (result) {
+        setGeneratedNote({
+          s: result.subjective || '',
+          o: result.objective || '',
+          a: result.assessment || '',
+          p: result.plan || '',
+          continuity_notes: result.continuity_notes || ''
+        })
+        setActiveDraftId(result.draft_id || null)
+        
+        // Refetch credits from backend as the Edge Function increments it securely
+        fetchCredits()
+        toast.success('SOAP note generated!')
+      }
       
     } catch (e: any) {
       toast.error(e.message || 'Failed to generate note')
@@ -493,33 +511,29 @@ function AISoapNotesPage() {
         .from('bookings')
         .select('id')
         .eq('patient_id', selectedPatientId)
-        .order('start_time', { ascending: false })
+        .order('appointment_time', { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()
       
       console.log('Linking to booking:', latestBooking?.id || 'None found')
-
-      const fullNoteText = `Subjective (S): ${generatedNote.s}\nObjective (O): ${generatedNote.o}\nAssessment (A): ${generatedNote.a}\nPlan (P): ${generatedNote.p}`
 
       const payload = {
         patient_id: selectedPatientId,
         clinic_id: cu.clinic_id,
         booking_id: latestBooking?.id || null,
-        s: generatedNote.s,
-        o: generatedNote.o,
-        a: generatedNote.a,
-        p: generatedNote.p,
-        note_text: fullNoteText,
-        type: 'soap',
-        full_content: JSON.stringify(generatedNote),
-        plan: generatedNote.p.substring(0, 500),
+        subjective: generatedNote.s,
+        objective: generatedNote.o,
+        assessment: generatedNote.a,
+        plan: generatedNote.p,
+        continuity_notes: generatedNote.continuity_notes || '',
+        is_ai_generated: inputMode === 'ai',
         created_at: new Date().toISOString()
       }
 
-      console.log('Saving payload:', payload)
+      console.log('Saving payload to soap_notes:', payload)
 
       const { data: savedData, error: saveError } = await supabase
-        .from('session_notes')
+        .from('soap_notes')
         .insert([payload])
         .select()
       
@@ -529,6 +543,20 @@ function AISoapNotesPage() {
       }
 
       console.log('Save successful:', savedData)
+
+      // Mark the draft as accepted if it was generated
+      if (activeDraftId) {
+        console.log('Accepting draft:', activeDraftId)
+        const { error: draftUpdateError } = await supabase
+          .from('ai_soap_drafts')
+          .update({ accepted: true })
+          .eq('id', activeDraftId)
+        
+        if (draftUpdateError) {
+          console.error('Failed to update draft accepted status:', draftUpdateError)
+        }
+      }
+
       toast.success('Note saved to patient history', {
         action: {
           label: 'View Profile',
@@ -542,9 +570,10 @@ function AISoapNotesPage() {
       // Clear form logic
       const shouldClear = confirm("Note saved. Would you like to clear the form to start another note?")
       if (shouldClear) {
-        setGeneratedNote({ s: '', o: '', a: '', p: '' })
+        setGeneratedNote({ s: '', o: '', a: '', p: '', continuity_notes: '' })
         setAdditionalNotes('')
         setSelectedPatientId('')
+        setActiveDraftId(null)
       }
 
       fetchPreviousNotes(selectedPatientId)
@@ -559,7 +588,10 @@ function AISoapNotesPage() {
 
   // Export Logic
   const copyToClipboard = () => {
-    const text = `S: ${generatedNote.s}\nO: ${generatedNote.o}\nA: ${generatedNote.a}\nP: ${generatedNote.p}`
+    let text = `Subjective (S): ${generatedNote.s}\nObjective (O): ${generatedNote.o}\nAssessment (A): ${generatedNote.a}\nPlan (P): ${generatedNote.p}`
+    if (generatedNote.continuity_notes) {
+      text += `\n\nAI Continuity Notes:\n${generatedNote.continuity_notes}`
+    }
     navigator.clipboard.writeText(text)
     toast.success('Copied to clipboard')
   }
@@ -570,7 +602,10 @@ function AISoapNotesPage() {
 
   const emailNote = () => {
     const subject = `SOAP Note - ${formatLocalTime(new Date().toISOString(), country, 'MMM d, yyyy', clinicTimezone)}`
-    const body = `Subjective (S): ${generatedNote.s}\n\nObjective (O): ${generatedNote.o}\n\nAssessment (A): ${generatedNote.a}\n\nPlan (P): ${generatedNote.p}`
+    let body = `Subjective (S): ${generatedNote.s}\n\nObjective (O): ${generatedNote.o}\n\nAssessment (A): ${generatedNote.a}\n\nPlan (P): ${generatedNote.p}`
+    if (generatedNote.continuity_notes) {
+      body += `\n\nAI Continuity Notes:\n${generatedNote.continuity_notes}`
+    }
     window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
   }
 
@@ -819,7 +854,11 @@ function AISoapNotesPage() {
                     <Mail className="w-4 h-4" />
                   </button>
                   <button 
-                    onClick={() => { setGeneratedNote({ s: '', o: '', a: '', p: '' }); setAdditionalNotes(''); }}
+                    onClick={() => { 
+                      setGeneratedNote({ s: '', o: '', a: '', p: '', continuity_notes: '' }); 
+                      setAdditionalNotes(''); 
+                      setActiveDraftId(null);
+                    }}
                     className="p-2 hover:bg-alert/5 text-text/50 hover:text-alert rounded-lg transition-all ml-1"
                     title="Clear All"
                     aria-label="Clear all content"
@@ -837,18 +876,38 @@ function AISoapNotesPage() {
                   </div>
                 ) : (
                   <>
+                    {/* ─── AI Continuity Observations (above S/O/A/P) ─── */}
+                    {generatedNote.continuity_notes && (
+                      <div className="border-l-4 border-amber-400 bg-amber-50/60 rounded-xl p-4 space-y-2 animate-in fade-in slide-in-from-top-2 duration-400">
+                        <div className="flex items-center gap-2 text-amber-700">
+                          <Info className="w-4 h-4 flex-shrink-0" />
+                          <h4 className="text-xs font-bold uppercase tracking-widest">AI Continuity Observations</h4>
+                        </div>
+                        <textarea
+                          value={generatedNote.continuity_notes}
+                          onChange={e => setGeneratedNote({ ...generatedNote, continuity_notes: e.target.value })}
+                          className="w-full bg-transparent border-none text-sm leading-relaxed text-amber-900 outline-none resize-none min-h-[60px] placeholder:text-amber-400/60"
+                          rows={Math.max(3, (generatedNote.continuity_notes || '').split('\n').length)}
+                          aria-label="AI Continuity Observations"
+                        />
+                        <p className="text-[10px] text-amber-600/70 italic">
+                          AI-generated observations based on session history. Review and edit before saving.
+                        </p>
+                      </div>
+                    )}
+
                     {[
                       { key: 's', label: 'Subjective (S)', color: 'bg-blue-50/30' },
                       { key: 'o', label: 'Objective (O)', color: 'bg-green-50/30' },
                       { key: 'a', label: 'Assessment (A)', color: 'bg-purple-50/30' },
-                      { key: 'p', label: 'Plan (P)', color: 'bg-orange-50/30' }
+                      { key: 'p', label: 'Plan (P)', color: 'bg-orange-50/30' },
                     ].map(field => (
                       <div key={field.key} className={`space-y-2 p-3 rounded-xl border border-border/50 ${field.color}`}>
                         <div className="flex items-center justify-between">
                           <h4 className="text-[10px] font-bold text-text/30 uppercase tracking-widest">{field.label}</h4>
                           <button 
                             onClick={() => {
-                              navigator.clipboard.writeText(generatedNote[field.key as keyof SoapNote])
+                              navigator.clipboard.writeText(generatedNote[field.key as keyof SoapNote] || '')
                               toast.success(`Copied ${field.label} section`)
                             }}
                             className="p-1.5 hover:bg-white/50 text-text/30 hover:text-primary rounded-md transition-all"
@@ -858,7 +917,7 @@ function AISoapNotesPage() {
                           </button>
                         </div>
                         <textarea 
-                          value={generatedNote[field.key as keyof SoapNote]}
+                          value={generatedNote[field.key as keyof SoapNote] || ''}
                           onChange={e => setGeneratedNote({ ...generatedNote, [field.key]: e.target.value })}
                           className="w-full p-2 bg-transparent border-none text-sm leading-relaxed text-text outline-none transition-all resize-none min-h-[60px]"
                           rows={Math.max(2, (generatedNote[field.key as keyof SoapNote] || '').split('\n').length)}

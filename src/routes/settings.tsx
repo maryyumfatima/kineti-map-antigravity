@@ -94,6 +94,9 @@ function SettingsPage() {
   })
   const [savingNotifs, setSavingNotifs] = useState(false)
 
+  // Section 4: AI Features
+  const [aiSoapEnabled, setAiSoapEnabled] = useState(false)
+
   // Section 7: Danger Zone
   const [deleteModal, setDeleteModal] = useState(false)
   const [deleteInput, setDeleteInput] = useState('')
@@ -115,7 +118,7 @@ function SettingsPage() {
 
       const { data: clinic } = await supabase
         .from('clinics')
-        .select('name, country, timezone, num_practitioners, notification_prefs')
+        .select('name, country, timezone, num_practitioners, notification_prefs, ai_soap_enabled')
         .eq('id', cu.clinic_id)
         .single()
 
@@ -123,6 +126,7 @@ function SettingsPage() {
         setClinicName(clinic.name ?? '')
         setNumPractitioners(clinic.num_practitioners ? String(clinic.num_practitioners) : '1')
         if (clinic.notification_prefs) setNotifs(clinic.notification_prefs)
+        setAiSoapEnabled(clinic.ai_soap_enabled ?? false)
       }
     } catch (e) {
       console.error('[Settings] fetch error:', e)
@@ -323,8 +327,32 @@ function SettingsPage() {
                   </div>
                 </div>
                 <div className="flex items-center justify-between border-t border-border pt-3">
-                  <Link to="/billing" params={{ } as any} className="text-xs text-primary hover:underline font-medium">Upgrade to unlock →</Link>
-                  <Toggle checked={false} onChange={() => {}} disabled />
+                  {f.title === 'AI SOAP Notes' ? (
+                    <>
+                      <span className="text-xs text-text/50">Enable or disable AI SOAP note generation</span>
+                      <Toggle 
+                        checked={aiSoapEnabled} 
+                        onChange={async () => {
+                          if (!clinicId) return
+                          const newValue = !aiSoapEnabled
+                          setAiSoapEnabled(newValue)
+                          try {
+                            const { error } = await supabase.from('clinics').update({ ai_soap_enabled: newValue }).eq('id', clinicId)
+                            if (error) throw error
+                            toast.success(`AI SOAP Notes ${newValue ? 'enabled' : 'disabled'}`)
+                          } catch (e: any) {
+                            toast.error(`Failed to update settings: ${e.message}`)
+                            setAiSoapEnabled(!newValue)
+                          }
+                        }} 
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <Link to="/billing" params={{ } as any} className="text-xs text-primary hover:underline font-medium">Upgrade to unlock →</Link>
+                      <Toggle checked={false} onChange={() => {}} disabled />
+                    </>
+                  )}
                 </div>
               </div>
             ))}

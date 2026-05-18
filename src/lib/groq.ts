@@ -52,31 +52,19 @@ export async function transcribeAudio(audioBlob: Blob, language?: string) {
 }
 
 // Generate SOAP note from audio transcription
-export async function generateSoapNoteFromAudio(transcribedText: string, language?: string) {
-  const prompt = `You are a physiotherapy clinical assistant. A practitioner has dictated the following session notes. Generate a professional SOAP note from this dictation.
-
-Dictation: "${transcribedText}"
-
-Generate a structured SOAP note with:
-- Subjective (S): Patient complaints
-- Objective (O): Clinical findings
-- Assessment (A): Clinical reasoning
-- Plan (P): Treatment plan
-
-Respond in ${language || 'English'}.`
-
-  const { data, error } = await supabase.functions.invoke('groq-proxy', {
-    body: {
-      prompt,
-      model: 'llama-3.3-70b-versatile',
-      temperature: 0.3,
-      max_tokens: 1024
-    }
+export async function generateSoapNoteFromAudio(params: {
+  transcript: string
+  patient_id: string
+  booking_id?: string | null
+  clinic_id: string
+}) {
+  const { data, error } = await supabase.functions.invoke('generate-soap-note', {
+    body: params
   })
 
   if (error) throw new Error(error.message || 'Failed to generate SOAP note')
 
-  return data.content || ''
+  return data
 }
 
 // Patient insights (comprehensive AI report for profile page)
