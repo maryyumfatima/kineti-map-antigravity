@@ -1,11 +1,10 @@
-import { createFileRoute, useNavigate, Link, useParams } from '@tanstack/react-router'
+import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { Mail, Lock, User, Building2, Eye, EyeOff, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { PhoneInput } from '../components/PhoneInput'
 import { Helmet } from 'react-helmet-async'
-import { Logo } from '../components/Logo'
 
 export const Route = createFileRoute('/signup')({
   component: Signup,
@@ -111,7 +110,7 @@ function LeftPanel() {
       className="hidden-mobile"
     >
       <div>
-        <Logo variant="full-horizontal" size="lg" textColor="white" />
+        <h1 style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: '28px', fontWeight: 700, color: '#fff', margin: 0 }}>KinetiMap</h1>
         <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '16px', marginTop: '8px', marginBottom: 0 }}>
           Patient retention, automated.
         </p>
@@ -141,8 +140,6 @@ function LeftPanel() {
 // ─── Signup page ──────────────────────────────────────────────────────────────
 
 const UK_COUNTRY = { iso: 'GB', currency: 'GBP', timezone: 'Europe/London' }
-
-const getCountryData = (_c?: string) => UK_COUNTRY
 
 function Signup() {
   const [form, setForm] = useState({

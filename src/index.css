@@ -256,3 +256,108 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   margin-right: 0.5em;
 }
+
+/* ── Marketing page: scroll-reveal animations ── */
+html {
+  scroll-behavior: smooth;
+}
+
+@keyframes revealUp {
+  from { opacity: 0; transform: translateY(48px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes revealFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes revealScale {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes floatY {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+
+@keyframes shimmerGradient {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Elements start invisible, animate once scrolled into view */
+.reveal {
+  opacity: 0;
+  transform: translateY(48px);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.reveal.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-fade {
+  opacity: 0;
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity;
+}
+
+.reveal-fade.revealed {
+  opacity: 1;
+}
+
+.reveal-scale {
+  opacity: 0;
+  transform: scale(0.92);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.reveal-scale.revealed {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Staggered children delays */
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+
+/* Gentle float for hero illustration */
+.float-gentle {
+  animation: floatY 5s ease-in-out infinite;
+}
+
+/* Translucent header glass effect */
+.glass-header {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(0, 109, 119, 0.06);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+.glass-header-scrolled {
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 1px 24px rgba(0, 0, 0, 0.06);
+}
+
+/* Feature card hover lift */
+.card-hover-lift {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-hover-lift:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 48px rgba(0, 109, 119, 0.1);
+}
+

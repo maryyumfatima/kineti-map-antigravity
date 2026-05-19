@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from '@tanstack/react-router'
 import { 
   Clock, 
@@ -16,6 +16,35 @@ export function Homepage() {
   // State for interactive features
   const [sandboxClinicName, setSandboxClinicName] = useState('Apex Physio')
   const [activeFaq, setActiveFaq] = useState<number | null>(null)
+  const [headerScrolled, setHeaderScrolled] = useState(false)
+  const mainRef = useRef<HTMLDivElement>(null)
+
+  // Scroll-reveal: observe elements with .reveal, .reveal-scale, .reveal-fade
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('revealed')
+            observer.unobserve(entry.target)
+          }
+        })
+      },
+      { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
+    )
+
+    const elements = document.querySelectorAll('.reveal, .reveal-scale, .reveal-fade')
+    elements.forEach((el) => observer.observe(el))
+
+    return () => observer.disconnect()
+  }, [])
+
+  // Header glassmorphism on scroll
+  useEffect(() => {
+    const onScroll = () => setHeaderScrolled(window.scrollY > 24)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
   
   // JSON-LD Structured Data
   const jsonLd = {
@@ -64,7 +93,7 @@ export function Homepage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#EDF6F9] text-[#32323F] font-sans antialiased selection:bg-[#006D77] selection:text-white">
+    <div ref={mainRef} className="min-h-screen bg-[#EDF6F9] text-[#32323F] font-sans antialiased selection:bg-[#006D77] selection:text-white">
       <Helmet>
         <title>KinetiMap | AI Practice Management for UK Physiotherapists</title>
         <meta name="description" content="Voice-dictate consultations, generate structured clinical notes in seconds, and automate patient journeys via WhatsApp Cloud API. Built for modern UK clinics." />
@@ -74,7 +103,7 @@ export function Homepage() {
       </Helmet>
 
       {/* STICKY HEADER */}
-      <header className="sticky top-0 z-50 backdrop-blur-md bg-[#EDF6F9]/80 border-b border-[#E0EEF0] px-4 sm:px-6 lg:px-8 transition-all">
+      <header className={`sticky top-0 z-50 px-4 sm:px-6 lg:px-8 glass-header ${headerScrolled ? 'glass-header-scrolled' : ''}`}>
         <div className="max-w-7xl mx-auto flex items-center justify-between h-16">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-[#006D77] flex items-center justify-center shadow-md">
@@ -108,7 +137,7 @@ export function Homepage() {
 
       {/* HERO SECTION */}
       <section className="relative pt-12 pb-20 md:py-32 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-        <div className="lg:col-span-7 flex flex-col items-start text-left">
+        <div className="lg:col-span-7 flex flex-col items-start text-left reveal">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#006D77]/10 text-[#006D77] text-xs font-semibold uppercase tracking-wider mb-6">
             <Sparkles className="w-3.5 h-3.5" /> Built for UK Physiotherapy Clinics
           </div>
@@ -139,8 +168,8 @@ export function Homepage() {
           </p>
         </div>
 
-        <div className="lg:col-span-5 w-full flex justify-center">
-          <div className="w-full max-w-md bg-white border border-[#E0EEF0] rounded-3xl p-4 shadow-xl relative overflow-hidden group">
+        <div className="lg:col-span-5 w-full flex justify-center reveal reveal-delay-2">
+          <div className="w-full max-w-md bg-white border border-[#E0EEF0] rounded-3xl p-4 shadow-xl relative overflow-hidden group float-gentle">
             {/* Styled clinical notes mock preview */}
             <div className="bg-[#EDF6F9] rounded-2xl p-5 min-h-[320px] flex flex-col border border-[#E0EEF0] relative">
               <div className="flex items-center justify-between pb-3 border-b border-[#E0EEF0] mb-4">
@@ -185,7 +214,7 @@ export function Homepage() {
       {/* PROBLEM SECTION */}
       <section className="bg-white border-y border-[#E0EEF0] py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center max-w-3xl mx-auto mb-16">
+          <div className="text-center max-w-3xl mx-auto mb-16 reveal">
             <span className="text-[#006D77] text-xs sm:text-sm font-bold uppercase tracking-widest block mb-3">
               THE EVENING ADMIN PROBLEM
             </span>
@@ -196,7 +225,7 @@ export function Homepage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Card 1 */}
-            <div className="bg-[#EDF6F9] border border-[#E0EEF0] rounded-2xl p-6 md:p-8 shadow-sm flex flex-col items-start text-left hover:scale-[1.02] transition-premium">
+            <div className="bg-[#EDF6F9] border border-[#E0EEF0] rounded-2xl p-6 md:p-8 shadow-sm flex flex-col items-start text-left card-hover-lift reveal reveal-delay-1">
               <div className="w-12 h-12 rounded-xl bg-[#006D77]/10 flex items-center justify-center text-[#006D77] mb-6">
                 <Clock className="w-6 h-6" />
               </div>
@@ -207,7 +236,7 @@ export function Homepage() {
             </div>
 
             {/* Card 2 */}
-            <div className="bg-[#EDF6F9] border border-[#E0EEF0] rounded-2xl p-6 md:p-8 shadow-sm flex flex-col items-start text-left hover:scale-[1.02] transition-premium">
+            <div className="bg-[#EDF6F9] border border-[#E0EEF0] rounded-2xl p-6 md:p-8 shadow-sm flex flex-col items-start text-left card-hover-lift reveal reveal-delay-2">
               <div className="w-12 h-12 rounded-xl bg-[#006D77]/10 flex items-center justify-center text-[#006D77] mb-6">
                 <MessageSquare className="w-6 h-6" />
               </div>
@@ -218,7 +247,7 @@ export function Homepage() {
             </div>
 
             {/* Card 3 */}
-            <div className="bg-[#EDF6F9] border border-[#E0EEF0] rounded-2xl p-6 md:p-8 shadow-sm flex flex-col items-start text-left hover:scale-[1.02] transition-premium">
+            <div className="bg-[#EDF6F9] border border-[#E0EEF0] rounded-2xl p-6 md:p-8 shadow-sm flex flex-col items-start text-left card-hover-lift reveal reveal-delay-3">
               <div className="w-12 h-12 rounded-xl bg-[#006D77]/10 flex items-center justify-center text-[#006D77] mb-6">
                 <ShieldCheck className="w-6 h-6" />
               </div>
@@ -233,7 +262,7 @@ export function Homepage() {
 
       {/* SOLUTION SECTION */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <div className="text-center max-w-3xl mx-auto mb-12">
+        <div className="text-center max-w-3xl mx-auto mb-12 reveal">
           <span className="text-[#006D77] text-xs sm:text-sm font-bold uppercase tracking-widest block mb-3">
             THE KINETIMAP WAY
           </span>
@@ -250,7 +279,7 @@ export function Homepage() {
       <section id="features" className="space-y-24 pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         {/* Feature 1: AI SOAP Notes */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          <div className="lg:col-span-6 text-left">
+          <div className="lg:col-span-6 text-left reveal">
             <span className="text-[#006D77] text-xs sm:text-sm font-bold uppercase tracking-widest block mb-3">
               HANDS-FREE CLINICAL DOCUMENTATION
             </span>
@@ -279,7 +308,7 @@ export function Homepage() {
               </li>
             </ul>
           </div>
-          <div className="lg:col-span-6 bg-white border border-[#E0EEF0] rounded-3xl p-5 shadow-lg max-w-xl mx-auto w-full">
+          <div className="lg:col-span-6 bg-white border border-[#E0EEF0] rounded-3xl p-5 shadow-lg max-w-xl mx-auto w-full reveal-scale reveal-delay-2">
             {/* Static preview representing SOAP notes layout */}
             <div className="space-y-4">
               <div className="bg-[#EDF6F9] rounded-xl p-4 border border-[#E0EEF0]">
@@ -318,7 +347,7 @@ export function Homepage() {
 
         {/* Feature 2: WhatsApp Patient Journeys */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          <div className="lg:col-span-6 lg:order-2 text-left">
+          <div className="lg:col-span-6 lg:order-2 text-left reveal">
             <span className="text-[#006D77] text-xs sm:text-sm font-bold uppercase tracking-widest block mb-3">
               AUTOMATED PATIENT COMMUNICATION
             </span>
@@ -348,7 +377,7 @@ export function Homepage() {
             </ul>
           </div>
           
-          <div className="lg:col-span-6 lg:order-1 bg-white border border-[#E0EEF0] rounded-3xl p-5 shadow-lg max-w-xl mx-auto w-full">
+          <div className="lg:col-span-6 lg:order-1 bg-white border border-[#E0EEF0] rounded-3xl p-5 shadow-lg max-w-xl mx-auto w-full reveal-scale reveal-delay-2">
             {/* WhatsApp thread mockup and indicators */}
             <div className="bg-[#EDF6F9] rounded-2xl p-4 border border-[#E0EEF0] space-y-4 max-w-sm mx-auto">
               <div className="bg-[#006D77] text-white p-3 rounded-xl flex items-center justify-between shadow-sm">
@@ -403,7 +432,7 @@ export function Homepage() {
 
         {/* Feature 3: Branded Patient Booking */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          <div className="lg:col-span-6 text-left">
+          <div className="lg:col-span-6 text-left reveal">
             <span className="text-[#006D77] text-xs sm:text-sm font-bold uppercase tracking-widest block mb-3">
               A BOOKING EXPERIENCE THAT REFLECTS YOUR CLINIC
             </span>
@@ -433,7 +462,7 @@ export function Homepage() {
             </ul>
           </div>
           
-          <div className="lg:col-span-6 bg-white border border-[#E0EEF0] rounded-3xl p-6 shadow-lg max-w-xl mx-auto w-full">
+          <div className="lg:col-span-6 bg-white border border-[#E0EEF0] rounded-3xl p-6 shadow-lg max-w-xl mx-auto w-full reveal-scale reveal-delay-2">
             {/* Interactive Branding Sandbox Preview */}
             <div className="space-y-5">
               <div className="bg-[#EDF6F9] rounded-xl p-4 border border-[#E0EEF0]">
@@ -481,7 +510,7 @@ export function Homepage() {
 
       {/* DEMO SECTION */}
       <section id="demo" className="bg-white border-y border-[#E0EEF0] py-20 px-4 sm:px-6 lg:px-8 text-center">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto reveal">
           <span className="text-[#006D77] text-xs sm:text-sm font-bold uppercase tracking-widest block mb-3">
             PRODUCT WALKTHROUGH
           </span>
@@ -501,7 +530,7 @@ export function Homepage() {
 
       {/* TRUST & COMPLIANCE SECTION */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <div className="text-center max-w-3xl mx-auto mb-16">
+        <div className="text-center max-w-3xl mx-auto mb-16 reveal">
           <span className="text-[#006D77] text-xs sm:text-sm font-bold uppercase tracking-widest block mb-3">
             BUILT FOR UK HEALTHCARE STANDARDS
           </span>
@@ -515,7 +544,7 @@ export function Homepage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Pillar 1 */}
-          <div className="bg-white border border-[#E0EEF0] rounded-2xl p-6 shadow-sm hover:shadow-md transition-all text-left">
+          <div className="bg-white border border-[#E0EEF0] rounded-2xl p-6 shadow-sm card-hover-lift text-left reveal reveal-delay-1">
             <h3 className="font-bricolage font-bold text-lg text-[#006D77] mb-3">UK Data Residency</h3>
             <p className="text-[#32323F]/70 text-sm leading-relaxed">
               All patient data stored in EU data centres. Never shipped overseas.
@@ -523,7 +552,7 @@ export function Homepage() {
           </div>
 
           {/* Pillar 2 */}
-          <div className="bg-white border border-[#E0EEF0] rounded-2xl p-6 shadow-sm hover:shadow-md transition-all text-left">
+          <div className="bg-white border border-[#E0EEF0] rounded-2xl p-6 shadow-sm card-hover-lift text-left reveal reveal-delay-2">
             <h3 className="font-bricolage font-bold text-lg text-[#006D77] mb-3">One-Click Data Export</h3>
             <p className="text-[#32323F]/70 text-sm leading-relaxed">
               Right to Portability fulfilled automatically. Export a full patient record as a structured ZIP in seconds.
@@ -531,7 +560,7 @@ export function Homepage() {
           </div>
 
           {/* Pillar 3 */}
-          <div className="bg-white border border-[#E0EEF0] rounded-2xl p-6 shadow-sm hover:shadow-md transition-all text-left">
+          <div className="bg-white border border-[#E0EEF0] rounded-2xl p-6 shadow-sm card-hover-lift text-left reveal reveal-delay-3">
             <h3 className="font-bricolage font-bold text-lg text-[#006D77] mb-3">Right to be Forgotten</h3>
             <p className="text-[#32323F]/70 text-sm leading-relaxed">
               Patient deletion cascades across every system. No leftover records in backups or audit logs.
@@ -539,7 +568,7 @@ export function Homepage() {
           </div>
 
           {/* Pillar 4 */}
-          <div className="bg-white border border-[#E0EEF0] rounded-2xl p-6 shadow-sm hover:shadow-md transition-all text-left">
+          <div className="bg-white border border-[#E0EEF0] rounded-2xl p-6 shadow-sm card-hover-lift text-left reveal reveal-delay-4">
             <h3 className="font-bricolage font-bold text-lg text-[#006D77] mb-3">Granular Consent Tracking</h3>
             <p className="text-[#32323F]/70 text-sm leading-relaxed">
               Per-patient consent toggles for AI processing, marketing communications, and data sharing. Logged with timestamps.
@@ -551,7 +580,7 @@ export function Homepage() {
       {/* FOUNDING MEMBERS SECTION */}
       <section className="bg-white border-y border-[#E0EEF0] py-20 px-4 sm:px-6 lg:px-8 text-center">
         <div className="max-w-7xl mx-auto">
-          <div className="max-w-3xl mx-auto mb-16">
+          <div className="max-w-3xl mx-auto mb-16 reveal">
             <span className="text-[#006D77] text-xs sm:text-sm font-bold uppercase tracking-widest block mb-3">
               EARLY ACCESS
             </span>
@@ -849,7 +878,7 @@ export function Homepage() {
       {/* FINAL CTA SECTION */}
       <section className="bg-[#006D77] text-white py-20 px-4 sm:px-6 lg:px-8 text-center relative overflow-hidden">
         <div className="absolute inset-0 bg-radial-gradient from-white/10 to-transparent pointer-events-none" />
-        <div className="max-w-4xl mx-auto space-y-8 relative z-10">
+        <div className="max-w-4xl mx-auto space-y-8 relative z-10 reveal">
           <h2 className="font-bricolage font-black text-4xl sm:text-5xl tracking-tight leading-tight">
             Your evenings are waiting.
           </h2>
@@ -868,7 +897,7 @@ export function Homepage() {
       </section>
 
       {/* FOOTER */}
-      <footer id="about" className="bg-[#32323F] text-white/60 py-16 px-4 sm:px-6 lg:px-8 border-t border-white/10">
+      <footer id="about" className="bg-white text-[#32323F]/50 py-16 px-4 sm:px-6 lg:px-8 border-t border-[#E0EEF0]">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
           {/* Column 1 Logo */}
           <div className="space-y-4">
@@ -876,7 +905,7 @@ export function Homepage() {
               <div className="w-8 h-8 rounded-lg bg-[#006D77] flex items-center justify-center shadow-md">
                 <Sparkles className="w-4 h-4 text-white" />
               </div>
-              <span className="font-bricolage font-bold text-xl text-white">KinetiMap</span>
+              <span className="font-bricolage font-bold text-xl text-[#006D77]">KinetiMap</span>
             </div>
             <p className="text-xs leading-relaxed max-w-xs">
               Automated patient journeys and voice-dictated SOAP notes designed specifically for modern UK physiotherapy clinics.
@@ -885,41 +914,41 @@ export function Homepage() {
 
           {/* Column 2 Product */}
           <div className="space-y-4 text-left">
-            <h4 className="text-white text-xs font-bold uppercase tracking-widest">Product</h4>
+            <h4 className="text-[#32323F] text-xs font-bold uppercase tracking-widest">Product</h4>
             <ul className="space-y-2 text-sm font-semibold">
-              <li><a href="#features" className="hover:text-white transition-colors">Features</a></li>
-              <li><a href="#pricing" className="hover:text-white transition-colors">Pricing</a></li>
-              <li><a href="#demo" className="hover:text-white transition-colors">Book a Demo</a></li>
-              <li><Link to="/login" className="hover:text-white transition-colors">Log in</Link></li>
+              <li><a href="#features" className="hover:text-[#006D77] transition-colors">Features</a></li>
+              <li><a href="#pricing" className="hover:text-[#006D77] transition-colors">Pricing</a></li>
+              <li><a href="#demo" className="hover:text-[#006D77] transition-colors">Book a Demo</a></li>
+              <li><Link to="/login" className="hover:text-[#006D77] transition-colors">Log in</Link></li>
             </ul>
           </div>
 
           {/* Column 3 Company */}
           <div className="space-y-4 text-left">
-            <h4 className="text-white text-xs font-bold uppercase tracking-widest">Company</h4>
+            <h4 className="text-[#32323F] text-xs font-bold uppercase tracking-widest">Company</h4>
             <ul className="space-y-2 text-sm font-semibold">
-              <li><a href="#about" className="hover:text-white transition-colors">About</a></li>
-              <li><a href="mailto:support@kinetimap.app" className="hover:text-white transition-colors">Contact</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Blog</a></li>
+              <li><a href="#about" className="hover:text-[#006D77] transition-colors">About</a></li>
+              <li><a href="mailto:support@kinetimap.app" className="hover:text-[#006D77] transition-colors">Contact</a></li>
+              <li><a href="#" className="hover:text-[#006D77] transition-colors">Blog</a></li>
             </ul>
           </div>
 
           {/* Column 4 Legal */}
           <div className="space-y-4 text-left">
-            <h4 className="text-white text-xs font-bold uppercase tracking-widest">Legal</h4>
+            <h4 className="text-[#32323F] text-xs font-bold uppercase tracking-widest">Legal</h4>
             <ul className="space-y-2 text-sm font-semibold">
-              <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Terms of Service</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">GDPR Data Requests</a></li>
+              <li><a href="#" className="hover:text-[#006D77] transition-colors">Privacy Policy</a></li>
+              <li><a href="#" className="hover:text-[#006D77] transition-colors">Terms of Service</a></li>
+              <li><a href="#" className="hover:text-[#006D77] transition-colors">GDPR Data Requests</a></li>
             </ul>
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-xs gap-4">
+        <div className="max-w-7xl mx-auto pt-8 border-t border-[#E0EEF0] flex flex-col sm:flex-row items-center justify-between text-xs gap-4">
           <p>© 2026 KinetiMap. A product by esemdot. Made for UK physiotherapists.</p>
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-green-500" />
-            <span className="font-semibold text-white/80">UK Healthcare Standards Compliant</span>
+            <span className="font-semibold text-[#006D77]">UK Healthcare Standards Compliant</span>
           </div>
         </div>
       </footer>

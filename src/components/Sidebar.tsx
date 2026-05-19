@@ -1,4 +1,4 @@
-import { Link, useRouter, useParams } from '@tanstack/react-router'
+import { Link, useRouter } from '@tanstack/react-router'
 import {
   LayoutDashboard,
   Users,
