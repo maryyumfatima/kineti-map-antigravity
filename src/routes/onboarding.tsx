@@ -34,7 +34,16 @@ function LeftPanel({ step }: { step: number }) {
       justifyContent: 'center', flexShrink: 0,
     }}>
       <div>
-        <h1 style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: '28px', fontWeight: 700, color: '#fff', margin: 0 }}>KinetiMap</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+          <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', flexShrink: 0 }}>
+            <img 
+              src="/logo.svg" 
+              alt="KinetiMap Logo" 
+              style={{ height: '44px', width: 'auto', objectFit: 'contain', imageRendering: 'auto' }} 
+            />
+          </div>
+          <h1 style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: '28px', fontWeight: 700, color: '#fff', margin: 0 }}>KinetiMap</h1>
+        </div>
         <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '16px', marginTop: '8px', marginBottom: 0 }}>
           Let's get your clinic set up.
         </p>

@@ -105,11 +105,13 @@ export function Homepage() {
       {/* STICKY HEADER */}
       <header className={`sticky top-0 z-50 px-4 sm:px-6 lg:px-8 glass-header ${headerScrolled ? 'glass-header-scrolled' : ''}`}>
         <div className="max-w-7xl mx-auto flex items-center justify-between h-16">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#006D77] flex items-center justify-center shadow-md">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-bricolage font-bold text-xl tracking-tight text-[#006D77]">KinetiMap</span>
+          <div className="flex items-center gap-[10px] lg:gap-[12px]">
+            <img 
+              src="/logo.svg" 
+              alt="KinetiMap Logo" 
+              className="h-[40px] md:h-[44px] lg:h-[48px] w-auto object-contain [image-rendering:auto]"
+            />
+            <span className="font-bricolage font-bold text-[20px] md:text-[22px] lg:text-[24px] tracking-tight text-[#32323F]">KinetiMap</span>
           </div>
 
           <nav className="hidden md:flex items-center gap-8 font-semibold text-sm text-[#32323F]/80">
@@ -628,8 +630,8 @@ export function Homepage() {
       </section>
 
       {/* PRICING SECTION */}
-      <section id="pricing" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <div className="text-center max-w-3xl mx-auto mb-16">
+      <section id="pricing" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto reveal">
+        <div className="text-center max-w-3xl mx-auto mb-16 reveal">
           <span className="text-[#006D77] text-xs sm:text-sm font-bold uppercase tracking-widest block mb-3">
             SIMPLE, TRANSPARENT PRICING
           </span>
@@ -641,9 +643,9 @@ export function Homepage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch mb-12">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch mb-12 reveal">
           {/* Card 1: Essentials */}
-          <div className="bg-white border border-[#E0EEF0] rounded-3xl p-8 flex flex-col justify-between shadow-sm relative hover:shadow-md transition-all text-left">
+          <div className="bg-white border border-[#E0EEF0] rounded-3xl p-8 flex flex-col justify-between shadow-sm relative hover:shadow-md transition-all text-left reveal">
             <div>
               <h3 className="font-bricolage font-bold text-2xl text-[#32323F] mb-1">Essentials</h3>
               <p className="text-[#32323F]/50 text-sm font-medium mb-6">For solo practitioners</p>
@@ -692,7 +694,7 @@ export function Homepage() {
           </div>
 
           {/* Card 2: Growth (MOST POPULAR) */}
-          <div className="bg-white border-2 border-[#006D77] rounded-3xl p-8 flex flex-col justify-between shadow-lg relative text-left ring-4 ring-[#006D77]/5 scale-100 lg:scale-[1.03]">
+          <div className="bg-white border-2 border-[#006D77] rounded-3xl p-8 flex flex-col justify-between shadow-lg relative text-left ring-4 ring-[#006D77]/5 scale-100 lg:scale-[1.03] reveal">
             {/* "Most Popular" Ribbon */}
             <div className="absolute -top-4 right-8 bg-[#006D77] text-white text-xs font-extrabold uppercase tracking-widest px-4 py-1.5 rounded-full shadow-md">
               Most Popular
@@ -746,7 +748,7 @@ export function Homepage() {
           </div>
 
           {/* Card 3: Scale */}
-          <div className="bg-white border border-[#E0EEF0] rounded-3xl p-8 flex flex-col justify-between shadow-sm relative hover:shadow-md transition-all text-left">
+          <div className="bg-white border border-[#E0EEF0] rounded-3xl p-8 flex flex-col justify-between shadow-sm relative hover:shadow-md transition-all text-left reveal">
             <div>
               <h3 className="font-bricolage font-bold text-2xl text-[#32323F] mb-1">Scale</h3>
               <p className="text-[#32323F]/50 text-sm font-medium mb-6">For established multi-practitioner clinics</p>
@@ -902,10 +904,12 @@ export function Homepage() {
           {/* Column 1 Logo */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-[#006D77] flex items-center justify-center shadow-md">
-                <Sparkles className="w-4 h-4 text-white" />
-              </div>
-              <span className="font-bricolage font-bold text-xl text-[#006D77]">KinetiMap</span>
+              <img 
+                src="/logo.svg" 
+                alt="KinetiMap Logo" 
+                className="h-[32px] md:h-[36px] w-auto object-contain [image-rendering:auto]"
+              />
+              <span className="font-bricolage font-bold text-[16px] md:text-[18px] tracking-tight text-[#32323F]">KinetiMap</span>
             </div>
             <p className="text-xs leading-relaxed max-w-xs">
               Automated patient journeys and voice-dictated SOAP notes designed specifically for modern UK physiotherapy clinics.

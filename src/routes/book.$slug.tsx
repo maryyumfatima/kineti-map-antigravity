@@ -700,8 +700,13 @@ function BookingPage() {
               )}
 
               <div className="pt-8">
-                <a href="https://kinetimap.app" target="_blank" rel="noreferrer" className="text-[11px] font-semibold text-gray-400 hover:text-gray-600 tracking-wide uppercase">
-                  Powered by KinetiMap
+                <a href="https://kinetimap.app" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 hover:text-gray-600 tracking-wide uppercase">
+                  <img 
+                    src="/logo.svg" 
+                    alt="KinetiMap Logo" 
+                    className="h-[24px] w-auto object-contain [image-rendering:auto]"
+                  />
+                  <span>Powered by KinetiMap</span>
                 </a>
               </div>
             </div>

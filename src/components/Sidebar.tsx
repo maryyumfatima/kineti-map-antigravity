@@ -82,9 +82,22 @@ export function Sidebar({ collapsed, onToggleCollapsed, mobileOpen, onMobileClos
         `}
       >
         {/* Header: brand + collapse/close button */}
-        <div className={`flex items-center ${collapsed ? 'lg:justify-center lg:px-2' : 'justify-between px-6'} py-5`}>
-          {!collapsed && (
-            <h2 className="text-primary font-bricolage text-[22px] font-bold">KinetiMap</h2>
+        <div className={`flex items-center ${collapsed ? 'lg:flex-col lg:px-2' : 'justify-between px-6'} py-5`}>
+          {!collapsed ? (
+            <div className="flex items-center gap-[10px]">
+              <img 
+                src="/logo.svg" 
+                alt="KinetiMap Logo" 
+                className="h-[40px] w-auto object-contain [image-rendering:auto]"
+              />
+              <h2 className="text-[#32323F] font-bricolage text-[20px] font-bold">KinetiMap</h2>
+            </div>
+          ) : (
+            <img 
+              src="/logo.svg" 
+              alt="KinetiMap Logo" 
+              className="h-[32px] w-auto object-contain [image-rendering:auto] lg:mb-2"
+            />
           )}
 
           {/* Mobile close button (X) */}

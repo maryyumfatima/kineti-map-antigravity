@@ -57,9 +57,20 @@ export function DashboardLayout({ children, fullWidth = false }: { children: Rea
         >
           {fullWidth ? <ChevronLeft className="w-6 h-6 text-white" /> : <Menu className="w-6 h-6 text-white" />}
         </button>
-        <h2 className="text-white font-bricolage text-[18px] font-bold">
-          {fullWidth ? 'Patient Profile' : 'KinetiMap'}
-        </h2>
+        <div className="flex items-center gap-2">
+          {!fullWidth && (
+            <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm">
+              <img 
+                src="/logo.svg" 
+                alt="KinetiMap Logo" 
+                className="h-[34px] w-auto object-contain [image-rendering:auto]"
+              />
+            </div>
+          )}
+          <h2 className="text-white font-bricolage text-[18px] font-bold">
+            {fullWidth ? 'Patient Profile' : 'KinetiMap'}
+          </h2>
+        </div>
       </header>
 
       <main className={`p-4 lg:p-8 transition-[margin] duration-200 ${mainMarginClass}`}>

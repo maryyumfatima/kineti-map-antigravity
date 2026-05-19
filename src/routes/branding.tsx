@@ -625,7 +625,14 @@ function BrandingPage() {
                     {form.booking_page_mode === 'closed' && (
                       <p className="text-xs text-text/40 text-center italic">Bookings closed — contact us to enquire</p>
                     )}
-                    <p className="text-[10px] text-text/25 text-center mt-2">Powered by KinetiMap</p>
+                    <div className="flex items-center justify-center gap-1 text-text/25 mt-2">
+                      <img 
+                        src="/logo.svg" 
+                        alt="KinetiMap Logo" 
+                        className="h-[18px] w-auto object-contain [image-rendering:auto]"
+                      />
+                      <p className="text-[10px] text-center">Powered by KinetiMap</p>
+                    </div>
                   </div>
                 </div>
               </div>
