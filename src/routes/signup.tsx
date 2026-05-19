@@ -6,16 +6,12 @@ import { toast } from 'sonner'
 import { PhoneInput } from '../components/PhoneInput'
 import { Helmet } from 'react-helmet-async'
 
-type SignupSearch = {
-  plan?: string
-}
-
 export const Route = createFileRoute('/signup')({
   component: Signup,
-  validateSearch: (search: Record<string, unknown>): SignupSearch => {
+  validateSearch: (search: Record<string, unknown>) => {
     return {
       plan: typeof search.plan === 'string' ? search.plan : undefined,
-    }
+    } as { plan?: string }
   }
 })
 

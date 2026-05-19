@@ -687,7 +687,7 @@ export function Homepage() {
 
             <Link 
               to="/signup"
-              search={{ plan: 'essentials' }}
+              search={(prev) => ({ ...prev, plan: 'essentials' })}
               className="w-full bg-[#006D77]/10 hover:bg-[#006D77]/20 text-[#006D77] font-bold text-center py-3.5 rounded-xl transition-all font-semibold"
             >
               Start 14-Day Free Trial
@@ -742,7 +742,7 @@ export function Homepage() {
 
             <Link 
               to="/signup"
-              search={{ plan: 'growth' }}
+              search={(prev) => ({ ...prev, plan: 'growth' })}
               className="w-full bg-[#006D77] hover:bg-[#005560] text-white font-bold text-center py-3.5 rounded-xl transition-all shadow-md"
             >
               Start 14-Day Free Trial
@@ -792,7 +792,7 @@ export function Homepage() {
 
             <Link 
               to="/signup"
-              search={{ plan: 'scale' }}
+              search={(prev) => ({ ...prev, plan: 'scale' })}
               className="w-full bg-[#006D77]/10 hover:bg-[#006D77]/20 text-[#006D77] font-bold text-center py-3.5 rounded-xl transition-all font-semibold"
             >
               Start 14-Day Free Trial
@@ -971,8 +971,8 @@ export function Homepage() {
                 className="w-8 h-8 rounded-lg bg-[#006D77]/5 hover:bg-[#006D77]/10 text-[#006D77] flex items-center justify-center transition-all border border-[#006D77]/10 hover:border-[#006D77]/20 hover:scale-105"
                 title="Linktree"
               >
-                <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                  <path d="m13.511 11.282 2.452-2.39h-3.411v-2.02h2.247l1.797-1.748H12.55V3.1h1.564L15.938.839h-3.939v5.992h-1.996V.839H6.062L7.91 3.1h1.564v2.024H5.397l1.798 1.748h2.247v2.02H6.035l2.453 2.39H4.15l3.82 3.722h3.033v2.32H6.55v2.245h4.453V24h2.003v-4.321h4.45v-2.245h-4.453v-2.32h3.037l3.82-3.722h-4.496z"/>
+                <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="m13.73635 5.85251 4.00467 -4.11665 2.3248 2.3808 -4.20064 4.00466h5.9085v3.30473h-5.9365l4.22865 4.10766 -2.3248 2.3338L12.0005 12.099l-5.74052 5.76852 -2.3248 -2.3248 4.22864 -4.10766h-5.9375V8.12132h5.9085L3.93417 4.11666l2.3248 -2.3808 4.00468 4.11665V0h3.4727zm-3.4727 10.30614h3.4727V24h-3.4727z" />
                 </svg>
               </a>
             </div>
