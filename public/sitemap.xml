@@ -18,4 +18,9 @@
     <priority>0.5</priority>
     <changefreq>monthly</changefreq>
   </url>
+  <url>
+    <loc>https://kinetimap.app/home</loc>
+    <priority>0.5</priority>
+    <changefreq>weekly</changefreq>
+  </url>
 </urlset>

@@ -16,6 +16,7 @@ import { Route as RevenueRouteImport } from './routes/revenue'
 import { Route as PatientsRouteImport } from './routes/patients'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as HomeRouteImport } from './routes/home'
 import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as BrandingRouteImport } from './routes/branding'
@@ -60,6 +61,11 @@ const OnboardingRoute = OnboardingRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HomeRoute = HomeRouteImport.update({
+  id: '/home',
+  path: '/home',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FeedbackRoute = FeedbackRouteImport.update({
@@ -120,6 +126,7 @@ export interface FileRoutesByFullPath {
   '/branding': typeof BrandingRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/feedback': typeof FeedbackRoute
+  '/home': typeof HomeRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/patients': typeof PatientsRouteWithChildren
@@ -139,6 +146,7 @@ export interface FileRoutesByTo {
   '/branding': typeof BrandingRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/feedback': typeof FeedbackRoute
+  '/home': typeof HomeRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/patients': typeof PatientsRouteWithChildren
@@ -159,6 +167,7 @@ export interface FileRoutesById {
   '/branding': typeof BrandingRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/feedback': typeof FeedbackRoute
+  '/home': typeof HomeRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/patients': typeof PatientsRouteWithChildren
@@ -180,6 +189,7 @@ export interface FileRouteTypes {
     | '/branding'
     | '/dashboard'
     | '/feedback'
+    | '/home'
     | '/login'
     | '/onboarding'
     | '/patients'
@@ -199,6 +209,7 @@ export interface FileRouteTypes {
     | '/branding'
     | '/dashboard'
     | '/feedback'
+    | '/home'
     | '/login'
     | '/onboarding'
     | '/patients'
@@ -218,6 +229,7 @@ export interface FileRouteTypes {
     | '/branding'
     | '/dashboard'
     | '/feedback'
+    | '/home'
     | '/login'
     | '/onboarding'
     | '/patients'
@@ -238,6 +250,7 @@ export interface RootRouteChildren {
   BrandingRoute: typeof BrandingRoute
   DashboardRoute: typeof DashboardRouteWithChildren
   FeedbackRoute: typeof FeedbackRoute
+  HomeRoute: typeof HomeRoute
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
   PatientsRoute: typeof PatientsRouteWithChildren
@@ -298,6 +311,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/home': {
+      id: '/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof HomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/feedback': {
@@ -404,6 +424,7 @@ const rootRouteChildren: RootRouteChildren = {
   BrandingRoute: BrandingRoute,
   DashboardRoute: DashboardRouteWithChildren,
   FeedbackRoute: FeedbackRoute,
+  HomeRoute: HomeRoute,
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
   PatientsRoute: PatientsRouteWithChildren,
