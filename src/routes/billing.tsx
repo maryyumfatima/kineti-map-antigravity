@@ -1,9 +1,9 @@
-import { createFileRoute, useParams } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { DashboardLayout } from '../components/DashboardLayout'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
-import { Check, Minus, AlertTriangle, ShieldCheck, MessageCircle, Users, Calendar, X, ChevronDown, Sparkles } from 'lucide-react'
+import { Check, Minus, AlertTriangle, ShieldCheck, MessageCircle, Users, X, Sparkles, Loader2 } from 'lucide-react'
 
 export const Route = createFileRoute('/billing')({
   component: BillingPage,
@@ -146,10 +146,11 @@ function FeatureTick({ yes }: { yes: boolean }) {
 function BillingPage() {
   const [clinic, setClinic] = useState<ClinicData | null>(null)
   const [clinicId, setClinicId] = useState<string | null>(null)
-  const [sessionsThisMonth, setSessionsThisMonth] = useState(0)
   const [practitionerCount, setPractitionerCount] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [showTestModal, setShowTestModal] = useState(false)
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
+  const [selectedPlanId, setSelectedPlanId] = useState<string>('essentials')
+  const [selectedPriceLabel, setSelectedPriceLabel] = useState<string>('£49')
 
   const region = getRegionInfo()
 
@@ -187,14 +188,7 @@ function BillingPage() {
         })
       }
 
-      const firstOfMonth = new Date()
-      firstOfMonth.setDate(1); firstOfMonth.setHours(0, 0, 0, 0)
-      const { count: sessCount } = await supabase
-        .from('bookings')
-        .select('id', { count: 'exact', head: true })
-        .eq('clinic_id', cid)
-        .gte('appointment_time', firstOfMonth.toISOString())
-      setSessionsThisMonth(sessCount ?? 0)
+
 
       const { count: practCount } = await supabase
         .from('clinic_users')
@@ -208,27 +202,22 @@ function BillingPage() {
     }
   }
 
-  const handleUpgrade = () => {
+  const handleUpgrade = (planId?: string) => {
+    const targetPlanId = planId || 'essentials'
+    if (targetPlanId === 'enterprise') {
+      toast.info("Please email partners@kinetimap.co.uk to request custom volume pricing and setup.", { duration: 5000 })
+      return
+    }
+    const planConfig = PLANS.find(p => p.id === targetPlanId)
+    const priceLabel = planConfig ? planConfig.price : '£49'
+
+    setSelectedPlanId(targetPlanId)
+    setSelectedPriceLabel(priceLabel)
+
     if (isTestMode) {
-      setShowTestModal(true)
+      setIsCheckoutOpen(true)
     } else {
       toast.info("Stripe payments coming soon — we'll notify you when billing is live.", { duration: 5000 })
-    }
-  }
-
-  const handleTestUpgrade = async (planId: string) => {
-    if (!clinicId) return
-    try {
-      const { error } = await supabase.from('clinics').update({
-        subscription_plan: planId,
-        ai_soap_enabled: true
-      }).eq('id', clinicId)
-      if (error) throw error
-      toast.success(`Test Mode: Plan updated to ${planId} (AI SOAP enabled)`)
-      setShowTestModal(false)
-      fetchData()
-    } catch (e) {
-      toast.error('Failed to update plan')
     }
   }
 
@@ -243,7 +232,7 @@ function BillingPage() {
   const aiCreditsUsed = clinic?.ai_credits_used ?? 0
   const aiCreditsLimit = isTrial ? 5 : (plan === 'essentials' ? 200 : plan === 'growth' ? 600 : plan === 'scale' ? 1500 : 999999)
   const maxPract = clinic?.max_practitioners ?? 1
-  const currency = region.currency
+
 
   const card = 'bg-card border border-border rounded-xl p-6 card-shadow transition-premium'
 
@@ -373,7 +362,7 @@ function BillingPage() {
               </div>
               <p className="text-3xl font-bold font-bricolage text-primary mb-1">{aiCreditsUsed}</p>
               <p className="text-xs text-text/50 mb-3">of {aiCreditsLimit >= 999999 ? 'unlimited' : aiCreditsLimit} this period</p>
-              <ProgressBar value={aiCreditsUsed} max={aiCreditsLimit === 0 ? 1 : aiCreditsLimit} warn />
+              <ProgressBar value={aiCreditsUsed} max={aiCreditsLimit} warn />
             </div>
 
             <div className={card}>
@@ -471,7 +460,7 @@ function BillingPage() {
                         <span className="text-xs text-primary font-semibold">Current Plan</span>
                       ) : (
                         <button
-                          onClick={handleUpgrade}
+                          onClick={() => handleUpgrade(p.id)}
                           className="w-full bg-primary hover:opacity-90 text-white text-xs font-semibold py-1.5 rounded-lg transition-colors"
                         >
                           {p.id === 'enterprise' ? 'Contact Us' : 'Upgrade'}
@@ -500,38 +489,379 @@ function BillingPage() {
         </div>
       </div>
 
-      {/* ══ Test Mode Modal ══ */}
-      {showTestModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
-            <div className="p-5 border-b border-border flex justify-between items-center">
+      {/* ══ Mock Checkout Modal ══ */}
+      <MockCheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        planId={selectedPlanId}
+        priceLabel={selectedPriceLabel}
+        clinicId={clinicId}
+        onSuccess={() => fetchData(region)}
+      />
+    </DashboardLayout>
+  )
+}
+
+function MockCheckoutModal({
+  isOpen,
+  onClose,
+  planId,
+  priceLabel,
+  clinicId,
+  onSuccess,
+}: {
+  isOpen: boolean
+  onClose: () => void
+  planId: string
+  priceLabel: string
+  clinicId: string | null
+  onSuccess: () => void
+}) {
+  const [cardNumber, setCardNumber] = useState('')
+  const [cardName, setCardName] = useState('')
+  const [cardExpiry, setCardExpiry] = useState('')
+  const [cardCvc, setCardCvc] = useState('')
+  const [email, setEmail] = useState('')
+  const [isPaying, setIsPaying] = useState(false)
+  const [paymentStep, setPaymentStep] = useState<'idle' | 'authorizing' | 'activating' | 'success'>('idle')
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.email) setEmail(user.email)
+    })
+  }, [])
+
+  const planName = planId.charAt(0).toUpperCase() + planId.slice(1)
+
+  // Card formatting
+  const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/\D/g, '').substring(0, 16)
+    const formatted = val.replace(/(\d{4})(?=\d)/g, '$1 ')
+    setCardNumber(formatted)
+  }
+
+  const handleExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value.replace(/\D/g, '').substring(0, 4)
+    if (val.length >= 3) {
+      val = val.substring(0, 2) + '/' + val.substring(2)
+    }
+    setCardExpiry(val)
+  }
+
+  const handleCvcChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/\D/g, '').substring(0, 3)
+    setCardCvc(val)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!clinicId) return
+    if (cardNumber.replace(/\s/g, '').length < 16) {
+      toast.error('Please enter a valid 16-digit card number')
+      return
+    }
+    if (cardExpiry.length < 5) {
+      toast.error('Please enter a valid expiry date (MM/YY)')
+      return
+    }
+    if (cardCvc.length < 3) {
+      toast.error('Please enter a valid CVC')
+      return
+    }
+
+    setIsPaying(true)
+    setPaymentStep('authorizing')
+
+    // Stage 1: Authorizing
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    setPaymentStep('activating')
+
+    // Stage 2: Activating in DB
+    try {
+      let maxPract = 1
+      let journeysLimit = 300
+
+      if (planId === 'growth') {
+        maxPract = 3
+        journeysLimit = 1000
+      } else if (planId === 'scale') {
+        maxPract = 9999
+        journeysLimit = 3000
+      }
+
+      const { error } = await supabase
+        .from('clinics')
+        .update({
+          subscription_plan: planId,
+          ai_soap_enabled: true,
+          trial_ends_at: null,
+          max_practitioners: maxPract,
+          whatsapp_journeys_limit: journeysLimit,
+        })
+        .eq('id', clinicId)
+
+      if (error) throw error
+
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      setPaymentStep('success')
+      await new Promise(resolve => setTimeout(resolve, 800))
+
+      toast.success(`Welcome to ${planName}! Your clinic features are now active.`)
+      onSuccess()
+      onClose()
+    } catch (e: any) {
+      toast.error(`Checkout failed: ${e.message || 'Unknown error'}`)
+      setIsPaying(false)
+      setPaymentStep('idle')
+    }
+  }
+
+  if (!isOpen) return null
+
+  // Card theme gradients
+  const cardGradient =
+    planId === 'growth'
+      ? 'from-indigo-600 to-purple-600'
+      : planId === 'scale'
+      ? 'from-amber-500 to-rose-500'
+      : 'from-teal-600 to-cyan-700'
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-card w-full max-w-4xl border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row animate-in zoom-in-95 duration-200">
+        
+        {/* Left Column: Plan Summary */}
+        <div className="w-full md:w-5/12 bg-background/50 border-r border-border p-6 md:p-8 flex flex-col justify-between">
+          <div className="space-y-6">
+            <div className="flex justify-between items-start">
               <div>
-                <h3 className="font-bold text-lg font-bricolage text-text">Test Mode: Select a plan</h3>
-                <p className="text-xs text-text/50 mt-0.5">No payment required — for testing only</p>
+                <span className="text-[10px] font-bold text-primary/80 bg-primary/10 border border-primary/20 rounded-full px-2.5 py-1 uppercase tracking-wider">
+                  Plan Selected
+                </span>
+                <h3 className="text-2xl font-bold font-bricolage text-text mt-2">{planName} Subscription</h3>
               </div>
-              <button onClick={() => setShowTestModal(false)} className="text-text/50 hover:text-text p-1 rounded-lg hover:bg-gray-100 transition-colors">
+              <button 
+                onClick={onClose} 
+                className="md:hidden text-text/40 hover:text-text p-1.5 hover:bg-background rounded-lg"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-5 flex flex-col gap-3">
-              {[
-                { id: 'essentials', label: 'Essentials', sub: PLAN_PRICES.essentials },
-                { id: 'growth', label: 'Growth', sub: PLAN_PRICES.growth },
-                { id: 'scale', label: 'Scale', sub: PLAN_PRICES.scale },
-              ].map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => handleTestUpgrade(p.id)}
-                  className="w-full flex items-center justify-between bg-background hover:bg-primary/5 border border-border hover:border-primary text-text font-semibold py-3 px-4 rounded-lg transition-all"
-                >
-                  <span>{p.label}</span>
-                  <span className="text-sm font-normal text-text/50">{p.sub}</span>
-                </button>
-              ))}
+
+            <div className="py-4 border-y border-border space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-text/60">Subscription Frequency</span>
+                <span className="font-semibold text-text">Monthly</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-text/60">Amount due today</span>
+                <span className="font-semibold text-text">{priceLabel}/mo</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-text/60">Tax (0% VAT)</span>
+                <span className="font-semibold text-text">£0.00</span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-text/40 uppercase tracking-widest">Included Features</h4>
+              <ul className="space-y-2">
+                {[
+                  `Up to ${planId === 'essentials' ? '1 Practitioner' : planId === 'growth' ? '3 Practitioners' : 'Unlimited Practitioners'}`,
+                  `Up to ${planId === 'essentials' ? '300' : planId === 'growth' ? '1,000' : '3,000'} WhatsApp Journeys / mo`,
+                  `Up to ${planId === 'essentials' ? '200' : planId === 'growth' ? '600' : '1,500'} AI SOAP notes / mo`,
+                  'AI Clinical Insights & Continuity Summary',
+                  'Cancel or change tier at any time',
+                ].map((feat, idx) => (
+                  <li key={idx} className="text-xs text-text/75 flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                    {feat}
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
+
+          <div className="mt-8 pt-4 border-t border-border hidden md:flex items-center gap-3 text-text/40 text-[11px] leading-snug">
+            <ShieldCheck className="w-8 h-8 text-primary shrink-0" />
+            <span>
+              Mock payments are active. Your payment is secure and runs in sandboxed test mode.
+            </span>
+          </div>
         </div>
-      )}
-    </DashboardLayout>
+
+        {/* Right Column: Interactive Payment Form */}
+        <div className="w-full md:w-7/12 p-6 md:p-8 flex flex-col justify-between relative bg-card">
+          <button 
+            onClick={onClose} 
+            className="hidden md:flex absolute top-5 right-5 text-text/40 hover:text-text p-1.5 hover:bg-background rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+
+          {paymentStep !== 'idle' ? (
+            <div className="flex-1 flex flex-col items-center justify-center py-12 text-center space-y-6 min-h-[350px]">
+              {paymentStep === 'authorizing' && (
+                <>
+                  <div className="relative w-16 h-16">
+                    <Loader2 className="w-16 h-16 text-primary animate-spin" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <ShieldCheck className="w-6 h-6 text-primary" />
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-lg font-bricolage text-text">Authorizing Mock Card</h4>
+                    <p className="text-sm text-text/50 mt-1">Connecting to virtual secure gateway...</p>
+                  </div>
+                </>
+              )}
+
+              {paymentStep === 'activating' && (
+                <>
+                  <div className="relative w-16 h-16">
+                    <Loader2 className="w-16 h-16 text-primary animate-spin" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Sparkles className="w-6 h-6 text-primary animate-pulse" />
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-lg font-bricolage text-text">Activating {planName} Plan</h4>
+                    <p className="text-sm text-text/50 mt-1">Configuring limits and enabling AI modules...</p>
+                  </div>
+                </>
+              )}
+
+              {paymentStep === 'success' && (
+                <>
+                  <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center border border-green-200 animate-bounce">
+                    <Check className="w-8 h-8 text-green-600" strokeWidth={3} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-lg font-bricolage text-green-700">Payment Successful!</h4>
+                    <p className="text-sm text-text/50 mt-1">Direct subscription activated successfully.</p>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <h3 className="font-bold text-lg font-bricolage text-text mb-4">Secure Checkout</h3>
+                
+                {/* Visual Credit Card */}
+                <div className={`w-full aspect-[1.586/1] max-w-[340px] mx-auto rounded-2xl bg-gradient-to-br ${cardGradient} p-5 text-white flex flex-col justify-between shadow-xl relative overflow-hidden mb-6 select-none`}>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-8 -mt-8 blur-lg" />
+                  
+                  {/* Top: Chip & Network Logo */}
+                  <div className="flex justify-between items-center">
+                    <div className="w-10 h-7 rounded bg-amber-300/80 border border-amber-400/40 relative overflow-hidden flex items-center justify-center shadow-inner">
+                      {/* Chip lines */}
+                      <div className="absolute inset-x-2 border-y border-amber-600/30 h-1/2 top-1/4" />
+                      <div className="absolute inset-y-1.5 border-x border-amber-600/30 w-1/2 left-1/4" />
+                    </div>
+                    <span className="font-bold text-sm italic tracking-widest opacity-85">KINETIMAP</span>
+                  </div>
+
+                  {/* Mid: Card Number */}
+                  <div className="text-lg md:text-xl font-mono tracking-widest text-center py-2 min-h-[36px]">
+                    {cardNumber || '•••• •••• •••• ••••'}
+                  </div>
+
+                  {/* Bottom: Holder Name + Expiry */}
+                  <div className="flex justify-between items-end">
+                    <div className="space-y-0.5 max-w-[70%]">
+                      <span className="text-[8px] uppercase tracking-wider opacity-60">Card Holder</span>
+                      <div className="text-xs font-semibold tracking-wide truncate uppercase">
+                        {cardName || 'YOUR FULL NAME'}
+                      </div>
+                    </div>
+                    <div className="space-y-0.5 text-right shrink-0">
+                      <span className="text-[8px] uppercase tracking-wider opacity-60">Expires</span>
+                      <div className="text-xs font-mono font-semibold">
+                        {cardExpiry || 'MM/YY'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Form fields */}
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-text/40 uppercase tracking-widest mb-1.5">Billing Email</label>
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder="physio@clinic.com"
+                      className="w-full px-3 py-2 border border-border rounded-lg outline-none text-sm bg-background text-text focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                      <label className="block text-xs font-bold text-text/40 uppercase tracking-widest mb-1.5">Card Number</label>
+                      <input
+                        type="text"
+                        required
+                        value={cardNumber}
+                        onChange={handleCardNumberChange}
+                        placeholder="4242 4242 4242 4242"
+                        className="w-full px-3 py-2 border border-border rounded-lg outline-none text-sm font-mono bg-background text-text focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-text/40 uppercase tracking-widest mb-1.5">Expiry Date</label>
+                      <input
+                        type="text"
+                        required
+                        value={cardExpiry}
+                        onChange={handleExpiryChange}
+                        placeholder="MM/YY"
+                        className="w-full px-3 py-2 border border-border rounded-lg outline-none text-sm font-mono bg-background text-text focus:ring-2 focus:ring-primary/20 focus:border-primary text-center"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-text/40 uppercase tracking-widest mb-1.5">Security Code (CVC)</label>
+                      <input
+                        type="text"
+                        required
+                        value={cardCvc}
+                        onChange={handleCvcChange}
+                        placeholder="123"
+                        className="w-full px-3 py-2 border border-border rounded-lg outline-none text-sm font-mono bg-background text-text focus:ring-2 focus:ring-primary/20 focus:border-primary text-center"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-text/40 uppercase tracking-widest mb-1.5">Cardholder Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={cardName}
+                      onChange={e => setCardName(e.target.value)}
+                      placeholder="Jane Smith"
+                      className="w-full px-3 py-2 border border-border rounded-lg outline-none text-sm bg-background text-text focus:ring-2 focus:ring-primary/20 focus:border-primary uppercase font-medium"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isPaying}
+                className="w-full btn-premium bg-primary text-white font-bold py-3 rounded-xl shadow-lg shadow-primary/20 hover:opacity-95 transition-all text-sm"
+              >
+                Pay & Subscribe ({priceLabel})
+              </button>
+            </form>
+          )}
+        </div>
+
+      </div>
+    </div>
   )
 }
