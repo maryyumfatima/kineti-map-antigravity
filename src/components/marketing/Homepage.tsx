@@ -150,16 +150,16 @@ export function Homepage() {
             KinetiMap is the AI-powered practice platform built for UK physiotherapists. Voice-dictate consultations, generate structured clinical notes in seconds, and finally leave admin at the clinic.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto mb-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full sm:w-auto mb-4">
             <Link 
               to="/signup"
-              className="btn-premium bg-[#006D77] hover:bg-[#005560] text-white font-bold shadow-lg hover:shadow-xl py-3.5 px-8 rounded-xl text-center text-base cursor-pointer"
+              className="btn-premium flex items-center justify-center bg-[#006D77] hover:bg-[#005560] text-white font-bold shadow-lg hover:shadow-xl py-3.5 px-8 border-2 border-transparent rounded-xl text-center text-base cursor-pointer"
             >
               Start Your Free 14-Day Trial
             </Link>
             <a 
               href="#demo"
-              className="flex items-center justify-center gap-2 border-2 border-[#006D77]/20 hover:border-[#006D77]/40 bg-white font-semibold py-3.5 px-6 rounded-xl transition-all hover:bg-white/80"
+              className="flex items-center justify-center gap-2 border-2 border-[#006D77]/20 hover:border-[#006D77]/40 bg-white text-[#32323F] hover:text-[#006D77] font-bold py-3.5 px-8 rounded-xl transition-all hover:bg-white/80 text-base"
             >
               <Play className="w-4 h-4 text-[#006D77] fill-current" />
               Watch 2-Minute Demo
@@ -171,7 +171,7 @@ export function Homepage() {
         </div>
 
         <div className="lg:col-span-5 w-full flex justify-center reveal reveal-delay-2">
-          <div className="w-full max-w-md bg-white border border-[#E0EEF0] rounded-3xl p-4 shadow-xl relative overflow-hidden group float-gentle">
+          <div className="w-full max-w-md bg-white border border-[#E0EEF0] rounded-3xl p-4 shadow-xl relative overflow-hidden group">
             {/* Styled clinical notes mock preview */}
             <div className="bg-[#EDF6F9] rounded-2xl p-5 min-h-[320px] flex flex-col border border-[#E0EEF0] relative">
               <div className="flex items-center justify-between pb-3 border-b border-[#E0EEF0] mb-4">
@@ -687,6 +687,7 @@ export function Homepage() {
 
             <Link 
               to="/signup"
+              search={{ plan: 'essentials' }}
               className="w-full bg-[#006D77]/10 hover:bg-[#006D77]/20 text-[#006D77] font-bold text-center py-3.5 rounded-xl transition-all font-semibold"
             >
               Start 14-Day Free Trial
@@ -741,6 +742,7 @@ export function Homepage() {
 
             <Link 
               to="/signup"
+              search={{ plan: 'growth' }}
               className="w-full bg-[#006D77] hover:bg-[#005560] text-white font-bold text-center py-3.5 rounded-xl transition-all shadow-md"
             >
               Start 14-Day Free Trial
@@ -790,6 +792,7 @@ export function Homepage() {
 
             <Link 
               to="/signup"
+              search={{ plan: 'scale' }}
               className="w-full bg-[#006D77]/10 hover:bg-[#006D77]/20 text-[#006D77] font-bold text-center py-3.5 rounded-xl transition-all font-semibold"
             >
               Start 14-Day Free Trial
@@ -914,6 +917,65 @@ export function Homepage() {
             <p className="text-xs leading-relaxed max-w-xs">
               Automated patient journeys and voice-dictated SOAP notes designed specifically for modern UK physiotherapy clinics.
             </p>
+            <div className="flex items-center gap-3 pt-4">
+              <a 
+                href="https://www.instagram.com/kinetimap.app" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="w-8 h-8 rounded-lg bg-[#006D77]/5 hover:bg-[#006D77]/10 text-[#006D77] flex items-center justify-center transition-all border border-[#006D77]/10 hover:border-[#006D77]/20 hover:scale-105"
+                title="Instagram"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+                  <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+                </svg>
+              </a>
+              <a 
+                href="https://www.facebook.com/kinetimap" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="w-8 h-8 rounded-lg bg-[#006D77]/5 hover:bg-[#006D77]/10 text-[#006D77] flex items-center justify-center transition-all border border-[#006D77]/10 hover:border-[#006D77]/20 hover:scale-105"
+                title="Facebook"
+              >
+                <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                  <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c4.56-.93 8-4.96 8-9.75z"/>
+                </svg>
+              </a>
+              <a 
+                href="https://x.com/kinetimap.app" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="w-8 h-8 rounded-lg bg-[#006D77]/5 hover:bg-[#006D77]/10 text-[#006D77] flex items-center justify-center transition-all border border-[#006D77]/10 hover:border-[#006D77]/20 hover:scale-105"
+                title="X (Twitter)"
+              >
+                <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+              </a>
+              <a 
+                href="https://www.youtube.com/channel/UCnlbdV1hrHv3-GsOihdg20w" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="w-8 h-8 rounded-lg bg-[#006D77]/5 hover:bg-[#006D77]/10 text-[#006D77] flex items-center justify-center transition-all border border-[#006D77]/10 hover:border-[#006D77]/20 hover:scale-105"
+                title="YouTube"
+              >
+                <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                  <path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.108C19.53 3.5 12 3.5 12 3.5s-7.53 0-9.388.555A3.003 3.003 0 0 0 .502 6.163C0 8.07 0 12 0 12s0 3.93.502 5.837a3.003 3.003 0 0 0 2.11 2.108C4.47 20.5 12 20.5 12 20.5s7.53 0 9.388-.555a3.003 3.003 0 0 0 2.11-2.108C24 15.93 24 12 24 12s0-3.93-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                </svg>
+              </a>
+              <a 
+                href="https://linktr.ee/kinetimap.app" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="w-8 h-8 rounded-lg bg-[#006D77]/5 hover:bg-[#006D77]/10 text-[#006D77] flex items-center justify-center transition-all border border-[#006D77]/10 hover:border-[#006D77]/20 hover:scale-105"
+                title="Linktree"
+              >
+                <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                  <path d="m13.511 11.282 2.452-2.39h-3.411v-2.02h2.247l1.797-1.748H12.55V3.1h1.564L15.938.839h-3.939v5.992h-1.996V.839H6.062L7.91 3.1h1.564v2.024H5.397l1.798 1.748h2.247v2.02H6.035l2.453 2.39H4.15l3.82 3.722h3.033v2.32H6.55v2.245h4.453V24h2.003v-4.321h4.45v-2.245h-4.453v-2.32h3.037l3.82-3.722h-4.496z"/>
+                </svg>
+              </a>
+            </div>
           </div>
 
           {/* Column 2 Product */}

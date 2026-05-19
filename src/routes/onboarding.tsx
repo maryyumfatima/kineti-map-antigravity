@@ -154,6 +154,8 @@ function OnboardingPage() {
           default_slot_duration: 60,
           booking_page_mode: 'open',
           onboarding_completed: false,
+          subscription_plan: meta.subscription_plan || 'essentials',
+          trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
         }).select('id').single()
         if (createErr || !newClinic) {
           toast.error('Could not set up your clinic. Please contact support.')

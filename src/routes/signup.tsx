@@ -6,8 +6,17 @@ import { toast } from 'sonner'
 import { PhoneInput } from '../components/PhoneInput'
 import { Helmet } from 'react-helmet-async'
 
+type SignupSearch = {
+  plan?: string
+}
+
 export const Route = createFileRoute('/signup')({
   component: Signup,
+  validateSearch: (search: Record<string, unknown>): SignupSearch => {
+    return {
+      plan: typeof search.plan === 'string' ? search.plan : undefined,
+    }
+  }
 })
 
 // ─── Shared components ────────────────────────────────────────────────────────
@@ -160,6 +169,7 @@ function Signup() {
   const [loading, setLoading] = useState(false)
   const [shaking, setShaking] = useState(false)
   const navigate = useNavigate()
+  const { plan } = Route.useSearch()
     const set = (key: keyof typeof form) => (val: string) =>
     setForm(prev => ({ ...prev, [key]: val }))
 
@@ -199,6 +209,7 @@ function Signup() {
           currency: countryData.currency,
           timezone: countryData.timezone,
           whatsapp_number: form.whatsapp,
+          subscription_plan: plan || 'essentials',
         },
       },
     })
