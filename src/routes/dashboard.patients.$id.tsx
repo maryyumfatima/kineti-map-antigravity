@@ -1,8 +1,9 @@
-import { createFileRoute, Link, useParams } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { DashboardLayout } from '../components/DashboardLayout'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
+import { Helmet } from 'react-helmet-async'
 import { 
   Phone, Mail, Calendar, Info, 
   MessageSquare, History, ChevronRight,
@@ -289,6 +290,10 @@ function PatientDetailPage() {
 
   return (
     <DashboardLayout>
+      <Helmet>
+        <title>Patient Case File | KinetiMap</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">

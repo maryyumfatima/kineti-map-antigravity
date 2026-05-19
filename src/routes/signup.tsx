@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { Mail, Lock, User, Building2, Eye, EyeOff, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { PhoneInput } from '../components/PhoneInput'
+import { Helmet } from 'react-helmet-async'
 
 export const Route = createFileRoute('/signup')({
   component: Signup,
@@ -218,6 +219,10 @@ function Signup() {
   if (success) {
     return (
       <div style={{ display: 'flex', minHeight: '100vh', background: '#fff' }}>
+        <Helmet>
+          <title>Sign up for KinetiMap | UK Physiotherapy Software</title>
+          <meta name="description" content="Create an account with KinetiMap to start your 14-day free trial. Streamline your UK physiotherapy practice with automated patient journeys and clinical AI SOAP notes." />
+        </Helmet>
         <LeftPanel />
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 40px' }}>
           <div className="auth-card-in" style={{ width: '100%', maxWidth: '380px' }}>
@@ -242,6 +247,10 @@ function Signup() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#fff' }}>
+      <Helmet>
+        <title>Sign up for KinetiMap | UK Physiotherapy Software</title>
+        <meta name="description" content="Create an account with KinetiMap to start your 14-day free trial. Streamline your UK physiotherapy practice with automated patient journeys and clinical AI SOAP notes." />
+      </Helmet>
       <LeftPanel />
 
       {/* Right panel */}

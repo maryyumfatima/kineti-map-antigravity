@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { Mail, Lock, Eye, EyeOff, Check } from 'lucide-react'
+import { Helmet } from 'react-helmet-async'
 
 export const Route = createFileRoute('/login')({
   component: Login,
@@ -156,6 +157,10 @@ function Login() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#fff' }}>
+      <Helmet>
+        <title>Log in to KinetiMap | Physiotherapy Practice Management</title>
+        <meta name="description" content="Log in to KinetiMap to manage your physiotherapy clinic, generate clinical AI SOAP notes, and review automated patient recovery and communication programmes." />
+      </Helmet>
       <LeftPanel />
 
       {/* Right panel */}

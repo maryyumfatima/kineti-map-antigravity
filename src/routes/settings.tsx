@@ -3,6 +3,7 @@ import { DashboardLayout } from '../components/DashboardLayout'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
+import { Helmet } from 'react-helmet-async'
 import { getTimezoneAbbr } from '../lib/date'
 import {
   Lock, Sparkles, MapPin, ShieldCheck, AlertTriangle, X,
@@ -217,6 +218,10 @@ function SettingsPage() {
 
   return (
     <DashboardLayout>
+      <Helmet>
+        <title>Settings | KinetiMap</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
       <div className="max-w-3xl mx-auto space-y-5">
         <h1 className="text-[28px] font-bold text-primary font-bricolage">Settings</h1>
 

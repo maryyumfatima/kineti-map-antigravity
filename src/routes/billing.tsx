@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { DashboardLayout } from '../components/DashboardLayout'
 import { useState, useEffect } from 'react'
+import { Helmet } from 'react-helmet-async'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 import { Check, Minus, AlertTriangle, ShieldCheck, MessageCircle, Users, X, Sparkles, Loader2 } from 'lucide-react'
@@ -251,6 +252,10 @@ function BillingPage() {
 
   return (
     <DashboardLayout>
+      <Helmet>
+        <title>Billing | KinetiMap</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
       <div className="max-w-5xl mx-auto space-y-6">
         <h1 className="text-[28px] font-bold text-primary font-bricolage">Billing</h1>
 

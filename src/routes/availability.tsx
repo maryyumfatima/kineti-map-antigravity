@@ -1,8 +1,9 @@
-import { createFileRoute, useNavigate, useParams } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { DashboardLayout } from '../components/DashboardLayout'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
+import { Helmet } from 'react-helmet-async'
 import { Clock, Save, Plug, ChevronDown } from 'lucide-react'
 import { useRef } from 'react'
 import { formatLocalTime } from '../lib/date'
@@ -240,6 +241,10 @@ function AvailabilityPage() {
 
   return (
     <DashboardLayout>
+      <Helmet>
+        <title>Availability & Scheduling | KinetiMap</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
       <div className="max-w-5xl mx-auto">
         <h1 className="text-[28px] font-bold text-primary font-bricolage mb-8">Availability</h1>
 

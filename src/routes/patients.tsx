@@ -3,6 +3,7 @@ import { DashboardLayout } from '../components/DashboardLayout'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
+import { Helmet } from 'react-helmet-async'
 import { Search, Plus, Users, X, Upload, Sparkles, Loader2, Brain, ChevronRight, ChevronDown } from 'lucide-react'
 import { formatLocalTime } from '../lib/date'
 import { PhoneInput } from '../components/PhoneInput'
@@ -435,6 +436,10 @@ function PatientsPage() {
 
   return (
     <DashboardLayout>
+      <Helmet>
+        <title>Patients Directory | KinetiMap</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
       <div className="max-w-7xl mx-auto animate-in fade-in duration-700">
         {/* Background Decorative Element */}
         <div className="fixed inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent pointer-events-none" />

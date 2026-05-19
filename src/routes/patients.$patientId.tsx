@@ -3,11 +3,13 @@ import { DashboardLayout } from '../components/DashboardLayout'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
+import { Helmet } from 'react-helmet-async'
 import {
   Calendar, FileText, History, ChevronRight, Search, Printer, Download, Plus, Clock, Activity, User, Phone, Mail, Sparkles, CheckCircle, MessageSquare, Archive, X, MapPin, Briefcase, Stethoscope, ShieldCheck, CreditCard, Trash2, LogOut, Settings, Lock, Share2
 } from 'lucide-react'
 import { formatLocalTime } from '../lib/date'
 import { generatePatientInsights } from '../lib/groq'
+
 
 export const Route = createFileRoute('/patients/$patientId')({
   component: PatientProfilePage,
@@ -393,6 +395,10 @@ function PatientProfilePage() {
 
   return (
     <DashboardLayout fullWidth={true}>
+      <Helmet>
+        <title>Patient Case File | KinetiMap</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 font-sans slide-up">
         
         {/* --- HEADER CARD --- */}

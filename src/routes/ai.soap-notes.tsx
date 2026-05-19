@@ -1,8 +1,9 @@
-import { createFileRoute, useNavigate, useParams } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { DashboardLayout } from '../components/DashboardLayout'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
+import { Helmet } from 'react-helmet-async'
 import { 
   Sparkles, 
   Mic, 
@@ -440,48 +441,6 @@ function AISoapNotesPage() {
     }
   }
 
-  // Improved Parsing Logic (Issue 3)
-  const parseAndSetNote = (responseText: string) => {
-    console.log('Raw AI Response:', responseText)
-    
-    const sections: SoapNote = { s: '', o: '', a: '', p: '' }
-    
-    // 1. Try regex matching for clear headers
-    const sMatch = responseText.match(/Subjective[:\s]+(.*?)(?=Objective|$)/is)
-    const oMatch = responseText.match(/Objective[:\s]+(.*?)(?=Assessment|$)/is)
-    const aMatch = responseText.match(/Assessment[:\s]+(.*?)(?=Plan|$)/is)
-    const pMatch = responseText.match(/Plan[:\s]+(.*?)$/is)
-
-    if (sMatch) sections.s = sMatch[1].trim()
-    if (oMatch) sections.o = oMatch[1].trim()
-    if (aMatch) sections.a = aMatch[1].trim()
-    if (pMatch) sections.p = pMatch[1].trim()
-
-    // 2. Fallback to numbered format or basic headers if regex fails
-    if (!sections.s && !sections.o && !sections.a && !sections.p) {
-      const lines = responseText.split('\n')
-      let currentSection: keyof SoapNote | null = null
-      
-      lines.forEach(line => {
-        const lowerLine = line.toLowerCase().trim()
-        if (lowerLine.startsWith('subjective') || lowerLine.startsWith('s:')) currentSection = 's'
-        else if (lowerLine.startsWith('objective') || lowerLine.startsWith('o:')) currentSection = 'o'
-        else if (lowerLine.startsWith('assessment') || lowerLine.startsWith('a:')) currentSection = 'a'
-        else if (lowerLine.startsWith('plan') || lowerLine.startsWith('p:')) currentSection = 'p'
-        else if (currentSection) {
-          sections[currentSection] += (sections[currentSection] ? '\n' : '') + line
-        }
-      })
-    }
-
-    if (!sections.s && !sections.o && !sections.a && !sections.p) {
-      sections.s = responseText
-      toast.warning("Note generated but formatting unclear. Please review and edit sections manually.")
-    }
-
-    setGeneratedNote(sections)
-  }
-
   // Save Logic
   const handleSaveNote = async () => {
     console.log('Attempting to save note for patient:', selectedPatientId)
@@ -617,6 +576,10 @@ function AISoapNotesPage() {
 
   return (
     <DashboardLayout>
+      <Helmet>
+        <title>AI SOAP Notes | KinetiMap</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
       <div className="max-w-6xl mx-auto pb-20">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">

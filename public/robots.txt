@@ -1,0 +1,10 @@
+User-agent: *
+Disallow: /dashboard/
+Disallow: /clinic/
+Disallow: /patient/
+Disallow: /settings/
+Disallow: /billing/
+Disallow: /api/
+Allow: /
+
+Sitemap: https://kinetimap.app/sitemap.xml

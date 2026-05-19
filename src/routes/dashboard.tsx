@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { DashboardLayout } from '../components/DashboardLayout'
 import { useState, useEffect } from 'react'
+import { Helmet } from 'react-helmet-async'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 import {
@@ -193,6 +194,10 @@ function Dashboard() {
 
   return (
     <DashboardLayout>
+      <Helmet>
+        <title>Dashboard | KinetiMap</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
       <div className="max-w-6xl mx-auto pb-12">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-1 md:gap-0 mb-6 md:mb-8">
           <div>

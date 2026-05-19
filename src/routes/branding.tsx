@@ -3,6 +3,7 @@ import { DashboardLayout } from '../components/DashboardLayout'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
+import { Helmet } from 'react-helmet-async'
 import { Copy, Upload, Check, Building2, Eye, EyeOff } from 'lucide-react'
 import { PhoneInput } from '../components/PhoneInput'
 
@@ -288,6 +289,10 @@ function BrandingPage() {
 
   return (
     <DashboardLayout>
+      <Helmet>
+        <title>Branding Configuration | KinetiMap</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
       <div className="max-w-6xl mx-auto">
         <h1 className="text-[28px] font-bold text-primary font-bricolage mb-8">Branding</h1>
 
