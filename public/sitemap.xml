@@ -1,13 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Homepage -->
+  <url>
+    <loc>https://kinetimap.app/</loc>
+    <priority>1.0</priority>
+    <changefreq>weekly</changefreq>
+  </url>
+  <!-- Login Page -->
   <url>
     <loc>https://kinetimap.app/login</loc>
-    <priority>0.8</priority>
+    <priority>0.5</priority>
     <changefreq>monthly</changefreq>
   </url>
+  <!-- Signup Page -->
   <url>
     <loc>https://kinetimap.app/signup</loc>
-    <priority>0.8</priority>
+    <priority>0.5</priority>
     <changefreq>monthly</changefreq>
   </url>
 </urlset>

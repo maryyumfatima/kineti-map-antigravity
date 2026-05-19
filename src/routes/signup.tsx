@@ -5,6 +5,7 @@ import { Mail, Lock, User, Building2, Eye, EyeOff, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { PhoneInput } from '../components/PhoneInput'
 import { Helmet } from 'react-helmet-async'
+import { Logo } from '../components/Logo'
 
 export const Route = createFileRoute('/signup')({
   component: Signup,
@@ -110,7 +111,7 @@ function LeftPanel() {
       className="hidden-mobile"
     >
       <div>
-        <h1 style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: '28px', fontWeight: 700, color: '#fff', margin: 0 }}>KinetiMap</h1>
+        <Logo variant="full-horizontal" size="lg" textColor="white" />
         <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '16px', marginTop: '8px', marginBottom: 0 }}>
           Patient retention, automated.
         </p>
