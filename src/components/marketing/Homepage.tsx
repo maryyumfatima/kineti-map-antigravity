@@ -11,13 +11,26 @@ import {
   Sparkles
 } from 'lucide-react'
 import { Helmet } from 'react-helmet-async'
-
+import { supabase } from '../../lib/supabase'
+import type { Session } from '@supabase/supabase-js'
 export function Homepage() {
   // State for interactive features
   const [sandboxClinicName, setSandboxClinicName] = useState('Apex Physio')
   const [activeFaq, setActiveFaq] = useState<number | null>(null)
   const [headerScrolled, setHeaderScrolled] = useState(false)
+  const [session, setSession] = useState<Session | null>(null)
   const mainRef = useRef<HTMLDivElement>(null)
+
+  // Auth state
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
   // Scroll-reveal: observe elements with .reveal, .reveal-scale, .reveal-fade
   useEffect(() => {
@@ -121,18 +134,29 @@ export function Homepage() {
           </nav>
 
           <div className="flex items-center gap-3">
-            <Link 
-              to="/login"
-              className="text-sm font-semibold hover:text-[#006D77] transition-all px-3 py-2 rounded-lg"
-            >
-              Log in
-            </Link>
-            <Link 
-              to="/signup"
-              className="btn-premium bg-[#006D77] hover:bg-[#005560] text-white text-xs sm:text-sm font-bold shadow-md cursor-pointer px-4 py-2 rounded-lg transition-premium"
-            >
-              Start Free Trial
-            </Link>
+            {session ? (
+              <Link 
+                to="/dashboard"
+                className="btn-premium bg-[#006D77] hover:bg-[#005560] text-white text-xs sm:text-sm font-bold shadow-md cursor-pointer px-4 py-2 rounded-lg transition-premium"
+              >
+                Go to Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link 
+                  to="/login"
+                  className="text-sm font-semibold hover:text-[#006D77] transition-all px-3 py-2 rounded-lg"
+                >
+                  Log in
+                </Link>
+                <Link 
+                  to="/signup"
+                  className="btn-premium bg-[#006D77] hover:bg-[#005560] text-white text-xs sm:text-sm font-bold shadow-md cursor-pointer px-4 py-2 rounded-lg transition-premium"
+                >
+                  Start Free Trial
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
