@@ -1,4 +1,4 @@
-import { createFileRoute, useParams, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, useNavigate, Outlet, useChildMatches } from '@tanstack/react-router'
 import { DashboardLayout } from '../components/DashboardLayout'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
@@ -30,7 +30,8 @@ type Patient = {
 // Removed PatientPhoneInput in favor of shared component
 
 function PatientsPage() {
-    const navigate = useNavigate()
+  const navigate = useNavigate()
+  const childMatches = useChildMatches()
   const [patients, setPatients] = useState<Patient[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -432,6 +433,11 @@ function PatientsPage() {
     if (diffDays <= 30) return 'active'
     if (diffDays <= 90) return 'lapsed'
     return 'lapsed' // or 'inactive'
+  }
+
+  // If a child route (e.g. patient profile) is active, render it instead of the list
+  if (childMatches.length > 0) {
+    return <Outlet />
   }
 
   return (
