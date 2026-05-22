@@ -5,13 +5,20 @@ import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 import { Helmet } from 'react-helmet-async'
 import { Search, Plus, Users, X, Upload, Sparkles, Loader2, Brain, ChevronRight, ChevronDown } from 'lucide-react'
-import { formatLocalTime } from '../lib/date'
+import { formatLocalTime, getZonedDate } from '../lib/date'
 import { PhoneInput } from '../components/PhoneInput'
 import { generatePainSummary } from '../lib/groq'
 
 export const Route = createFileRoute('/patients')({
   component: PatientsPage,
 })
+
+type Booking = {
+  id: string
+  appointment_time: string
+  status: 'upcoming' | 'completed' | 'cancelled' | 'no_show'
+  session_completed_at: string | null
+}
 
 type Patient = {
   id: string
@@ -21,10 +28,108 @@ type Patient = {
   date_of_birth: string | null
   primary_complaint: string
   referral_source: string | null
-  status_tag: 'active' | 'lapsed' | 'discharged' | 'no-show'
+  status_tag: 'active' | 'lapsed' | 'discharged' | 'no_show'
   last_session_date: string | null
   gdpr_consent: boolean
   ai_pain_summary?: string | null
+  bookings?: Booking[]
+}
+
+const ACTIVE_THRESHOLD_DAYS = 30
+const LAPSED_THRESHOLD_DAYS = 60
+
+function getPatientStats(patient: Patient) {
+  const bookings = patient.bookings || []
+  const completedBookings = bookings.filter(b => b.status === 'completed')
+  const upcomingBookings = bookings.filter(b => b.status === 'upcoming')
+
+  // Last completed session date: most recent session_completed_at, fallback to appointment_time
+  let lastSessionDate: Date | null = null
+  completedBookings.forEach(b => {
+    const dateStr = b.session_completed_at || b.appointment_time
+    if (dateStr) {
+      const d = new Date(dateStr)
+      if (!lastSessionDate || d > lastSessionDate) {
+        lastSessionDate = d
+      }
+    }
+  })
+
+  // Next upcoming booking date: earliest appointment_time in the future
+  let nextBookingDate: Date | null = null
+  const now = new Date()
+  upcomingBookings.forEach(b => {
+    if (b.appointment_time) {
+      const d = new Date(b.appointment_time)
+      if (d > now) {
+        if (!nextBookingDate || d < nextBookingDate) {
+          nextBookingDate = d
+        }
+      }
+    }
+  })
+
+  return {
+    lastSessionDate,
+    nextBookingDate,
+    completedCount: completedBookings.length
+  }
+}
+
+function getCalculatedStatus(patient: Patient) {
+  // Discharged manually set always wins
+  if (patient.status_tag === 'discharged') {
+    return 'discharged'
+  }
+  if (patient.status_tag === 'no_show' || patient.status_tag === 'no-show') {
+    return 'no_show'
+  }
+
+  const { lastSessionDate, nextBookingDate } = getPatientStats(patient)
+
+  // If has a future upcoming booking -> active
+  if (nextBookingDate) {
+    return 'active'
+  }
+
+  // If has completed bookings, check last completed session date
+  if (lastSessionDate) {
+    const now = new Date()
+    const diffMs = now.getTime() - lastSessionDate.getTime()
+    const diffDays = diffMs / (1000 * 60 * 60 * 24)
+
+    if (diffDays <= LAPSED_THRESHOLD_DAYS) {
+      return 'active'
+    } else {
+      return 'lapsed'
+    }
+  }
+
+  // If zero completed bookings and no upcoming booking -> active (New patient)
+  return 'active'
+}
+
+function formatRelativeLastSession(lastSessionDate: Date | null, timezone?: string) {
+  if (!lastSessionDate) return 'New patient'
+  
+  // Calculate relative days in the clinic's timezone
+  const nowZoned = getZonedDate(new Date(), undefined, timezone)
+  const lastSessionZoned = getZonedDate(lastSessionDate, undefined, timezone)
+  
+  // Reset hours to compute full days difference
+  const nowDay = new Date(nowZoned.getFullYear(), nowZoned.getMonth(), nowZoned.getDate())
+  const sessionDay = new Date(lastSessionZoned.getFullYear(), lastSessionZoned.getMonth(), lastSessionZoned.getDate())
+  
+  const diffMs = nowDay.getTime() - sessionDay.getTime()
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+  if (diffDays <= 0) {
+    return 'Last seen today'
+  } else if (diffDays === 1) {
+    return 'Last seen yesterday'
+  } else {
+    return `Last seen ${diffDays} days ago`
+  }
 }
 
 // Removed PatientPhoneInput in favor of shared component
@@ -108,8 +213,13 @@ function PatientsPage() {
 
       const { data: patientsData, error } = await supabase
         .from('patients')
-        .select('*')
+        .select(`
+          *,
+          bookings(id, appointment_time, status, session_completed_at)
+        `)
         .eq('clinic_id', clinicUser.clinic_id)
+        .eq('is_deleted', false)
+        .is('archived_at', null)
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -384,27 +494,41 @@ function PatientsPage() {
       case 'active': return 'bg-primary/10 text-primary border-primary/20'
       case 'lapsed': return 'bg-[#D9B29C]/20 text-[#B88B71] border-[#D9B29C]/30'
       case 'discharged': return 'bg-gray-100 text-gray-700 border-gray-200'
+      case 'no_show':
       case 'no-show': return 'bg-alert/10 text-alert border-alert/20'
       default: return 'bg-gray-100 text-gray-700 border-gray-200'
     }
   }
 
   const filteredPatients = patients.filter(p => {
+    const computedStatus = getCalculatedStatus(p)
     const matchesSearch = (p.full_name ?? '').toLowerCase().includes((search ?? '').toLowerCase()) ||
       (p.phone_number ?? '').includes(search) ||
-      (p.status_tag ?? '').toLowerCase().includes((search ?? '').toLowerCase())
+      computedStatus.toLowerCase().includes((search ?? '').toLowerCase())
     
-    const matchesFilter = filter === 'All' || (p.status_tag ?? '').toLowerCase() === (filter ?? '').toLowerCase()
+    const matchesFilter = filter === 'All' || 
+      (filter === 'Active' && computedStatus === 'active') ||
+      (filter === 'Lapsed' && computedStatus === 'lapsed') ||
+      (filter === 'Discharged' && computedStatus === 'discharged')
     
-    // Segmentation filter logic
+    // Segmentation filter logic (Weekly / Monthly / Yearly) using clinic's timezone
     let matchesSegment = true
     if (segment !== 'All Time') {
-      const now = new Date()
-      const lastSession = p.last_session_date ? new Date(p.last_session_date) : null
-      if (!lastSession) {
+      const { lastSessionDate } = getPatientStats(p)
+      if (!lastSessionDate) {
         matchesSegment = false
       } else {
-        const diffDays = Math.floor((now.getTime() - lastSession.getTime()) / (1000 * 60 * 60 * 24))
+        const timezone = clinicData?.timezone
+        const nowZoned = getZonedDate(new Date(), undefined, timezone)
+        const sessionZoned = getZonedDate(lastSessionDate, undefined, timezone)
+        
+        // Reset hours to calculate day difference
+        const nowDay = new Date(nowZoned.getFullYear(), nowZoned.getMonth(), nowZoned.getDate())
+        const sessionDay = new Date(sessionZoned.getFullYear(), sessionZoned.getMonth(), sessionZoned.getDate())
+        
+        const diffMs = nowDay.getTime() - sessionDay.getTime()
+        const diffDays = diffMs / (1000 * 60 * 60 * 24)
+        
         if (segment === 'Weekly') matchesSegment = diffDays <= 7
         else if (segment === 'Monthly') matchesSegment = diffDays <= 30
         else if (segment === 'Yearly') matchesSegment = diffDays <= 365
@@ -421,19 +545,7 @@ function PatientsPage() {
     currentPage * itemsPerPage
   )
 
-  // Status calculation logic (Issue 6)
-  const getCalculatedStatus = (p: Patient) => {
-    if (p.status_tag === 'discharged') return 'discharged'
-    if (!p.last_session_date) return 'active' // or 'new'
-    
-    const now = new Date()
-    const lastSession = new Date(p.last_session_date)
-    const diffDays = Math.floor((now.getTime() - lastSession.getTime()) / (1000 * 60 * 60 * 24))
-    
-    if (diffDays <= 30) return 'active'
-    if (diffDays <= 90) return 'lapsed'
-    return 'lapsed' // or 'inactive'
-  }
+
 
   // If a child route (e.g. patient profile) is active, render it instead of the list
   if (childMatches.length > 0) {
@@ -589,8 +701,42 @@ function PatientsPage() {
                           {getCalculatedStatus(patient)}
                         </span>
                       </td>
-                      <td className="p-4 text-text/40 text-xs">
-                        {patient.last_session_date ? formatLocalTime(patient.last_session_date, 'GB', 'MMM d, yyyy', clinicData?.timezone) : 'New Patient'}
+                      <td className="p-4 text-xs">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {(() => {
+                            const { lastSessionDate, nextBookingDate } = getPatientStats(patient)
+                            const lastSessionText = formatRelativeLastSession(lastSessionDate, clinicData?.timezone)
+                            
+                            let isLapsed = false
+                            if (lastSessionDate) {
+                              const timezone = clinicData?.timezone
+                              const nowZoned = getZonedDate(new Date(), undefined, timezone)
+                              const lastSessionZoned = getZonedDate(lastSessionDate, undefined, timezone)
+                              
+                              const nowDay = new Date(nowZoned.getFullYear(), nowZoned.getMonth(), nowZoned.getDate())
+                              const sessionDay = new Date(lastSessionZoned.getFullYear(), lastSessionZoned.getMonth(), lastSessionZoned.getDate())
+                              
+                              const diffMs = nowDay.getTime() - sessionDay.getTime()
+                              const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+                              if (diffDays > LAPSED_THRESHOLD_DAYS) {
+                                isLapsed = true
+                              }
+                            }
+
+                            return (
+                              <>
+                                <span className={isLapsed ? 'text-amber-600 font-medium' : 'text-text/40 font-normal'}>
+                                  {lastSessionText}
+                                </span>
+                                {nextBookingDate && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">
+                                    Next: {formatLocalTime(nextBookingDate.toISOString(), 'GB', 'd MMM', clinicData?.timezone)}
+                                  </span>
+                                )}
+                              </>
+                            )
+                          })()}
+                        </div>
                       </td>
                       <td className="p-4" onClick={e => e.stopPropagation()}>
                         <button
@@ -861,8 +1007,10 @@ function PatientsPage() {
                     disabled={!isEditing}
                     className="w-full px-3 py-2 rounded-lg border border-border focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none disabled:bg-gray-50 disabled:text-text/80 disabled:opacity-100"
                   >
-                    {['active', 'lapsed', 'discharged', 'no-show'].map(opt => (
-                      <option key={opt} value={opt}>{opt.charAt(0).toUpperCase() + opt.slice(1)}</option>
+                    {['active', 'lapsed', 'discharged', 'no_show'].map(opt => (
+                      <option key={opt} value={opt}>
+                        {opt === 'no_show' ? 'No-show' : opt.charAt(0).toUpperCase() + opt.slice(1)}
+                      </option>
                     ))}
                   </select>
                 </div>
