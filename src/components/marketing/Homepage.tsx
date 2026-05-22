@@ -995,8 +995,9 @@ export function Homepage() {
                 className="w-8 h-8 rounded-lg bg-[#006D77]/5 hover:bg-[#006D77]/10 text-[#006D77] flex items-center justify-center transition-all border border-[#006D77]/10 hover:border-[#006D77]/20 hover:scale-105"
                 title="Linktree"
               >
-                <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path d="m13.73635 5.85251 4.00467 -4.11665 2.3248 2.3808 -4.20064 4.00466h5.9085v3.30473h-5.9365l4.22865 4.10766 -2.3248 2.3338L12.0005 12.099l-5.74052 5.76852 -2.3248 -2.3248 4.22864 -4.10766h-5.9375V8.12132h5.9085L3.93417 4.11666l2.3248 -2.3808 4.00468 4.11665V0h3.4727zm-3.4727 10.30614h3.4727V24h-3.4727z" />
+                <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 430 430" fill="none" overflow="hidden" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M-20-57.5v115h40v-115z" stroke="currentColor" strokeWidth="12" strokeLinejoin="round" transform="translate(215 342.5)"/>
+                  <path d="M-3.909-158.162v109.878l-77.695-77.696-28.284 28.285L-32.193-20h-109.878v40h109.878l-77.695 77.696 28.284 28.284 77.695-77.695v109.877h40V48.284l77.696 77.696 28.284-28.284-86.569-86.57-.119-.118L44.376 0l11.895-11.896.244-.243 85.556-85.556-28.284-28.285-77.696 77.696v-109.878z" stroke="currentColor" strokeWidth="12" strokeLinejoin="round" transform="rotate(90 21.465 193.535)"/>
                 </svg>
               </a>
             </div>
