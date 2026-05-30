@@ -1,9 +1,12 @@
-import { createFileRoute, useParams } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { DashboardLayout } from '../components/DashboardLayout'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
-import { CheckCircle, DollarSign } from 'lucide-react'
+import {
+  CheckCircle, DollarSign, FileText, Plus, Send, Eye, X,
+  Search, ChevronRight, Loader2, Receipt,
+} from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts'
@@ -40,11 +43,48 @@ type ChartDatum = {
   total: number
 }
 
+type InvoiceRow = {
+  id: string
+  invoice_number: string
+  patient_id: string
+  booking_id: string | null
+  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled'
+  subtotal: number
+  tax_amount: number
+  total_amount: number
+  currency: string
+  due_date: string | null
+  notes: string | null
+  created_at: string
+  patients?: { full_name: string | null }
+}
+
+type PatientResult = {
+  id: string
+  full_name: string | null
+  phone_number: string | null
+}
+
+type CompletedBooking = {
+  id: string
+  appointment_time: string | null
+  appointment_type: string | null
+  appointment_price: number | null
+}
+
+type InvoiceFormState = {
+  description: string
+  amount: string
+  due_date: string
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const fmt = (n: number) => {
-  return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(n)
+function fmtCurrency(n: number, currency = 'GBP') {
+  return new Intl.NumberFormat('en-GB', { style: 'currency', currency }).format(n)
 }
+
+const fmt = (n: number) => fmtCurrency(n, 'GBP')
 
 const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
@@ -62,27 +102,97 @@ const TYPE_LABELS: Record<string, string> = {
   initial: 'Initial', follow_up: 'Follow-up', assessment: 'Assessment', discharge: 'Discharge',
 }
 
+const APPT_TYPE_LABELS: Record<string, string> = {
+  initial: 'Initial Assessment',
+  follow_up: 'Follow-up',
+  assessment: 'Assessment',
+  discharge: 'Discharge Session',
+}
+
+const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
+  draft:     { label: 'Draft',     cls: 'bg-text/10 text-text/60 border-text/20' },
+  sent:      { label: 'Sent',      cls: 'bg-blue-50 text-blue-700 border-blue-200' },
+  paid:      { label: 'Paid',      cls: 'bg-green-50 text-green-700 border-green-200' },
+  overdue:   { label: 'Overdue',   cls: 'bg-alert/10 text-alert border-alert/20' },
+  cancelled: { label: 'Cancelled', cls: 'bg-text/5 text-text/40 border-text/10' },
+}
+
+function defaultDueDate() {
+  const d = new Date()
+  d.setDate(d.getDate() + 30)
+  return d.toISOString().slice(0, 10)
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 function RevenuePage() {
-    const [ledger, setLedger] = useState<LedgerRow[]>([])
+  // ── existing state ────────────────────────────────────────────────────────
+  const [clinicId, setClinicId] = useState<string | null>(null)
+  const [clinicCurrency, setClinicCurrency] = useState('GBP')
+  const [ledger, setLedger] = useState<LedgerRow[]>([])
   const [upcomingCount, setUpcomingCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [markingId, setMarkingId] = useState<string | null>(null)
 
+  // ── invoice list state ────────────────────────────────────────────────────
+  const [invoices, setInvoices] = useState<InvoiceRow[]>([])
+  const [invoicesLoading, setInvoicesLoading] = useState(false)
+
+  // ── new invoice modal state ───────────────────────────────────────────────
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false)
+  const [modalStep, setModalStep] = useState<1 | 2 | 3>(1)
+
+  // step 1 — patient search
+  const [patientSearch, setPatientSearch] = useState('')
+  const [patientResults, setPatientResults] = useState<PatientResult[]>([])
+  const [searchingPatients, setSearchingPatients] = useState(false)
+  const [selectedPatient, setSelectedPatient] = useState<PatientResult | null>(null)
+  const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // step 2 — booking selection
+  const [completedBookings, setCompletedBookings] = useState<CompletedBooking[]>([])
+  const [bookingsLoading, setBookingsLoading] = useState(false)
+  const [selectedBooking, setSelectedBooking] = useState<CompletedBooking | null>(null)
+
+  // step 3 — form
+  const [invoiceForm, setInvoiceForm] = useState<InvoiceFormState>({
+    description: '',
+    amount: '',
+    due_date: defaultDueDate(),
+  })
+  const [submittingInvoice, setSubmittingInvoice] = useState(false)
+
+  // view modal
+  const [viewingInvoice, setViewingInvoice] = useState<InvoiceRow | null>(null)
+
+  // ─────────────────────────────────────────────────────────────────────────
   useEffect(() => { fetchData() }, [])
+
+  // ── Patient search debounce ───────────────────────────────────────────────
+  useEffect(() => {
+    if (!patientSearch.trim()) { setPatientResults([]); return }
+    if (searchDebounce.current) clearTimeout(searchDebounce.current)
+    searchDebounce.current = setTimeout(() => {
+      searchPatients(patientSearch.trim())
+    }, 350)
+    return () => { if (searchDebounce.current) clearTimeout(searchDebounce.current) }
+  }, [patientSearch, clinicId])
+
+  // ─── Data fetchers ────────────────────────────────────────────────────────
 
   const fetchData = async () => {
     setLoading(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
+
       const { data: cu } = await supabase
         .from('clinic_users').select('clinic_id').eq('auth_user_id', user.id).single()
       if (!cu) return
       const cid = cu.clinic_id
+      setClinicId(cid)
 
-      const [ledgerRes, upcomingRes] = await Promise.all([
+      const [ledgerRes, upcomingRes, clinicRes] = await Promise.all([
         supabase
           .from('cash_ledger')
           .select('*, patients(full_name), bookings(appointment_time, appointment_type)')
@@ -93,17 +203,179 @@ function RevenuePage() {
           .select('id', { count: 'exact', head: true })
           .eq('clinic_id', cid)
           .eq('status', 'upcoming'),
+        supabase
+          .from('clinics')
+          .select('currency')
+          .eq('id', cid)
+          .single(),
       ])
 
       if (ledgerRes.error) throw ledgerRes.error
       setLedger(ledgerRes.data ?? [])
       setUpcomingCount(upcomingRes.count ?? 0)
+      if (clinicRes.data?.currency) setClinicCurrency(clinicRes.data.currency)
+
+      await fetchInvoices(cid)
     } catch {
       toast.error('Failed to load revenue data')
     } finally {
       setLoading(false)
     }
   }
+
+  const fetchInvoices = async (cid: string) => {
+    setInvoicesLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .select('*, patients(full_name)')
+        .eq('clinic_id', cid)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      setInvoices((data ?? []) as InvoiceRow[])
+    } catch {
+      toast.error('Failed to load invoices')
+    } finally {
+      setInvoicesLoading(false)
+    }
+  }
+
+  const searchPatients = async (query: string) => {
+    if (!clinicId) return
+    setSearchingPatients(true)
+    try {
+      const { data, error } = await supabase
+        .from('patients')
+        .select('id, full_name, phone_number')
+        .eq('clinic_id', clinicId)
+        .or(`full_name.ilike.%${query}%,phone_number.ilike.%${query}%`)
+        .is('is_deleted', null)
+        .limit(8)
+      if (error) throw error
+      setPatientResults(data ?? [])
+    } catch {
+      toast.error('Patient search failed')
+    } finally {
+      setSearchingPatients(false)
+    }
+  }
+
+  const fetchCompletedBookings = async (patientId: string) => {
+    setBookingsLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('id, appointment_time, appointment_type, appointment_price')
+        .eq('patient_id', patientId)
+        .eq('status', 'completed')
+        .order('appointment_time', { ascending: false })
+      if (error) throw error
+      setCompletedBookings(data ?? [])
+    } catch {
+      toast.error('Failed to load bookings')
+    } finally {
+      setBookingsLoading(false)
+    }
+  }
+
+  const handleSelectPatient = (p: PatientResult) => {
+    setSelectedPatient(p)
+    setPatientSearch('')
+    setPatientResults([])
+    setSelectedBooking(null)
+    setCompletedBookings([])
+    setModalStep(2)
+    fetchCompletedBookings(p.id)
+  }
+
+  const handleSelectBooking = (b: CompletedBooking) => {
+    setSelectedBooking(b)
+    const typeLabel = APPT_TYPE_LABELS[b.appointment_type ?? ''] ?? b.appointment_type ?? 'Session'
+    const dateStr = b.appointment_time
+      ? formatLocalTime(b.appointment_time, 'GB', 'MMM d, yyyy', 'Europe/London')
+      : ''
+    setInvoiceForm({
+      description: `${typeLabel}${dateStr ? ' — ' + dateStr : ''}`,
+      amount: b.appointment_price != null ? String(b.appointment_price) : '',
+      due_date: defaultDueDate(),
+    })
+    setModalStep(3)
+  }
+
+  const handleSubmitInvoice = async () => {
+    if (!clinicId || !selectedPatient) return
+    const amount = parseFloat(invoiceForm.amount)
+    if (isNaN(amount) || amount <= 0) { toast.error('Enter a valid amount'); return }
+    if (!invoiceForm.description.trim()) { toast.error('Description is required'); return }
+
+    setSubmittingInvoice(true)
+    try {
+      // 1. Generate invoice number via RPC
+      const { data: invoiceNum, error: rpcError } = await (supabase.rpc as any)(
+        'generate_invoice_number',
+        { p_clinic_id: clinicId }
+      )
+      if (rpcError) throw rpcError
+
+      // 2. Insert invoice
+      const { data: newInvoice, error: invError } = await supabase
+        .from('invoices')
+        .insert({
+          clinic_id: clinicId,
+          patient_id: selectedPatient.id,
+          booking_id: selectedBooking?.id ?? null,
+          invoice_number: invoiceNum,
+          status: 'draft',
+          subtotal: amount,
+          tax_amount: 0,
+          total_amount: amount,
+          currency: clinicCurrency,
+          due_date: invoiceForm.due_date || null,
+          notes: null,
+        })
+        .select()
+        .single()
+      if (invError) throw invError
+
+      // 3. Insert invoice item
+      const { error: itemError } = await supabase
+        .from('invoice_items')
+        .insert({
+          invoice_id: newInvoice.id,
+          clinic_id: clinicId,
+          description: invoiceForm.description,
+          quantity: 1,
+          unit_price: amount,
+          line_total: amount,
+        })
+      if (itemError) throw itemError
+
+      toast.success(`Invoice ${invoiceNum} created`)
+      closeInvoiceModal()
+      await fetchInvoices(clinicId)
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Failed to create invoice')
+    } finally {
+      setSubmittingInvoice(false)
+    }
+  }
+
+  const handleSendInvoice = (_id: string) => {
+    toast.info('Send invoice — coming soon')
+  }
+
+  const closeInvoiceModal = () => {
+    setShowInvoiceModal(false)
+    setModalStep(1)
+    setPatientSearch('')
+    setPatientResults([])
+    setSelectedPatient(null)
+    setSelectedBooking(null)
+    setCompletedBookings([])
+    setInvoiceForm({ description: '', amount: '', due_date: defaultDueDate() })
+  }
+
+  // ─── Data marks ───────────────────────────────────────────────────────────
 
   const handleMarkPaid = async (id: string) => {
     setMarkingId(id)
@@ -122,16 +394,14 @@ function RevenuePage() {
     }
   }
 
-  // ── Derived stats ────────────────────────────────────────────────────────
+  // ── Derived stats ─────────────────────────────────────────────────────────
 
   const paid = ledger.filter(r => r.payment_status === 'paid')
   const unpaid = ledger.filter(r => r.payment_status === 'unpaid')
-
   const totalCollected = paid.reduce((a, r) => a + r.amount, 0)
 
   const nowZoned = getZonedDate(new Date(), 'Europe/London')
   const firstOfMonth = new Date(nowZoned.getFullYear(), nowZoned.getMonth(), 1)
-  
   const thisMonth = paid
     .filter(r => new Date(r.recorded_at) >= firstOfMonth)
     .reduce((a, r) => a + r.amount, 0)
@@ -160,7 +430,7 @@ function RevenuePage() {
     return { month: label, sessions, collected, unpaid: unpaidAmt, net: collected - unpaidAmt }
   })
 
-  // ─── Render ───────────────────────────────────────────────────────────────
+  // ─── Sub-components ───────────────────────────────────────────────────────
 
   const StatCard = ({
     label, value, sub, amber = false,
@@ -171,6 +441,17 @@ function RevenuePage() {
       {sub && <span className="text-xs text-text/40 mt-1">{sub}</span>}
     </div>
   )
+
+  const StatusBadge = ({ status }: { status: string }) => {
+    const s = STATUS_BADGE[status] ?? STATUS_BADGE.draft
+    return (
+      <span className={`inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full border ${s.cls}`}>
+        {s.label}
+      </span>
+    )
+  }
+
+  // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
     <DashboardLayout>
@@ -261,6 +542,100 @@ function RevenuePage() {
           )}
         </div>
 
+        {/* ── Invoices ── */}
+        <div className="bg-card border border-border rounded-xl shadow-sm mb-8 overflow-hidden">
+          <div className="p-5 border-b border-border flex items-center gap-2">
+            <Receipt className="w-4 h-4 text-primary" />
+            <h2 className="font-bold text-text font-bricolage flex-1">Invoices</h2>
+            {invoices.length > 0 && (
+              <span className="text-xs font-bold bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full mr-2">
+                {invoices.length}
+              </span>
+            )}
+            <button
+              id="new-invoice-btn"
+              onClick={() => setShowInvoiceModal(true)}
+              className="flex items-center gap-1.5 text-xs font-semibold bg-primary text-white px-3 py-1.5 rounded-lg hover:bg-primary/90 transition-colors shadow-sm"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              New Invoice
+            </button>
+          </div>
+
+          {invoicesLoading ? (
+            <div className="p-10 text-center text-sm text-text/60 flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading invoices…
+            </div>
+          ) : invoices.length === 0 ? (
+            <div className="p-12 flex flex-col items-center justify-center gap-3 text-text/50">
+              <FileText className="w-10 h-10 text-text/20" />
+              <p className="font-medium text-text/70">No invoices yet.</p>
+              <p className="text-xs text-text/40">Click "+ New Invoice" to create one.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-background/50 border-b border-border text-sm font-medium text-text/70">
+                    <th className="p-4">Invoice #</th>
+                    <th className="p-4">Patient</th>
+                    <th className="p-4">Amount</th>
+                    <th className="p-4">Status</th>
+                    <th className="p-4">Due Date</th>
+                    <th className="p-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoices.map(inv => (
+                    <tr
+                      key={inv.id}
+                      className="border-b border-border last:border-0 hover:bg-background/30 transition-colors"
+                    >
+                      <td className="p-4 font-mono text-sm font-semibold text-primary">
+                        {inv.invoice_number}
+                      </td>
+                      <td className="p-4 font-medium text-text">
+                        {inv.patients?.full_name ?? '—'}
+                      </td>
+                      <td className="p-4 font-semibold text-text">
+                        {fmtCurrency(inv.total_amount, inv.currency)}
+                      </td>
+                      <td className="p-4">
+                        <StatusBadge status={inv.status} />
+                      </td>
+                      <td className="p-4 text-sm text-text/70">
+                        {inv.due_date
+                          ? formatLocalTime(inv.due_date, 'GB', 'MMM d, yyyy', 'Europe/London')
+                          : '—'}
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            id={`send-invoice-${inv.id}`}
+                            onClick={() => handleSendInvoice(inv.id)}
+                            className="flex items-center gap-1 text-xs font-medium text-text/60 hover:text-primary border border-border hover:border-primary/30 px-2.5 py-1 rounded-lg transition-colors"
+                          >
+                            <Send className="w-3 h-3" />
+                            Send
+                          </button>
+                          <button
+                            id={`view-invoice-${inv.id}`}
+                            onClick={() => setViewingInvoice(inv)}
+                            className="flex items-center gap-1 text-xs font-medium text-text/60 hover:text-primary border border-border hover:border-primary/30 px-2.5 py-1 rounded-lg transition-colors"
+                          >
+                            <Eye className="w-3 h-3" />
+                            View
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
         {/* ── Revenue by Treatment Type ── */}
         <div className="bg-card border border-border rounded-xl shadow-sm p-5 mb-8">
           <h2 className="font-bold text-text font-bricolage mb-5">Revenue by Treatment Type</h2>
@@ -317,6 +692,389 @@ function RevenuePage() {
         </div>
 
       </div>
+
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* ── New Invoice Modal ── */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {showInvoiceModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={e => { if (e.target === e.currentTarget) closeInvoiceModal() }}
+        >
+          <div className="relative bg-card w-full max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl border border-border flex flex-col max-h-[90vh]">
+
+            {/* Modal header */}
+            <div className="flex items-center gap-3 p-5 border-b border-border shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Receipt className="w-4 h-4 text-primary" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-text font-bricolage">New Invoice</h3>
+                <p className="text-xs text-text/50 mt-0.5">
+                  {modalStep === 1 && 'Step 1 of 3 — Search patient'}
+                  {modalStep === 2 && 'Step 2 of 3 — Select session'}
+                  {modalStep === 3 && 'Step 3 of 3 — Review & submit'}
+                </p>
+              </div>
+              <button onClick={closeInvoiceModal} className="text-text/40 hover:text-text transition-colors p-1 rounded-lg hover:bg-background/50">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Step indicator */}
+            <div className="flex px-5 pt-4 gap-2 shrink-0">
+              {[1, 2, 3].map(s => (
+                <div
+                  key={s}
+                  className={`h-1 flex-1 rounded-full transition-colors ${
+                    s <= modalStep ? 'bg-primary' : 'bg-border'
+                  }`}
+                />
+              ))}
+            </div>
+
+            {/* Modal body */}
+            <div className="overflow-y-auto flex-1 p-5">
+
+              {/* ── Step 1: Patient search ── */}
+              {modalStep === 1 && (
+                <div className="flex flex-col gap-4">
+                  <p className="text-sm text-text/70">Search by patient name or phone number.</p>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text/40 pointer-events-none" />
+                    <input
+                      id="patient-search-input"
+                      autoFocus
+                      type="text"
+                      value={patientSearch}
+                      onChange={e => setPatientSearch(e.target.value)}
+                      placeholder="Search patient…"
+                      className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-text/30"
+                    />
+                    {searchingPatients && (
+                      <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-text/40" />
+                    )}
+                  </div>
+
+                  {patientResults.length > 0 && (
+                    <div className="rounded-xl border border-border overflow-hidden divide-y divide-border">
+                      {patientResults.map(p => (
+                        <button
+                          key={p.id}
+                          id={`patient-result-${p.id}`}
+                          onClick={() => handleSelectPatient(p)}
+                          className="w-full flex items-center justify-between px-4 py-3 hover:bg-background/60 transition-colors text-left group"
+                        >
+                          <div>
+                            <p className="text-sm font-medium text-text">{p.full_name ?? '—'}</p>
+                            {p.phone_number && (
+                              <p className="text-xs text-text/50 mt-0.5">{p.phone_number}</p>
+                            )}
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-text/30 group-hover:text-primary transition-colors" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {patientSearch.trim() && !searchingPatients && patientResults.length === 0 && (
+                    <p className="text-sm text-text/40 text-center py-4">No patients found.</p>
+                  )}
+                </div>
+              )}
+
+              {/* ── Step 2: Select completed booking ── */}
+              {modalStep === 2 && selectedPatient && (
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                      {(selectedPatient.full_name ?? '?')[0]?.toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-text">{selectedPatient.full_name}</p>
+                      {selectedPatient.phone_number && (
+                        <p className="text-xs text-text/50">{selectedPatient.phone_number}</p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => { setSelectedPatient(null); setModalStep(1) }}
+                      className="ml-auto text-xs text-text/40 hover:text-text border border-border px-2 py-0.5 rounded-lg transition-colors"
+                    >
+                      Change
+                    </button>
+                  </div>
+
+                  <p className="text-sm text-text/70">Select a completed session to attach to this invoice.</p>
+
+                  {bookingsLoading ? (
+                    <div className="flex items-center justify-center gap-2 py-8 text-sm text-text/50">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Loading sessions…
+                    </div>
+                  ) : completedBookings.length === 0 ? (
+                    <div className="text-center py-8 text-sm text-text/40">
+                      No completed sessions found for this patient.
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-border overflow-hidden divide-y divide-border">
+                      {completedBookings.map(b => (
+                        <button
+                          key={b.id}
+                          id={`booking-result-${b.id}`}
+                          onClick={() => handleSelectBooking(b)}
+                          className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-background/60 transition-colors text-left group"
+                        >
+                          <div>
+                            <p className="text-sm font-medium text-text">
+                              {APPT_TYPE_LABELS[b.appointment_type ?? ''] ?? b.appointment_type ?? 'Session'}
+                            </p>
+                            <p className="text-xs text-text/50 mt-0.5">
+                              {b.appointment_time
+                                ? formatLocalTime(b.appointment_time, 'GB', 'MMM d, yyyy', 'Europe/London')
+                                : 'Date unknown'}
+                              {b.appointment_price != null && ` · ${fmtCurrency(b.appointment_price, clinicCurrency)}`}
+                            </p>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-text/30 group-hover:text-primary transition-colors" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      setSelectedBooking(null)
+                      setInvoiceForm({ description: '', amount: '', due_date: defaultDueDate() })
+                      setModalStep(3)
+                    }}
+                    className="text-xs text-text/50 hover:text-primary text-center underline underline-offset-2 transition-colors"
+                  >
+                    Skip — create invoice without attaching a session
+                  </button>
+                </div>
+              )}
+
+              {/* ── Step 3: Review & submit ── */}
+              {modalStep === 3 && (
+                <div className="flex flex-col gap-4">
+                  {/* Patient + booking summary */}
+                  <div className="bg-background/60 rounded-xl border border-border p-4 flex flex-col gap-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-text/50">Patient</span>
+                      <span className="font-medium text-text">{selectedPatient?.full_name ?? '—'}</span>
+                    </div>
+                    {selectedBooking && (
+                      <div className="flex justify-between">
+                        <span className="text-text/50">Session</span>
+                        <span className="text-text/80">
+                          {APPT_TYPE_LABELS[selectedBooking.appointment_type ?? ''] ?? selectedBooking.appointment_type}
+                          {selectedBooking.appointment_time && (
+                            <span className="text-text/50 ml-1">
+                              · {formatLocalTime(selectedBooking.appointment_time, 'GB', 'MMM d, yyyy', 'Europe/London')}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <label className="block text-xs font-semibold text-text/60 uppercase tracking-wide mb-1.5">
+                      Description
+                    </label>
+                    <input
+                      id="invoice-description"
+                      type="text"
+                      value={invoiceForm.description}
+                      onChange={e => setInvoiceForm(f => ({ ...f, description: e.target.value }))}
+                      placeholder="e.g. Follow-up Session — May 30, 2025"
+                      className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-text/30"
+                    />
+                  </div>
+
+                  {/* Amount */}
+                  <div>
+                    <label className="block text-xs font-semibold text-text/60 uppercase tracking-wide mb-1.5">
+                      Amount ({clinicCurrency})
+                    </label>
+                    <input
+                      id="invoice-amount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={invoiceForm.amount}
+                      onChange={e => setInvoiceForm(f => ({ ...f, amount: e.target.value }))}
+                      placeholder="0.00"
+                      className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-text/30"
+                    />
+                  </div>
+
+                  {/* Due date */}
+                  <div>
+                    <label className="block text-xs font-semibold text-text/60 uppercase tracking-wide mb-1.5">
+                      Due Date
+                    </label>
+                    <input
+                      id="invoice-due-date"
+                      type="date"
+                      value={invoiceForm.due_date}
+                      onChange={e => setInvoiceForm(f => ({ ...f, due_date: e.target.value }))}
+                      className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                    />
+                  </div>
+
+                  {/* Total preview */}
+                  {invoiceForm.amount && !isNaN(parseFloat(invoiceForm.amount)) && (
+                    <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
+                      <span className="text-sm font-medium text-text/70">Total</span>
+                      <span className="text-lg font-bold text-primary font-bricolage">
+                        {fmtCurrency(parseFloat(invoiceForm.amount), clinicCurrency)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Modal footer */}
+            <div className="p-5 border-t border-border shrink-0 flex gap-3">
+              {modalStep > 1 && (
+                <button
+                  onClick={() => setModalStep(s => (s === 3 ? 2 : 1) as 1 | 2 | 3)}
+                  className="flex-1 border border-border text-text/70 hover:text-text hover:border-text/30 py-2.5 rounded-xl text-sm font-medium transition-colors"
+                >
+                  Back
+                </button>
+              )}
+              {modalStep === 3 && (
+                <button
+                  id="submit-invoice-btn"
+                  onClick={handleSubmitInvoice}
+                  disabled={submittingInvoice}
+                  className="flex-1 bg-primary text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {submittingInvoice ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /> Creating…</>
+                  ) : (
+                    <><Receipt className="w-4 h-4" /> Create Invoice</>
+                  )}
+                </button>
+              )}
+              {modalStep !== 3 && (
+                <button
+                  onClick={closeInvoiceModal}
+                  className="flex-1 border border-border text-text/70 hover:text-text py-2.5 rounded-xl text-sm font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* ── View Invoice Modal ── */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {viewingInvoice && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={e => { if (e.target === e.currentTarget) setViewingInvoice(null) }}
+        >
+          <div className="relative bg-card w-full max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl border border-border flex flex-col max-h-[80vh]">
+
+            <div className="flex items-center gap-3 p-5 border-b border-border shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <FileText className="w-4 h-4 text-primary" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-text font-bricolage font-mono">{viewingInvoice.invoice_number}</h3>
+                <div className="mt-0.5">
+                  <StatusBadge status={viewingInvoice.status} />
+                </div>
+              </div>
+              <button
+                onClick={() => setViewingInvoice(null)}
+                className="text-text/40 hover:text-text transition-colors p-1 rounded-lg hover:bg-background/50"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 p-5 flex flex-col gap-4">
+              <div className="bg-background/60 rounded-xl border border-border divide-y divide-border text-sm">
+                <div className="flex justify-between px-4 py-3">
+                  <span className="text-text/50">Patient</span>
+                  <span className="font-medium text-text">{viewingInvoice.patients?.full_name ?? '—'}</span>
+                </div>
+                <div className="flex justify-between px-4 py-3">
+                  <span className="text-text/50">Amount</span>
+                  <span className="font-semibold text-text">
+                    {fmtCurrency(viewingInvoice.total_amount, viewingInvoice.currency)}
+                  </span>
+                </div>
+                <div className="flex justify-between px-4 py-3">
+                  <span className="text-text/50">Currency</span>
+                  <span className="text-text">{viewingInvoice.currency}</span>
+                </div>
+                <div className="flex justify-between px-4 py-3">
+                  <span className="text-text/50">Issued</span>
+                  <span className="text-text">
+                    {formatLocalTime(viewingInvoice.created_at, 'GB', 'MMM d, yyyy', 'Europe/London')}
+                  </span>
+                </div>
+                <div className="flex justify-between px-4 py-3">
+                  <span className="text-text/50">Due</span>
+                  <span className={`font-medium ${
+                    viewingInvoice.due_date && new Date(viewingInvoice.due_date) < new Date()
+                      ? 'text-alert'
+                      : 'text-text'
+                  }`}>
+                    {viewingInvoice.due_date
+                      ? formatLocalTime(viewingInvoice.due_date, 'GB', 'MMM d, yyyy', 'Europe/London')
+                      : '—'}
+                  </span>
+                </div>
+                {viewingInvoice.subtotal !== viewingInvoice.total_amount && (
+                  <>
+                    <div className="flex justify-between px-4 py-3">
+                      <span className="text-text/50">Subtotal</span>
+                      <span className="text-text">{fmtCurrency(viewingInvoice.subtotal, viewingInvoice.currency)}</span>
+                    </div>
+                    <div className="flex justify-between px-4 py-3">
+                      <span className="text-text/50">Tax</span>
+                      <span className="text-text">{fmtCurrency(viewingInvoice.tax_amount, viewingInvoice.currency)}</span>
+                    </div>
+                  </>
+                )}
+                {viewingInvoice.notes && (
+                  <div className="px-4 py-3">
+                    <span className="text-text/50 block mb-1">Notes</span>
+                    <span className="text-text text-sm">{viewingInvoice.notes}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="p-5 border-t border-border shrink-0 flex gap-3">
+              <button
+                onClick={() => handleSendInvoice(viewingInvoice.id)}
+                className="flex-1 flex items-center justify-center gap-2 border border-border text-text/70 hover:text-primary hover:border-primary/30 py-2.5 rounded-xl text-sm font-medium transition-colors"
+              >
+                <Send className="w-4 h-4" />
+                Send Invoice
+              </button>
+              <button
+                onClick={() => setViewingInvoice(null)}
+                className="flex-1 bg-primary text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </DashboardLayout>
   )
 }

@@ -2,6 +2,128 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY')!
 
+const MASTER_SYSTEM_PROMPT = `You are a clinical documentation assistant for KinetiMap, used by qualified
+physiotherapists. Your job is to help a physiotherapist document a treatment
+session. You organise what the physiotherapist said. You do not practise
+physiotherapy, you do not diagnose, and you do not invent clinical information.
+ 
+You will be given:
+1. A REGION KNOWLEDGE FILE describing the relevant body region.
+2. A SESSION TRANSCRIPT — the spoken or typed record of one session.
+3. Optionally, the PREVIOUS SOAP NOTE for the same patient.
+You must return exactly two separate sections, in this order: a SOAP DRAFT and a
+SUGGESTIONS PANEL. Never merge them.
+ 
+---
+ 
+### ABSOLUTE RULES — these override everything else
+ 
+1. **Never invent clinical content.** Every statement in the SOAP draft must
+   come from the transcript. If something was not said, it did not happen.
+   Do not add findings, measurements, test results, diagnoses, or history that
+   are not in the transcript.
+2. **If it is not in the transcript, mark it "Not documented."** Do not guess,
+   estimate, or fill gaps with what is "typical". An empty field is correct and
+   safe; a fabricated field is a serious error.
+3. **Never state a diagnosis.** You may note what the documented findings
+   "may be consistent with", as a consideration. Use words like "consider" or
+   "may be consistent with" — never "the patient has".
+4. **Never recommend medication, drug doses, specific exercises, specific
+   protocols, or named manual techniques.** You may name broad categories only
+   (e.g. "exercise therapy", "patient education") and only in the suggestions.
+5. **The SOAP draft contains only what happened. The suggestions contain only
+   prompts about what may be missing.** Never let a suggestion leak into the
+   draft as if it were a finding.
+6. **Use the region knowledge file as a checklist of what good documentation
+   covers — not as content to copy in.** It tells you what the physiotherapist
+   *might* have assessed. It never tells you what they *did* assess.
+7. **Everything you produce is an "AI-Assisted Draft — Review Required."** The
+   physiotherapist edits, accepts, and signs off. You assist; you never decide.
+8. **Safety always wins.** If the transcript contains anything that the region
+   knowledge file flags as a red flag or emergency feature, surface it clearly
+   in the suggestions as something to screen and act on. Never downplay it.
+   Never reframe alarming information to seem less serious.
+---
+ 
+### OUTPUT 1 — SOAP DRAFT
+ 
+Organise the transcript into the four SOAP sections. Use only transcript
+content. For each section, if the transcript gives nothing, write
+"Not documented."
+ 
+- **S — Subjective.** What the patient reported: symptoms, pain, history,
+  function, what they told the physiotherapist. Only what was actually said.
+- **O — Objective.** What the physiotherapist measured or observed: range of
+  movement, tests performed and their results, observations. Only findings
+  actually stated. Do not add a test result that was not spoken.
+- **A — Assessment.** Summarise the clinical picture in the physiotherapist's
+  own documented terms. You may note what the findings "may be consistent with"
+  as a consideration. No diagnosis. If the physiotherapist stated their own
+  clinical impression, record it as theirs.
+- **P — Plan.** What the physiotherapist said they will do or advised. Only
+  what was stated. Do not invent a treatment plan.
+Keep the draft concise and clinical. Do not pad. Do not editorialise.
+ 
+---
+ 
+### OUTPUT 2 — SUGGESTIONS PANEL
+ 
+This is separate from the draft. It is a short list of prompts to the
+physiotherapist — the kind of thing a senior colleague might quietly ask:
+"did you also check…?" Base these on gaps between the region knowledge file's
+checklist and what the transcript actually covered.
+ 
+Rules for suggestions:
+- Each suggestion is a question or a prompt, never an instruction and never a
+  finding. Example: "Red flags do not appear to be documented — were they
+  screened?" Not: "The patient has no red flags."
+- Prioritise safety. If a red flag, emergency feature, or contraindication from
+  the region file is relevant and not addressed, list it first and clearly.
+- Only suggest things relevant to this region and this presentation.
+- If outcome measures relevant to the region were not recorded, you may prompt
+  for them by name (the region file lists which ones).
+- If a previous SOAP note was supplied, you may add continuity prompts — e.g.
+  comparing the documented pain score with last session, or asking whether the
+  home programme was reviewed.
+- Do not suggest specific exercises, doses, protocols, or techniques.
+- If documentation is thorough and nothing meaningful is missing, say so
+  briefly rather than inventing suggestions.
+- Keep the panel short — the most useful few prompts, not an exhaustive list.
+---
+ 
+### TONE AND BOUNDARIES
+ 
+- You are assisting a qualified clinician, not the patient. Write in clinical,
+  professional language.
+- Be concise. The physiotherapist is busy. No filler, no repetition.
+- Never express certainty you do not have. "May be consistent with" and
+  "consider" are your strongest words.
+- If the transcript is too short, unclear, or empty to document safely, say so
+  plainly in the draft and ask the physiotherapist to add detail, rather than
+  inventing a session.
+---
+ 
+### REQUIRED OUTPUT FORMAT
+ 
+Return valid JSON only, no preamble, no markdown fences, in exactly this shape:
+ 
+{
+  "soap_draft": {
+    "subjective": "string",
+    "objective": "string",
+    "assessment": "string",
+    "plan": "string"
+  },
+  "suggestions": [
+    { "priority": "safety | clinical | continuity", "prompt": "string" }
+  ],
+  "review_required": true
+}
+ 
+If a SOAP field has nothing in the transcript, its value is "Not documented."
+If there are no suggestions, return an empty array for "suggestions".
+"review_required" is always true.`
+
 Deno.serve(async (req: Request) => {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -118,7 +240,7 @@ Deno.serve(async (req: Request) => {
 
     // Fetch pain_data from bookings linked to those notes
     const bookingIds = orderedNotes.map(n => n.booking_id).filter(Boolean)
-    let painByBooking: Record<string, any> = {}
+    let painByBooking: Record<string, unknown> = {}
 
     if (bookingIds.length > 0) {
       const { data: bookings, error: bookingsError } = await supabase
@@ -147,12 +269,13 @@ Deno.serve(async (req: Request) => {
 - Referral: ${patient.referral_source ?? 'Not recorded'}
 `
 
-    function getPainScoreText(painData: any) {
-      if (!painData) return ''
-      if (typeof painData.score === 'number') return `Pain ${painData.score}/10. `
-      if (typeof painData.pain_after === 'number') return `Pain ${painData.pain_after}/10. `
-      if (typeof painData.pain_before === 'number') return `Pain ${painData.pain_before}/10. `
-      const values = Object.values(painData).filter(v => typeof v === 'number') as number[]
+    function getPainScoreText(painData: unknown) {
+      if (!painData || typeof painData !== 'object') return ''
+      const data = painData as Record<string, unknown>
+      if (typeof data.score === 'number') return `Pain ${data.score}/10. `
+      if (typeof data.pain_after === 'number') return `Pain ${data.pain_after}/10. `
+      if (typeof data.pain_before === 'number') return `Pain ${data.pain_before}/10. `
+      const values = Object.values(data).filter((v): v is number => typeof v === 'number')
       if (values.length > 0) {
         return `Pain ${Math.max(...values)}/10. `
       }
@@ -188,37 +311,43 @@ Deno.serve(async (req: Request) => {
 `
     }
 
-    // Construct Groq System Prompt
-    const systemPrompt = `You are a physiotherapy clinical documentation assistant for UK-based clinics.
-Your job is to format session content into structured SOAP notes and surface
-continuity with prior sessions where relevant.
+    // 2b. Determine the region and load the knowledge file
+    const regionKey = "lower_back"
+    let regionKnowledge = ""
+    try {
+      const regionMapUrl = new URL("./clinical_knowledge/region_map.json", import.meta.url)
+      const regionMapText = await Deno.readTextFile(regionMapUrl)
+      const regionMap = JSON.parse(regionMapText)
+      const filename = regionMap[regionKey] || regionMap["default"] || "lower_back.md"
+      
+      const knowledgeUrl = new URL("./clinical_knowledge/" + filename, import.meta.url)
+      regionKnowledge = await Deno.readTextFile(knowledgeUrl)
+    } catch (e) {
+      console.warn("Failed to load region knowledge: ", e)
+    }
 
-CLINICAL RULES:
-1. Use UK English spelling and clinical terminology (e.g., "programme", "mobilisation").
-2. You do NOT diagnose. Use language like "consistent with", "suggestive of", "consider".
-3. You assist; the clinician edits and signs off.
+    // Format previous note
+    const lastNote = orderedNotes.length > 0 ? orderedNotes[orderedNotes.length - 1] : null
+    let previousSoapNote = "None available"
+    if (lastNote) {
+      const lastPainLine = getPainScoreText(painByBooking[lastNote.booking_id])
+      previousSoapNote = `${lastPainLine ? `Pain: ${lastPainLine}\n` : ''}Subjective: ${lastNote.subjective || ''}
+Objective: ${lastNote.objective || ''}
+Assessment: ${lastNote.assessment || ''}
+Plan: ${lastNote.plan || ''}`
+    }
 
-OUTPUT FORMAT:
-Return strict JSON with exactly these keys (no extra text, no markdown fences, no conversational greetings):
-{
-  "subjective": "...",
-  "objective": "...",
-  "assessment": "...",
-  "plan": "...",
-  "continuity_notes": "..."
-}
+    const userPrompt = `=== PATIENT CONTEXT ===
+${patientContext}
 
-CONTINUITY_NOTES FIELD RULES:
-- ONLY populate this if prior sessions exist in the context below.
-- Use it for: pain trend observations (improving/plateau/regressing), noted compliance issues with previous plans, changes in assessment, or trajectory flags (e.g. >6 sessions without measurable improvement).
-- Keep it under 150 words. Bullet-point style is fine.
-- If nothing notable about continuity, return an empty string for this field.
-- DO NOT repeat content from S/O/A/P here — this field is for cross-session insight only.`
+=== REGION KNOWLEDGE FILE ===
+${regionKnowledge}
 
-    const userPrompt = `${patientContext}
+=== SESSION TRANSCRIPT ===
+${transcript}
 
-TODAY'S DICTATION/TRANSCRIPT:
-"${transcript}"`
+=== PREVIOUS SOAP NOTE (if any) ===
+${previousSoapNote}`
 
     // Call Groq API
     const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -230,7 +359,7 @@ TODAY'S DICTATION/TRANSCRIPT:
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
         messages: [
-          { role: 'system', content: systemPrompt },
+          { role: 'system', content: MASTER_SYSTEM_PROMPT },
           { role: 'user', content: userPrompt }
         ],
         temperature: 0.3,
@@ -251,20 +380,31 @@ TODAY'S DICTATION/TRANSCRIPT:
     }
 
     // Parse Groq JSON response safely
-    let parsedNote: {
-      subjective: string
-      objective: string
-      assessment: string
-      plan: string
-      continuity_notes?: string
+    let parsedData: {
+      soap_draft: {
+        subjective: string
+        objective: string
+        assessment: string
+        plan: string
+      }
+      suggestions: Array<{
+        priority: 'safety' | 'clinical' | 'continuity'
+        prompt: string
+      }>
+      review_required: boolean
     }
 
     try {
       const cleanedText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-      parsedNote = JSON.parse(cleanedText)
+      parsedData = JSON.parse(cleanedText)
+
+      // Basic structure validation
+      if (!parsedData.soap_draft || typeof parsedData.soap_draft !== 'object') {
+        throw new Error('Response is missing soap_draft object')
+      }
     } catch (parseErr) {
       console.error('Failed to parse Groq response as JSON. Response:', responseText)
-      throw new Error('Groq response format is invalid. Please try generating again.')
+      throw new Error('Groq response format is invalid. Please try generating again.', { cause: parseErr })
     }
 
     // Deduct/track credit count for the clinic
@@ -277,16 +417,22 @@ TODAY'S DICTATION/TRANSCRIPT:
       console.error('Failed to update clinic credits used:', creditUpdateError)
     }
 
+    const continuityNotes = (parsedData.suggestions || [])
+      .filter((s) => s?.priority === 'continuity')
+      .map((s) => s?.prompt)
+      .join('\n')
+
     // Write draft to public.ai_soap_drafts table
     const draftPayload = {
       booking_id: booking_id || null,
       clinic_id: clinic_id,
       patient_id: patient_id,
-      draft_subjective: parsedNote.subjective,
-      draft_objective: parsedNote.objective,
-      draft_assessment: parsedNote.assessment,
-      draft_plan: parsedNote.plan,
-      draft_continuity_notes: parsedNote.continuity_notes || '',
+      draft_subjective: parsedData.soap_draft.subjective || '',
+      draft_objective: parsedData.soap_draft.objective || '',
+      draft_assessment: parsedData.soap_draft.assessment || '',
+      draft_plan: parsedData.soap_draft.plan || '',
+      draft_continuity_notes: continuityNotes,
+      ai_suggestions: parsedData.suggestions || [],
       accepted: false
     }
 
@@ -304,19 +450,21 @@ TODAY'S DICTATION/TRANSCRIPT:
     return new Response(
       JSON.stringify({
         draft_id: draftData.id,
-        subjective: parsedNote.subjective,
-        objective: parsedNote.objective,
-        assessment: parsedNote.assessment,
-        plan: parsedNote.plan,
-        continuity_notes: parsedNote.continuity_notes || ''
+        subjective: parsedData.soap_draft.subjective || '',
+        objective: parsedData.soap_draft.objective || '',
+        assessment: parsedData.soap_draft.assessment || '',
+        plan: parsedData.soap_draft.plan || '',
+        continuity_notes: continuityNotes,
+        ai_suggestions: parsedData.suggestions || []
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : 'Internal Server Error'
     console.error('Error in generate-soap-note:', err)
     return new Response(
-      JSON.stringify({ error: err.message || 'Internal Server Error' }),
+      JSON.stringify({ error: errorMsg }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }

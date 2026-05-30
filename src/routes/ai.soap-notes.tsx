@@ -44,6 +44,11 @@ type SoapNote = {
   continuity_notes?: string
 }
 
+type Suggestion = {
+  priority: 'safety' | 'clinical' | 'continuity'
+  prompt: string
+}
+
 type PreviousNote = {
   id: string
   created_at: string
@@ -168,6 +173,7 @@ function AISoapNotesPage() {
   const [additionalNotes, setAdditionalNotes] = useState('')
   const [generatedNote, setGeneratedNote] = useState<SoapNote>({ s: '', o: '', a: '', p: '', continuity_notes: '' })
   const [activeDraftId, setActiveDraftId] = useState<string | null>(null)
+  const [aiSuggestions, setAiSuggestions] = useState<Suggestion[]>([])
   
   const [isRecording, setIsRecording] = useState(false)
   const [isTranscribing, setIsTranscribing] = useState(false)
@@ -427,6 +433,7 @@ function AISoapNotesPage() {
           p: result.plan || '',
           continuity_notes: result.continuity_notes || ''
         })
+        setAiSuggestions(result.ai_suggestions || [])
         setActiveDraftId(result.draft_id || null)
         
         // Refetch credits from backend as the Edge Function increments it securely
@@ -530,6 +537,7 @@ function AISoapNotesPage() {
       const shouldClear = confirm("Note saved. Would you like to clear the form to start another note?")
       if (shouldClear) {
         setGeneratedNote({ s: '', o: '', a: '', p: '', continuity_notes: '' })
+        setAiSuggestions([])
         setAdditionalNotes('')
         setSelectedPatientId('')
         setActiveDraftId(null)
@@ -784,6 +792,47 @@ function AISoapNotesPage() {
               <PreviousNotesSidebar notes={previousNotes} loading={loadingPrevNotes} timezone={clinicTimezone} />
             </div>
 
+            {/* AI Suggestions Panel */}
+            {aiSuggestions && aiSuggestions.length > 0 && (
+              <div className="bg-card border border-border rounded-2xl p-6 shadow-sm bg-gradient-to-br from-primary/[0.02] via-background to-accent/[0.02] animate-in fade-in slide-in-from-right-4 duration-500">
+                <div className="flex items-center gap-2 mb-2 text-primary">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                  <h3 className="font-bold font-bricolage text-base text-primary">AI Clinical & Safety Suggestions</h3>
+                </div>
+                <p className="text-[11px] text-text/50 mb-4">
+                  Review these prompts regarding potential safety issues, clinical protocols, or continuity from previous sessions. These will not be saved to the patient record.
+                </p>
+                <div className="space-y-3">
+                  {[...aiSuggestions]
+                    .sort((a, b) => {
+                      const priorityOrder = { safety: 0, clinical: 1, continuity: 2 };
+                      return (priorityOrder[a.priority] ?? 99) - (priorityOrder[b.priority] ?? 99);
+                    })
+                    .map((s, index) => {
+                      let priorityStyles = "border-l-4 border-primary bg-primary/5 text-text/80";
+                      let badgeColor = "bg-primary/10 text-primary";
+                      if (s.priority === 'safety') {
+                        priorityStyles = "border-l-4 border-alert bg-alert/5 text-text/80";
+                        badgeColor = "bg-alert/10 text-alert";
+                      } else if (s.priority === 'continuity') {
+                        priorityStyles = "border-l-4 border-accent bg-accent/5 text-text/80";
+                        badgeColor = "bg-accent/10 text-accent";
+                      }
+                      return (
+                        <div key={index} className={`p-3 rounded-r-xl text-xs leading-relaxed border border-border/50 border-l-0 ${priorityStyles} transition-all hover:translate-x-0.5 duration-200`}>
+                          <div className="flex justify-between items-center mb-1.5">
+                            <span className={`font-bold uppercase tracking-wider text-[9px] px-2 py-0.5 rounded-full ${badgeColor}`}>
+                              {s.priority}
+                            </span>
+                          </div>
+                          <p className="text-text/80 font-medium">{s.prompt}</p>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
             {/* Generated Output Card */}
             <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden sticky top-8 animate-in fade-in slide-in-from-right-4 duration-500">
               <div className="p-5 border-b border-border bg-background/50 flex items-center justify-between">
@@ -819,6 +868,7 @@ function AISoapNotesPage() {
                   <button 
                     onClick={() => { 
                       setGeneratedNote({ s: '', o: '', a: '', p: '', continuity_notes: '' }); 
+                      setAiSuggestions([]);
                       setAdditionalNotes(''); 
                       setActiveDraftId(null);
                     }}
@@ -832,7 +882,7 @@ function AISoapNotesPage() {
               </div>
 
               <div className="p-6 space-y-5 max-h-[600px] overflow-y-auto">
-                {Object.entries(generatedNote).every(([_, val]) => !val) ? (
+                {Object.entries(generatedNote).every(([, val]) => !val) ? (
                   <div className="py-12 text-center text-text/20 flex flex-col items-center">
                     <Sparkles className="w-12 h-12 mb-4 opacity-10" />
                     <p className="text-sm">Note output will appear here after generation.</p>
