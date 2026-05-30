@@ -46,7 +46,7 @@ type ChartDatum = {
 type InvoiceRow = {
   id: string
   invoice_number: string
-  patient_id: string
+  patient_id: string | null
   booking_id: string | null
   status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled'
   subtotal: number
@@ -56,8 +56,10 @@ type InvoiceRow = {
   due_date: string | null
   notes: string | null
   created_at: string
+  manual_patient_name: string | null
   patients?: { full_name: string | null }
 }
+
 
 type PatientResult = {
   id: string
@@ -141,6 +143,7 @@ function RevenuePage() {
   // ── new invoice modal state ───────────────────────────────────────────────
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
   const [modalStep, setModalStep] = useState<1 | 2 | 3>(1)
+  const [invoiceType, setInvoiceType] = useState<'booking' | 'manual'>('booking')
 
   // step 1 — patient search
   const [patientSearch, setPatientSearch] = useState('')
@@ -160,6 +163,13 @@ function RevenuePage() {
     amount: '',
     due_date: defaultDueDate(),
   })
+  const [manualForm, setManualForm] = useState({
+    patient_name: '',
+    description: '',
+    amount: '',
+    due_date: defaultDueDate(),
+    notes: '',
+  })
   const [submittingInvoice, setSubmittingInvoice] = useState(false)
 
   // view modal
@@ -168,15 +178,23 @@ function RevenuePage() {
   // ─────────────────────────────────────────────────────────────────────────
   useEffect(() => { fetchData() }, [])
 
-  // ── Patient search debounce ───────────────────────────────────────────────
+  // ── Patient search debounce & immediate load ──────────────────────────────
   useEffect(() => {
-    if (!patientSearch.trim()) { setPatientResults([]); return }
+    if (!showInvoiceModal || !clinicId) return
+
+    if (!patientSearch.trim()) {
+      fetchPatients('')
+      if (searchDebounce.current) clearTimeout(searchDebounce.current)
+      return
+    }
+
     if (searchDebounce.current) clearTimeout(searchDebounce.current)
     searchDebounce.current = setTimeout(() => {
-      searchPatients(patientSearch.trim())
+      fetchPatients(patientSearch.trim())
     }, 350)
+
     return () => { if (searchDebounce.current) clearTimeout(searchDebounce.current) }
-  }, [patientSearch, clinicId])
+  }, [patientSearch, showInvoiceModal, clinicId])
 
   // ─── Data fetchers ────────────────────────────────────────────────────────
 
@@ -240,21 +258,29 @@ function RevenuePage() {
     }
   }
 
-  const searchPatients = async (query: string) => {
+  const fetchPatients = async (query: string) => {
     if (!clinicId) return
     setSearchingPatients(true)
     try {
-      const { data, error } = await supabase
+      let q = supabase
         .from('patients')
-        .select('id, full_name, phone_number')
+        .select('id, full_name, phone_number, last_booked_at')
         .eq('clinic_id', clinicId)
-        .or(`full_name.ilike.%${query}%,phone_number.ilike.%${query}%`)
         .is('is_deleted', null)
-        .limit(8)
+
+      if (query.trim()) {
+        const term = query.trim()
+        q = q.or(`full_name.ilike.%${term}%,phone_number.ilike.%${term}%`)
+      }
+
+      const { data, error } = await q
+        .order('last_booked_at', { ascending: false, nullsFirst: false })
+        .limit(50)
+
       if (error) throw error
       setPatientResults(data ?? [])
     } catch {
-      toast.error('Patient search failed')
+      toast.error('Failed to load patients')
     } finally {
       setSearchingPatients(false)
     }
@@ -301,9 +327,70 @@ function RevenuePage() {
     })
     setModalStep(3)
   }
-
   const handleSubmitInvoice = async () => {
-    if (!clinicId || !selectedPatient) return
+    if (!clinicId) return
+
+    if (invoiceType === 'manual') {
+      const amount = parseFloat(manualForm.amount)
+      if (isNaN(amount) || amount <= 0) { toast.error('Enter a valid amount'); return }
+      if (!manualForm.patient_name.trim()) { toast.error('Patient name is required'); return }
+      if (!manualForm.description.trim()) { toast.error('Service description is required'); return }
+
+      setSubmittingInvoice(true)
+      try {
+        // 1. Generate invoice number via RPC
+        const { data: invoiceNum, error: rpcError } = await (supabase.rpc as any)(
+          'generate_invoice_number',
+          { p_clinic_id: clinicId }
+        )
+        if (rpcError) throw rpcError
+
+        // 2. Insert invoice
+        const { data: newInvoice, error: invError } = await supabase
+          .from('invoices')
+          .insert({
+            clinic_id: clinicId,
+            patient_id: null,
+            booking_id: null,
+            manual_patient_name: manualForm.patient_name.trim(),
+            invoice_number: invoiceNum,
+            status: 'draft',
+            subtotal: amount,
+            tax_amount: 0,
+            total_amount: amount,
+            currency: clinicCurrency,
+            due_date: manualForm.due_date || null,
+            notes: manualForm.notes.trim() || null,
+          })
+          .select()
+          .single()
+        if (invError) throw invError
+
+        // 3. Insert invoice item
+        const { error: itemError } = await supabase
+          .from('invoice_items')
+          .insert({
+            invoice_id: newInvoice.id,
+            clinic_id: clinicId,
+            description: manualForm.description.trim(),
+            quantity: 1,
+            unit_price: amount,
+            line_total: amount,
+          })
+        if (itemError) throw itemError
+
+        toast.success(`Invoice ${invoiceNum} created`)
+        closeInvoiceModal()
+        await fetchInvoices(clinicId)
+      } catch (err: any) {
+        toast.error(err?.message ?? 'Failed to create invoice')
+      } finally {
+        setSubmittingInvoice(false)
+      }
+      return
+    }
+
+    if (!selectedPatient) return
     const amount = parseFloat(invoiceForm.amount)
     if (isNaN(amount) || amount <= 0) { toast.error('Enter a valid amount'); return }
     if (!invoiceForm.description.trim()) { toast.error('Description is required'); return }
@@ -366,6 +453,7 @@ function RevenuePage() {
 
   const closeInvoiceModal = () => {
     setShowInvoiceModal(false)
+    setInvoiceType('booking')
     setModalStep(1)
     setPatientSearch('')
     setPatientResults([])
@@ -373,6 +461,13 @@ function RevenuePage() {
     setSelectedBooking(null)
     setCompletedBookings([])
     setInvoiceForm({ description: '', amount: '', due_date: defaultDueDate() })
+    setManualForm({
+      patient_name: '',
+      description: '',
+      amount: '',
+      due_date: defaultDueDate(),
+      notes: '',
+    })
   }
 
   // ─── Data marks ───────────────────────────────────────────────────────────
@@ -595,7 +690,7 @@ function RevenuePage() {
                         {inv.invoice_number}
                       </td>
                       <td className="p-4 font-medium text-text">
-                        {inv.patients?.full_name ?? '—'}
+                        {inv.patient_id === null ? (inv.manual_patient_name ?? '—') : (inv.patients?.full_name ?? '—')}
                       </td>
                       <td className="p-4 font-semibold text-text">
                         {fmtCurrency(inv.total_amount, inv.currency)}
@@ -711,9 +806,15 @@ function RevenuePage() {
               <div className="flex-1">
                 <h3 className="font-bold text-text font-bricolage">New Invoice</h3>
                 <p className="text-xs text-text/50 mt-0.5">
-                  {modalStep === 1 && 'Step 1 of 3 — Search patient'}
-                  {modalStep === 2 && 'Step 2 of 3 — Select session'}
-                  {modalStep === 3 && 'Step 3 of 3 — Review & submit'}
+                  {invoiceType === 'booking' ? (
+                    <>
+                      {modalStep === 1 && 'Step 1 of 3 — Search patient'}
+                      {modalStep === 2 && 'Step 2 of 3 — Select session'}
+                      {modalStep === 3 && 'Step 3 of 3 — Review & submit'}
+                    </>
+                  ) : (
+                    'Manual invoice'
+                  )}
                 </p>
               </div>
               <button onClick={closeInvoiceModal} className="text-text/40 hover:text-text transition-colors p-1 rounded-lg hover:bg-background/50">
@@ -721,173 +822,282 @@ function RevenuePage() {
               </button>
             </div>
 
-            {/* Step indicator */}
-            <div className="flex px-5 pt-4 gap-2 shrink-0">
-              {[1, 2, 3].map(s => (
-                <div
-                  key={s}
-                  className={`h-1 flex-1 rounded-full transition-colors ${
-                    s <= modalStep ? 'bg-primary' : 'bg-border'
-                  }`}
-                />
-              ))}
+            {/* Tabs */}
+            <div className="flex border-b border-border px-5 shrink-0 bg-background/30 mt-2">
+              <button
+                onClick={() => setInvoiceType('booking')}
+                className={`flex-1 py-3 text-sm font-medium border-b-2 text-center transition-colors ${
+                  invoiceType === 'booking'
+                    ? 'border-primary text-primary font-semibold'
+                    : 'border-transparent text-text/50 hover:text-text'
+                }`}
+              >
+                From booking
+              </button>
+              <button
+                onClick={() => setInvoiceType('manual')}
+                className={`flex-1 py-3 text-sm font-medium border-b-2 text-center transition-colors ${
+                  invoiceType === 'manual'
+                    ? 'border-primary text-primary font-semibold'
+                    : 'border-transparent text-text/50 hover:text-text'
+                }`}
+              >
+                Manual
+              </button>
             </div>
+
+            {/* Step indicator */}
+            {invoiceType === 'booking' && (
+              <div className="flex px-5 pt-4 gap-2 shrink-0">
+                {[1, 2, 3].map(s => (
+                  <div
+                    key={s}
+                    className={`h-1 flex-1 rounded-full transition-colors ${
+                      s <= modalStep ? 'bg-primary' : 'bg-border'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
 
             {/* Modal body */}
             <div className="overflow-y-auto flex-1 p-5">
 
-              {/* ── Step 1: Patient search ── */}
-              {modalStep === 1 && (
-                <div className="flex flex-col gap-4">
-                  <p className="text-sm text-text/70">Search by patient name or phone number.</p>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text/40 pointer-events-none" />
-                    <input
-                      id="patient-search-input"
-                      autoFocus
-                      type="text"
-                      value={patientSearch}
-                      onChange={e => setPatientSearch(e.target.value)}
-                      placeholder="Search patient…"
-                      className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-text/30"
-                    />
-                    {searchingPatients && (
-                      <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-text/40" />
-                    )}
-                  </div>
+              {/* ── Booking Flow ── */}
+              {invoiceType === 'booking' && (
+                <>
+                  {/* ── Step 1: Patient search ── */}
+                  {modalStep === 1 && (
+                    <div className="flex flex-col gap-4">
+                      <p className="text-sm text-text/70">Search by patient name or phone number.</p>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text/40 pointer-events-none" />
+                        <input
+                          id="patient-search-input"
+                          autoFocus
+                          type="text"
+                          value={patientSearch}
+                          onChange={e => setPatientSearch(e.target.value)}
+                          placeholder="Search patient…"
+                          className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-text/30"
+                        />
+                        {searchingPatients && (
+                          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-text/40" />
+                        )}
+                      </div>
 
-                  {patientResults.length > 0 && (
-                    <div className="rounded-xl border border-border overflow-hidden divide-y divide-border">
-                      {patientResults.map(p => (
-                        <button
-                          key={p.id}
-                          id={`patient-result-${p.id}`}
-                          onClick={() => handleSelectPatient(p)}
-                          className="w-full flex items-center justify-between px-4 py-3 hover:bg-background/60 transition-colors text-left group"
-                        >
-                          <div>
-                            <p className="text-sm font-medium text-text">{p.full_name ?? '—'}</p>
-                            {p.phone_number && (
-                              <p className="text-xs text-text/50 mt-0.5">{p.phone_number}</p>
-                            )}
-                          </div>
-                          <ChevronRight className="w-4 h-4 text-text/30 group-hover:text-primary transition-colors" />
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                      {patientResults.length > 0 && (
+                        <div className="rounded-xl border border-border overflow-y-auto max-h-[250px] divide-y divide-border">
+                          {patientResults.map(p => (
+                            <button
+                              key={p.id}
+                              id={`patient-result-${p.id}`}
+                              onClick={() => handleSelectPatient(p)}
+                              className="w-full flex items-center justify-between px-4 py-3 hover:bg-background/60 transition-colors text-left group"
+                            >
+                              <div>
+                                <p className="text-sm font-medium text-text">{p.full_name ?? '—'}</p>
+                                {p.phone_number && (
+                                  <p className="text-xs text-text/50 mt-0.5">{p.phone_number}</p>
+                                )}
+                              </div>
+                              <ChevronRight className="w-4 h-4 text-text/30 group-hover:text-primary transition-colors" />
+                            </button>
+                          ))}
+                        </div>
+                      )}
 
-                  {patientSearch.trim() && !searchingPatients && patientResults.length === 0 && (
-                    <p className="text-sm text-text/40 text-center py-4">No patients found.</p>
-                  )}
-                </div>
-              )}
-
-              {/* ── Step 2: Select completed booking ── */}
-              {modalStep === 2 && selectedPatient && (
-                <div className="flex flex-col gap-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
-                      {(selectedPatient.full_name ?? '?')[0]?.toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-text">{selectedPatient.full_name}</p>
-                      {selectedPatient.phone_number && (
-                        <p className="text-xs text-text/50">{selectedPatient.phone_number}</p>
+                      {!searchingPatients && patientResults.length === 0 && (
+                        <p className="text-sm text-text/40 text-center py-4">No patients found.</p>
                       )}
                     </div>
-                    <button
-                      onClick={() => { setSelectedPatient(null); setModalStep(1) }}
-                      className="ml-auto text-xs text-text/40 hover:text-text border border-border px-2 py-0.5 rounded-lg transition-colors"
-                    >
-                      Change
-                    </button>
-                  </div>
+                  )}
 
-                  <p className="text-sm text-text/70">Select a completed session to attach to this invoice.</p>
-
-                  {bookingsLoading ? (
-                    <div className="flex items-center justify-center gap-2 py-8 text-sm text-text/50">
-                      <Loader2 className="w-4 h-4 animate-spin" /> Loading sessions…
-                    </div>
-                  ) : completedBookings.length === 0 ? (
-                    <div className="text-center py-8 text-sm text-text/40">
-                      No completed sessions found for this patient.
-                    </div>
-                  ) : (
-                    <div className="rounded-xl border border-border overflow-hidden divide-y divide-border">
-                      {completedBookings.map(b => (
+                  {/* ── Step 2: Select completed booking ── */}
+                  {modalStep === 2 && selectedPatient && (
+                    <div className="flex flex-col gap-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                          {(selectedPatient.full_name ?? '?')[0]?.toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-text">{selectedPatient.full_name}</p>
+                          {selectedPatient.phone_number && (
+                            <p className="text-xs text-text/50">{selectedPatient.phone_number}</p>
+                          )}
+                        </div>
                         <button
-                          key={b.id}
-                          id={`booking-result-${b.id}`}
-                          onClick={() => handleSelectBooking(b)}
-                          className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-background/60 transition-colors text-left group"
+                          onClick={() => { setSelectedPatient(null); setModalStep(1) }}
+                          className="ml-auto text-xs text-text/40 hover:text-text border border-border px-2 py-0.5 rounded-lg transition-colors"
                         >
-                          <div>
-                            <p className="text-sm font-medium text-text">
-                              {APPT_TYPE_LABELS[b.appointment_type ?? ''] ?? b.appointment_type ?? 'Session'}
-                            </p>
-                            <p className="text-xs text-text/50 mt-0.5">
-                              {b.appointment_time
-                                ? formatLocalTime(b.appointment_time, 'GB', 'MMM d, yyyy', 'Europe/London')
-                                : 'Date unknown'}
-                              {b.appointment_price != null && ` · ${fmtCurrency(b.appointment_price, clinicCurrency)}`}
-                            </p>
-                          </div>
-                          <ChevronRight className="w-4 h-4 text-text/30 group-hover:text-primary transition-colors" />
+                          Change
                         </button>
-                      ))}
+                      </div>
+
+                      <p className="text-sm text-text/70">Select a completed session to attach to this invoice.</p>
+
+                      {bookingsLoading ? (
+                        <div className="flex items-center justify-center gap-2 py-8 text-sm text-text/50">
+                          <Loader2 className="w-4 h-4 animate-spin" /> Loading sessions…
+                        </div>
+                      ) : completedBookings.length === 0 ? (
+                        <div className="text-center py-8 text-sm text-text/40">
+                          No completed sessions found for this patient.
+                        </div>
+                      ) : (
+                        <div className="rounded-xl border border-border overflow-hidden divide-y divide-border">
+                          {completedBookings.map(b => (
+                            <button
+                              key={b.id}
+                              id={`booking-result-${b.id}`}
+                              onClick={() => handleSelectBooking(b)}
+                              className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-background/60 transition-colors text-left group"
+                            >
+                              <div>
+                                <p className="text-sm font-medium text-text">
+                                  {APPT_TYPE_LABELS[b.appointment_type ?? ''] ?? b.appointment_type ?? 'Session'}
+                                </p>
+                                <p className="text-xs text-text/50 mt-0.5">
+                                  {b.appointment_time
+                                    ? formatLocalTime(b.appointment_time, 'GB', 'MMM d, yyyy', 'Europe/London')
+                                    : 'Date unknown'}
+                                  {b.appointment_price != null && ` · ${fmtCurrency(b.appointment_price, clinicCurrency)}`}
+                                </p>
+                              </div>
+                              <ChevronRight className="w-4 h-4 text-text/30 group-hover:text-primary transition-colors" />
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      <button
+                        onClick={() => {
+                          setSelectedBooking(null)
+                          setInvoiceForm({ description: '', amount: '', due_date: defaultDueDate() })
+                          setModalStep(3)
+                        }}
+                        className="text-xs text-text/50 hover:text-primary text-center underline underline-offset-2 transition-colors"
+                      >
+                        Skip — create invoice without attaching a session
+                      </button>
                     </div>
                   )}
 
-                  <button
-                    onClick={() => {
-                      setSelectedBooking(null)
-                      setInvoiceForm({ description: '', amount: '', due_date: defaultDueDate() })
-                      setModalStep(3)
-                    }}
-                    className="text-xs text-text/50 hover:text-primary text-center underline underline-offset-2 transition-colors"
-                  >
-                    Skip — create invoice without attaching a session
-                  </button>
-                </div>
+                  {/* ── Step 3: Review & submit ── */}
+                  {modalStep === 3 && (
+                    <div className="flex flex-col gap-4">
+                      {/* Patient + booking summary */}
+                      <div className="bg-background/60 rounded-xl border border-border p-4 flex flex-col gap-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-text/50">Patient</span>
+                          <span className="font-medium text-text">{selectedPatient?.full_name ?? '—'}</span>
+                        </div>
+                        {selectedBooking && (
+                          <div className="flex justify-between">
+                            <span className="text-text/50">Session</span>
+                            <span className="text-text/80">
+                              {APPT_TYPE_LABELS[selectedBooking.appointment_type ?? ''] ?? selectedBooking.appointment_type}
+                              {selectedBooking.appointment_time && (
+                                <span className="text-text/50 ml-1">
+                                  · {formatLocalTime(selectedBooking.appointment_time, 'GB', 'MMM d, yyyy', 'Europe/London')}
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Description */}
+                      <div>
+                        <label className="block text-xs font-semibold text-text/60 uppercase tracking-wide mb-1.5">
+                          Description
+                        </label>
+                        <input
+                          id="invoice-description"
+                          type="text"
+                          value={invoiceForm.description}
+                          onChange={e => setInvoiceForm(f => ({ ...f, description: e.target.value }))}
+                          placeholder="e.g. Follow-up Session — May 30, 2025"
+                          className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-text/30"
+                        />
+                      </div>
+
+                      {/* Amount */}
+                      <div>
+                        <label className="block text-xs font-semibold text-text/60 uppercase tracking-wide mb-1.5">
+                          Amount ({clinicCurrency})
+                        </label>
+                        <input
+                          id="invoice-amount"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={invoiceForm.amount}
+                          onChange={e => setInvoiceForm(f => ({ ...f, amount: e.target.value }))}
+                          placeholder="0.00"
+                          className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-text/30"
+                        />
+                      </div>
+
+                      {/* Due date */}
+                      <div>
+                        <label className="block text-xs font-semibold text-text/60 uppercase tracking-wide mb-1.5">
+                          Due Date
+                        </label>
+                        <input
+                          id="invoice-due-date"
+                          type="date"
+                          value={invoiceForm.due_date}
+                          onChange={e => setInvoiceForm(f => ({ ...f, due_date: e.target.value }))}
+                          className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                        />
+                      </div>
+
+                      {/* Total preview */}
+                      {invoiceForm.amount && !isNaN(parseFloat(invoiceForm.amount)) && (
+                        <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
+                          <span className="text-sm font-medium text-text/70">Total</span>
+                          <span className="text-lg font-bold text-primary font-bricolage">
+                            {fmtCurrency(parseFloat(invoiceForm.amount), clinicCurrency)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
 
-              {/* ── Step 3: Review & submit ── */}
-              {modalStep === 3 && (
+              {/* ── Manual Flow ── */}
+              {invoiceType === 'manual' && (
                 <div className="flex flex-col gap-4">
-                  {/* Patient + booking summary */}
-                  <div className="bg-background/60 rounded-xl border border-border p-4 flex flex-col gap-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-text/50">Patient</span>
-                      <span className="font-medium text-text">{selectedPatient?.full_name ?? '—'}</span>
-                    </div>
-                    {selectedBooking && (
-                      <div className="flex justify-between">
-                        <span className="text-text/50">Session</span>
-                        <span className="text-text/80">
-                          {APPT_TYPE_LABELS[selectedBooking.appointment_type ?? ''] ?? selectedBooking.appointment_type}
-                          {selectedBooking.appointment_time && (
-                            <span className="text-text/50 ml-1">
-                              · {formatLocalTime(selectedBooking.appointment_time, 'GB', 'MMM d, yyyy', 'Europe/London')}
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Description */}
+                  {/* Patient Name */}
                   <div>
                     <label className="block text-xs font-semibold text-text/60 uppercase tracking-wide mb-1.5">
-                      Description
+                      Patient Name <span className="text-alert">*</span>
                     </label>
                     <input
-                      id="invoice-description"
+                      id="manual-patient-name"
                       type="text"
-                      value={invoiceForm.description}
-                      onChange={e => setInvoiceForm(f => ({ ...f, description: e.target.value }))}
-                      placeholder="e.g. Follow-up Session — May 30, 2025"
+                      required
+                      value={manualForm.patient_name}
+                      onChange={e => setManualForm(f => ({ ...f, patient_name: e.target.value }))}
+                      placeholder="e.g. John Doe"
+                      className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-text/30"
+                    />
+                  </div>
+
+                  {/* Service Description */}
+                  <div>
+                    <label className="block text-xs font-semibold text-text/60 uppercase tracking-wide mb-1.5">
+                      Service Description <span className="text-alert">*</span>
+                    </label>
+                    <input
+                      id="manual-description"
+                      type="text"
+                      required
+                      value={manualForm.description}
+                      onChange={e => setManualForm(f => ({ ...f, description: e.target.value }))}
+                      placeholder="e.g. Physiotherapy Session"
                       className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-text/30"
                     />
                   </div>
@@ -895,40 +1105,57 @@ function RevenuePage() {
                   {/* Amount */}
                   <div>
                     <label className="block text-xs font-semibold text-text/60 uppercase tracking-wide mb-1.5">
-                      Amount ({clinicCurrency})
+                      Amount ({clinicCurrency}) <span className="text-alert">*</span>
                     </label>
                     <input
-                      id="invoice-amount"
+                      id="manual-amount"
                       type="number"
                       min="0"
                       step="0.01"
-                      value={invoiceForm.amount}
-                      onChange={e => setInvoiceForm(f => ({ ...f, amount: e.target.value }))}
+                      required
+                      value={manualForm.amount}
+                      onChange={e => setManualForm(f => ({ ...f, amount: e.target.value }))}
                       placeholder="0.00"
                       className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-text/30"
                     />
                   </div>
 
-                  {/* Due date */}
+                  {/* Due Date */}
                   <div>
                     <label className="block text-xs font-semibold text-text/60 uppercase tracking-wide mb-1.5">
-                      Due Date
+                      Due Date <span className="text-alert">*</span>
                     </label>
                     <input
-                      id="invoice-due-date"
+                      id="manual-due-date"
                       type="date"
-                      value={invoiceForm.due_date}
-                      onChange={e => setInvoiceForm(f => ({ ...f, due_date: e.target.value }))}
+                      required
+                      value={manualForm.due_date}
+                      onChange={e => setManualForm(f => ({ ...f, due_date: e.target.value }))}
                       className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
                     />
                   </div>
 
+                  {/* Notes */}
+                  <div>
+                    <label className="block text-xs font-semibold text-text/60 uppercase tracking-wide mb-1.5">
+                      Notes (Optional)
+                    </label>
+                    <textarea
+                      id="manual-notes"
+                      rows={3}
+                      value={manualForm.notes}
+                      onChange={e => setManualForm(f => ({ ...f, notes: e.target.value }))}
+                      placeholder="Add any additional notes for the patient…"
+                      className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-text/30 resize-none"
+                    />
+                  </div>
+
                   {/* Total preview */}
-                  {invoiceForm.amount && !isNaN(parseFloat(invoiceForm.amount)) && (
+                  {manualForm.amount && !isNaN(parseFloat(manualForm.amount)) && (
                     <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
                       <span className="text-sm font-medium text-text/70">Total</span>
                       <span className="text-lg font-bold text-primary font-bricolage">
-                        {fmtCurrency(parseFloat(invoiceForm.amount), clinicCurrency)}
+                        {fmtCurrency(parseFloat(manualForm.amount), clinicCurrency)}
                       </span>
                     </div>
                   )}
@@ -938,15 +1165,32 @@ function RevenuePage() {
 
             {/* Modal footer */}
             <div className="p-5 border-t border-border shrink-0 flex gap-3">
-              {modalStep > 1 && (
+              {invoiceType === 'booking' ? (
+                modalStep > 1 ? (
+                  <button
+                    onClick={() => setModalStep(s => (s === 3 ? 2 : 1) as 1 | 2 | 3)}
+                    className="flex-1 border border-border text-text/70 hover:text-text hover:border-text/30 py-2.5 rounded-xl text-sm font-medium transition-colors"
+                  >
+                    Back
+                  </button>
+                ) : (
+                  <button
+                    onClick={closeInvoiceModal}
+                    className="flex-1 border border-border text-text/70 hover:text-text py-2.5 rounded-xl text-sm font-medium transition-colors"
+                  >
+                    Cancel
+                  </button>
+                )
+              ) : (
                 <button
-                  onClick={() => setModalStep(s => (s === 3 ? 2 : 1) as 1 | 2 | 3)}
-                  className="flex-1 border border-border text-text/70 hover:text-text hover:border-text/30 py-2.5 rounded-xl text-sm font-medium transition-colors"
+                  onClick={closeInvoiceModal}
+                  className="flex-1 border border-border text-text/70 hover:text-text py-2.5 rounded-xl text-sm font-medium transition-colors"
                 >
-                  Back
+                  Cancel
                 </button>
               )}
-              {modalStep === 3 && (
+
+              {((invoiceType === 'booking' && modalStep === 3) || invoiceType === 'manual') && (
                 <button
                   id="submit-invoice-btn"
                   onClick={handleSubmitInvoice}
@@ -958,14 +1202,6 @@ function RevenuePage() {
                   ) : (
                     <><Receipt className="w-4 h-4" /> Create Invoice</>
                   )}
-                </button>
-              )}
-              {modalStep !== 3 && (
-                <button
-                  onClick={closeInvoiceModal}
-                  className="flex-1 border border-border text-text/70 hover:text-text py-2.5 rounded-xl text-sm font-medium transition-colors"
-                >
-                  Cancel
                 </button>
               )}
             </div>
@@ -1005,7 +1241,9 @@ function RevenuePage() {
               <div className="bg-background/60 rounded-xl border border-border divide-y divide-border text-sm">
                 <div className="flex justify-between px-4 py-3">
                   <span className="text-text/50">Patient</span>
-                  <span className="font-medium text-text">{viewingInvoice.patients?.full_name ?? '—'}</span>
+                  <span className="font-medium text-text">
+                    {viewingInvoice.patient_id === null ? (viewingInvoice.manual_patient_name ?? '—') : (viewingInvoice.patients?.full_name ?? '—')}
+                  </span>
                 </div>
                 <div className="flex justify-between px-4 py-3">
                   <span className="text-text/50">Amount</span>
