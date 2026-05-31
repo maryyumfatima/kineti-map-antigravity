@@ -32,6 +32,12 @@ type InvoiceData = {
   manual_patient_name: string | null
   patient_insurance_name: string | null
   patient_policy_number: string | null
+  override_therapist_name: string | null
+  override_therapist_email: string | null
+  bookings: {
+    appointment_time: string | null
+    clinic_users: { name: string | null; email: string | null } | null
+  } | null
   patients: { full_name: string | null; phone_number: string | null } | null
   clinics: {
     name: string
@@ -90,6 +96,7 @@ function PaymentPage() {
         .select(`
           *,
           patients(full_name, phone_number),
+          bookings(appointment_time, clinic_users!bookings_completed_by_fkey(name, email)),
           clinics(name, logo_url, contact_email, contact_phone, contact_address, brand_color, currency, is_vat_registered, vat_number, vat_rate, payment_terms_days),
           invoice_items(id, description, quantity, unit_price, line_total)
         `)
@@ -222,6 +229,18 @@ function PaymentPage() {
                     <span className="text-gray-400">Invoice #</span>
                     <span className="font-mono font-semibold" style={{ color: brandColor }}>{invoice.invoice_number}</span>
                   </div>
+                  {(invoice.override_therapist_name || invoice.bookings?.clinic_users?.name) && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Treated by</span>
+                      <span className="text-gray-700">{invoice.override_therapist_name || invoice.bookings?.clinic_users?.name}</span>
+                    </div>
+                  )}
+                  {invoice.bookings?.appointment_time && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Session Date</span>
+                      <span className="text-gray-700">{formatDate(invoice.bookings.appointment_time)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-gray-400">Issued</span>
                     <span className="text-gray-700">{formatDate(invoice.created_at)}</span>

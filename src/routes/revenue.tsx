@@ -62,6 +62,12 @@ type InvoiceRow = {
   patients?: { full_name: string | null; phone_number?: string | null }
   patient_insurance_name?: string | null
   patient_policy_number?: string | null
+  override_therapist_name?: string | null
+  override_therapist_email?: string | null
+  bookings?: {
+    appointment_time: string | null
+    clinic_users?: { name: string | null; email: string | null } | null
+  } | null
 }
 
 type InvoiceItem = {
@@ -98,6 +104,7 @@ type CompletedBooking = {
   appointment_time: string | null
   appointment_type: string | null
   appointment_price: number | null
+  clinic_users: { name: string | null; email: string | null } | null
 }
 
 type InvoiceFormState = {
@@ -106,6 +113,8 @@ type InvoiceFormState = {
   due_date: string
   patient_insurance_name?: string
   patient_policy_number?: string
+  override_therapist_name?: string
+  override_therapist_email?: string
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -200,8 +209,11 @@ function RevenuePage() {
     notes: '',
     patient_insurance_name: '',
     patient_policy_number: '',
+    override_therapist_name: '',
+    override_therapist_email: '',
   })
   const [showInsuranceFields, setShowInsuranceFields] = useState(false)
+  const [showTherapistOverrides, setShowTherapistOverrides] = useState(false)
   const [submittingInvoice, setSubmittingInvoice] = useState(false)
 
   // view modal
@@ -268,7 +280,7 @@ function RevenuePage() {
     try {
       const { data, error } = await supabase
         .from('invoices')
-        .select('*, patients(full_name, phone_number)')
+        .select('*, patients(full_name, phone_number), bookings(appointment_time, clinic_users!bookings_completed_by_fkey(name, email))')
         .eq('clinic_id', cid)
         .order('created_at', { ascending: false })
       if (error) throw error
@@ -314,7 +326,7 @@ function RevenuePage() {
     try {
       const { data, error } = await supabase
         .from('bookings')
-        .select('id, appointment_time, appointment_type, appointment_price')
+        .select('id, appointment_time, appointment_type, appointment_price, clinic_users!bookings_completed_by_fkey(name, email)')
         .eq('patient_id', patientId)
         .eq('status', 'completed')
         .order('appointment_time', { ascending: false })
@@ -348,6 +360,8 @@ function RevenuePage() {
       due_date: defaultDueDate(days),
       patient_insurance_name: '',
       patient_policy_number: '',
+      override_therapist_name: b.clinic_users?.name ?? '',
+      override_therapist_email: b.clinic_users?.email ?? '',
     })
     setModalStep(3)
   }
@@ -393,6 +407,8 @@ function RevenuePage() {
             notes: manualForm.notes.trim() || null,
             patient_insurance_name: manualForm.patient_insurance_name?.trim() || null,
             patient_policy_number: manualForm.patient_policy_number?.trim() || null,
+            override_therapist_name: manualForm.override_therapist_name?.trim() || null,
+            override_therapist_email: manualForm.override_therapist_email?.trim() || null,
           })
           .select()
           .single()
@@ -459,6 +475,8 @@ function RevenuePage() {
           notes: null,
           patient_insurance_name: invoiceForm.patient_insurance_name?.trim() || null,
           patient_policy_number: invoiceForm.patient_policy_number?.trim() || null,
+          override_therapist_name: invoiceForm.override_therapist_name?.trim() || null,
+          override_therapist_email: invoiceForm.override_therapist_email?.trim() || null,
         })
         .select()
         .single()
@@ -515,8 +533,11 @@ function RevenuePage() {
       notes: '',
       patient_insurance_name: '',
       patient_policy_number: '',
+      override_therapist_name: '',
+      override_therapist_email: '',
     })
     setShowInsuranceFields(false)
+    setShowTherapistOverrides(false)
   }
 
   // ─── Data marks ───────────────────────────────────────────────────────────
@@ -1112,6 +1133,46 @@ function RevenuePage() {
                           </div>
                         )}
                       </div>
+                      
+                      {/* Collapsible Overrides Section */}
+                      <div className="border border-border rounded-xl overflow-hidden bg-background/30">
+                        <button
+                          type="button"
+                          onClick={() => setShowTherapistOverrides(!showTherapistOverrides)}
+                          className="w-full flex items-center justify-between px-4 py-3 text-xs font-semibold text-text/60 uppercase tracking-wide hover:bg-background/50 transition-colors"
+                        >
+                          <span>Invoice Details (optional overrides)</span>
+                          <span className="text-text/40">{showTherapistOverrides ? 'Hide' : 'Show'}</span>
+                        </button>
+                        {showTherapistOverrides && (
+                          <div className="p-4 border-t border-border flex flex-col gap-4 bg-background/20">
+                            <div>
+                              <label className="block text-xs font-semibold text-text/60 uppercase tracking-wide mb-1.5">
+                                Therapist name
+                              </label>
+                              <input
+                                type="text"
+                                value={invoiceForm.override_therapist_name || ''}
+                                onChange={e => setInvoiceForm(f => ({ ...f, override_therapist_name: e.target.value }))}
+                                placeholder="e.g. Dr. Sarah Smith"
+                                className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-text/30"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-text/60 uppercase tracking-wide mb-1.5">
+                                Therapist email
+                              </label>
+                              <input
+                                type="email"
+                                value={invoiceForm.override_therapist_email || ''}
+                                onChange={e => setInvoiceForm(f => ({ ...f, override_therapist_email: e.target.value }))}
+                                placeholder="sarah@clinic.com"
+                                className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-text/30"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
 
                       {/* Total preview */}
                       {invoiceForm.amount && !isNaN(parseFloat(invoiceForm.amount)) && (() => {
@@ -1262,6 +1323,46 @@ function RevenuePage() {
                             value={manualForm.patient_policy_number || ''}
                             onChange={e => setManualForm(f => ({ ...f, patient_policy_number: e.target.value }))}
                             placeholder="Policy number"
+                            className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-text/30"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Collapsible Overrides Section */}
+                  <div className="border border-border rounded-xl overflow-hidden bg-background/30">
+                    <button
+                      type="button"
+                      onClick={() => setShowTherapistOverrides(!showTherapistOverrides)}
+                      className="w-full flex items-center justify-between px-4 py-3 text-xs font-semibold text-text/60 uppercase tracking-wide hover:bg-background/50 transition-colors"
+                    >
+                      <span>Invoice Details (optional overrides)</span>
+                      <span className="text-text/40">{showTherapistOverrides ? 'Hide' : 'Show'}</span>
+                    </button>
+                    {showTherapistOverrides && (
+                      <div className="p-4 border-t border-border flex flex-col gap-4 bg-background/20">
+                        <div>
+                          <label className="block text-xs font-semibold text-text/60 uppercase tracking-wide mb-1.5">
+                            Therapist name
+                          </label>
+                          <input
+                            type="text"
+                            value={manualForm.override_therapist_name || ''}
+                            onChange={e => setManualForm(f => ({ ...f, override_therapist_name: e.target.value }))}
+                            placeholder="e.g. Dr. Sarah Smith"
+                            className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-text/30"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-text/60 uppercase tracking-wide mb-1.5">
+                            Therapist email
+                          </label>
+                          <input
+                            type="email"
+                            value={manualForm.override_therapist_email || ''}
+                            onChange={e => setManualForm(f => ({ ...f, override_therapist_email: e.target.value }))}
+                            placeholder="sarah@clinic.com"
                             className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-text/30"
                           />
                         </div>
@@ -1447,6 +1548,18 @@ function RevenuePage() {
                         <span className="text-text/50">Invoice #</span>
                         <span className="font-mono font-semibold text-primary">{viewingInvoice.invoice_number}</span>
                       </div>
+                      {(viewingInvoice.override_therapist_name || viewingInvoice.bookings?.clinic_users?.name) && (
+                        <div className="flex justify-between">
+                          <span className="text-text/50">Treated by</span>
+                          <span className="text-text">{viewingInvoice.override_therapist_name || viewingInvoice.bookings?.clinic_users?.name}</span>
+                        </div>
+                      )}
+                      {viewingInvoice.bookings?.appointment_time && (
+                        <div className="flex justify-between">
+                          <span className="text-text/50">Session Date</span>
+                          <span className="text-text">{formatLocalTime(viewingInvoice.bookings.appointment_time, 'GB', 'MMM d, yyyy', 'Europe/London')}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between">
                         <span className="text-text/50">Issued</span>
                         <span className="text-text">{formatLocalTime(viewingInvoice.created_at, 'GB', 'MMM d, yyyy', 'Europe/London')}</span>
