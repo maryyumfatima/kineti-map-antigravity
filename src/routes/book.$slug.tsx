@@ -141,7 +141,7 @@ function BookingPage() {
     }
   }
 
-  const generateAllSlots = (avail: any[], currentBookings: any[], clinicData: any) => {
+  const generateAllSlots = (avail: any[], currentBookings: any[], _clinicData: any) => {
     const slots: any[] = []
     const bookedTimes = new Set(currentBookings.map(b => b.appointment_time))
 
