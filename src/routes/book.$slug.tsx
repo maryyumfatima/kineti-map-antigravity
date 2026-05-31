@@ -19,6 +19,16 @@ function calculateAge(dob: string) {
   return new Date(diff).getUTCFullYear() - 1970
 }
 
+function getInitials(name: string) {
+  if (!name) return ''
+  return name
+    .split(' ')
+    .map(word => word[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+}
+
 import { PhoneInput } from '../components/PhoneInput'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -350,10 +360,14 @@ function BookingPage() {
         {/* HEADER */}
         {step < 6 && (
           <div className="text-center mb-8">
-            {clinic.logo_url && (
-              <img src={clinic.logo_url} alt={clinic.name} className="w-20 h-20 rounded-2xl object-cover mx-auto mb-4 shadow-sm border border-gray-100" />
+            {clinic.logo_url && clinic.logo_url !== 'null' && clinic.logo_url.trim() !== '' ? (
+              <img src={clinic.logo_url} alt={clinic.name} className="w-20 h-20 rounded-xl object-contain mx-auto mb-4 border border-gray-100 shadow-sm" />
+            ) : (
+              <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 text-white text-xl font-bold shadow-sm" style={{ backgroundColor: brandColor }}>
+                {getInitials(clinic.name)}
+              </div>
             )}
-            <h1 className="text-2xl font-bold mb-2" style={{ color: textColor }}>{clinic.name}</h1>
+            <h1 className="text-2xl font-bold mb-2" style={{ color: brandColor }}>{clinic.name}</h1>
             {clinic.bio && <p className="text-sm max-w-sm mx-auto mb-4 leading-relaxed" style={{ color: textColor, opacity: 0.65 }}>{clinic.bio}</p>}
 
             <div className="flex items-center justify-center gap-4 mt-6 mb-2">
@@ -361,7 +375,7 @@ function BookingPage() {
                 <div className="h-full transition-all duration-500 ease-out" style={{ width: `${(step / 6) * 100}%`, backgroundColor: brandColor }} />
               </div>
             </div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Step {step} of 6</p>
+            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: brandColor }}>Step {step} of 6</p>
           </div>
         )}
 
@@ -533,7 +547,7 @@ function BookingPage() {
                 <button onClick={() => setStep(4)} className="w-full text-white font-bold py-3.5 rounded-xl transition-transform active:scale-95" style={{ backgroundColor: brandColor }}>
                   Next →
                 </button>
-                <button onClick={() => setStep(4)} className="text-gray-400 text-sm font-medium hover:text-gray-600">Skip this step</button>
+                <button onClick={() => setStep(4)} className="text-sm font-medium hover:opacity-80 transition-opacity" style={{ color: brandColor }}>Skip this step</button>
               </div>
             </div>
           )}
@@ -560,7 +574,7 @@ function BookingPage() {
                 <button onClick={() => setStep(5)} className="w-full text-white font-bold py-3.5 rounded-xl transition-transform active:scale-95 mt-4" style={{ backgroundColor: brandColor }}>
                   Next →
                 </button>
-                <button onClick={() => setStep(5)} className="text-gray-400 text-sm font-medium hover:text-gray-600">Skip this step</button>
+                <button onClick={() => setStep(5)} className="text-sm font-medium hover:opacity-80 transition-opacity" style={{ color: brandColor }}>Skip this step</button>
               </div>
             </div>
           )}
@@ -631,7 +645,7 @@ function BookingPage() {
                   <span className="text-sm text-gray-700">I agree to receive occasional health tips and clinic updates</span>
                 </label>
 
-                <p className="text-xs text-gray-400 underline cursor-pointer mt-4 hover:text-gray-600">Privacy Notice</p>
+                <p className="text-xs underline cursor-pointer mt-4 hover:opacity-80 transition-opacity" style={{ color: brandColor }}>Privacy Notice</p>
 
                 <input type="text" name="website" value={honeypot} onChange={e => setHoneypot(e.target.value)} style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
 
@@ -653,7 +667,7 @@ function BookingPage() {
                 Verify
               </button>
 
-              <p className="text-sm text-gray-400 mt-4 cursor-pointer hover:text-gray-600">Resend code</p>
+              <p className="text-sm mt-4 cursor-pointer hover:opacity-80 transition-opacity" style={{ color: brandColor }}>Resend code</p>
             </div>
           )}
 
@@ -693,7 +707,7 @@ function BookingPage() {
                   </div>
                   <button onClick={() => {
                     setFullName(''); setWhatsapp(''); setDob(''); setPainData({}); setStep(1);
-                  }} className="w-full mt-6 bg-white border-2 border-[#006D77] text-[#006D77] font-bold py-3 rounded-xl hover:bg-gray-50 transition-colors">
+                  }} className="w-full mt-6 bg-white font-bold py-3 rounded-xl hover:bg-gray-50 transition-colors border-2" style={{ borderColor: brandColor, color: brandColor }}>
                     Start fresh booking
                   </button>
                 </div>

@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 import {
   CheckCircle, DollarSign, FileText, Plus, Send, Eye, X,
-  ChevronRight, Loader2, Receipt, Printer, Building2, ExternalLink,
+  ChevronRight, Loader2, Receipt, Printer, Building2, ExternalLink, Edit,
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -221,6 +221,130 @@ function RevenuePage() {
   const [viewingClinic, setViewingClinic] = useState<ClinicInfo | null>(null)
   const [viewingItems, setViewingItems] = useState<InvoiceItem[]>([])
   const [viewLoading, setViewLoading] = useState(false)
+
+  // edit mode inside view modal
+  const [isEditingInvoice, setIsEditingInvoice] = useState(false)
+  const [editForm, setEditForm] = useState({
+    description: '',
+    total_amount: '',
+    due_date: '',
+    notes: '',
+    override_therapist_name: '',
+    override_therapist_email: '',
+    patient_insurance_name: '',
+    patient_policy_number: '',
+  })
+
+  const startEditing = () => {
+    if (!viewingInvoice) return
+    setEditForm({
+      description: viewingItems[0]?.description ?? '',
+      total_amount: String(viewingInvoice.total_amount),
+      due_date: viewingInvoice.due_date ?? '',
+      notes: viewingInvoice.notes ?? '',
+      override_therapist_name: viewingInvoice.override_therapist_name ?? '',
+      override_therapist_email: viewingInvoice.override_therapist_email ?? '',
+      patient_insurance_name: viewingInvoice.patient_insurance_name ?? '',
+      patient_policy_number: viewingInvoice.patient_policy_number ?? '',
+    })
+    setIsEditingInvoice(true)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!viewingInvoice) return
+
+    const totalAmount = parseFloat(editForm.total_amount)
+    if (isNaN(totalAmount) || totalAmount < 0) {
+      toast.error('Please enter a valid total amount')
+      return
+    }
+
+    setViewLoading(true)
+    try {
+      const isVat = viewingClinic?.is_vat_registered ?? false
+      const vatRate = viewingClinic?.vat_rate ?? 20
+      const subtotal = isVat ? totalAmount / (1 + vatRate / 100) : totalAmount
+      const taxAmount = isVat ? totalAmount - subtotal : 0
+
+      // Update invoices table
+      const { error: invError } = await supabase
+        .from('invoices')
+        .update({
+          total_amount: totalAmount,
+          subtotal: subtotal,
+          tax_amount: taxAmount,
+          due_date: editForm.due_date || null,
+          notes: editForm.notes || null,
+          override_therapist_name: editForm.override_therapist_name || null,
+          override_therapist_email: editForm.override_therapist_email || null,
+          patient_insurance_name: editForm.patient_insurance_name || null,
+          patient_policy_number: editForm.patient_policy_number || null,
+        })
+        .eq('id', viewingInvoice.id)
+
+      if (invError) throw invError
+
+      // Update invoice_items table
+      if (viewingItems[0]) {
+        const { error: itemError } = await supabase
+          .from('invoice_items')
+          .update({
+            description: editForm.description,
+            unit_price: subtotal,
+            line_total: subtotal,
+          })
+          .eq('id', viewingItems[0].id)
+
+        if (itemError) throw itemError
+      }
+
+      toast.success('Invoice updated successfully')
+
+      // Refresh invoice list in background
+      if (clinicId) {
+        await fetchInvoices(clinicId)
+      }
+
+      // Update local viewing state to reflect changes instantly
+      setViewingInvoice(prev => {
+        if (!prev) return null
+        return {
+          ...prev,
+          total_amount: totalAmount,
+          subtotal: subtotal,
+          tax_amount: taxAmount,
+          due_date: editForm.due_date || null,
+          notes: editForm.notes || null,
+          override_therapist_name: editForm.override_therapist_name || null,
+          override_therapist_email: editForm.override_therapist_email || null,
+          patient_insurance_name: editForm.patient_insurance_name || null,
+          patient_policy_number: editForm.patient_policy_number || null,
+        }
+      })
+
+      setViewingItems(prev => {
+        if (!prev || prev.length === 0) return []
+        const updated = [...prev]
+        updated[0] = {
+          ...updated[0],
+          description: editForm.description,
+          unit_price: subtotal,
+          line_total: subtotal,
+        }
+        return updated
+      })
+
+      setIsEditingInvoice(false)
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Failed to update invoice')
+    } finally {
+      setViewLoading(false)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditingInvoice(false)
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
   useEffect(() => { fetchData() }, [])
@@ -1451,7 +1575,7 @@ function RevenuePage() {
       {viewingInvoice && (
         <div
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm"
-          onClick={e => { if (e.target === e.currentTarget) setViewingInvoice(null) }}
+          onClick={e => { if (e.target === e.currentTarget) { setViewingInvoice(null); setIsEditingInvoice(false); } }}
         >
           <div className="relative bg-card w-full max-w-2xl rounded-t-2xl sm:rounded-2xl shadow-2xl border border-border flex flex-col max-h-[92vh]">
 
@@ -1466,14 +1590,29 @@ function RevenuePage() {
               </div>
               <button
                 id="print-invoice-btn"
-                onClick={() => window.print()}
+                onClick={() => {
+                  if (viewingInvoice.payment_link_token) {
+                    window.open(`/pay/${viewingInvoice.payment_link_token}`, '_blank')
+                  } else {
+                    toast.error('Payment link is not available yet')
+                  }
+                }}
                 className="flex items-center gap-1.5 text-xs font-medium text-text/60 hover:text-primary border border-border hover:border-primary/30 px-3 py-1.5 rounded-lg transition-colors"
               >
                 <Printer className="w-3.5 h-3.5" />
                 Print
               </button>
+              {!isEditingInvoice && (
+                <button
+                  onClick={startEditing}
+                  className="flex items-center gap-1.5 text-xs font-medium text-text/60 hover:text-primary border border-border hover:border-primary/30 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  <Edit className="w-3.5 h-3.5" />
+                  Edit
+                </button>
+              )}
               <button
-                onClick={() => setViewingInvoice(null)}
+                onClick={() => { setViewingInvoice(null); setIsEditingInvoice(false); }}
                 className="text-text/40 hover:text-text transition-colors p-1 rounded-lg hover:bg-background/50 ml-1"
               >
                 <X className="w-5 h-5" />
@@ -1486,7 +1625,122 @@ function RevenuePage() {
                 <div className="flex items-center justify-center gap-2 py-16 text-sm text-text/50">
                   <Loader2 className="w-5 h-5 animate-spin" /> Loading invoice…
                 </div>
+              ) : isEditingInvoice ? (
+                /* EDIT MODE FORM */
+                <div className="p-6 sm:p-8 flex flex-col gap-5">
+                  <h3 className="text-base font-semibold text-text/80 font-bricolage">Edit Invoice Details</h3>
+                  
+                  {/* Service Description & Total Amount */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-text/60 uppercase tracking-wide mb-1.5">
+                        Description
+                      </label>
+                      <input
+                        type="text"
+                        value={editForm.description}
+                        onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
+                        className="w-full px-3 py-2 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-text/30"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-text/60 uppercase tracking-wide mb-1.5">
+                        Total Amount ({viewingInvoice.currency})
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={editForm.total_amount}
+                        onChange={e => setEditForm(f => ({ ...f, total_amount: e.target.value }))}
+                        className="w-full px-3 py-2 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-text/30"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Due Date & Therapist Name */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-text/60 uppercase tracking-wide mb-1.5">
+                        Due Date
+                      </label>
+                      <input
+                        type="date"
+                        value={editForm.due_date}
+                        onChange={e => setEditForm(f => ({ ...f, due_date: e.target.value }))}
+                        className="w-full px-3 py-2 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-text/60 uppercase tracking-wide mb-1.5">
+                        Therapist Name (Override)
+                      </label>
+                      <input
+                        type="text"
+                        value={editForm.override_therapist_name}
+                        onChange={e => setEditForm(f => ({ ...f, override_therapist_name: e.target.value }))}
+                        className="w-full px-3 py-2 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-text/30"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Therapist Email & Notes */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-text/60 uppercase tracking-wide mb-1.5">
+                        Therapist Email (Override)
+                      </label>
+                      <input
+                        type="email"
+                        value={editForm.override_therapist_email}
+                        onChange={e => setEditForm(f => ({ ...f, override_therapist_email: e.target.value }))}
+                        className="w-full px-3 py-2 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-text/30"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-text/60 uppercase tracking-wide mb-1.5">
+                        Notes
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={editForm.notes}
+                        onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))}
+                        className="w-full px-3 py-2 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-text/30 resize-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Insurance Fields */}
+                  <div className="border border-border rounded-xl p-4 bg-background/30 flex flex-col gap-4">
+                    <span className="text-xs font-semibold text-text/60 uppercase tracking-wide block">Private Insurance</span>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-text/60 uppercase tracking-wide mb-1.5">
+                          Insurance Provider
+                        </label>
+                        <input
+                          type="text"
+                          value={editForm.patient_insurance_name}
+                          onChange={e => setEditForm(f => ({ ...f, patient_insurance_name: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-text/30"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-text/60 uppercase tracking-wide mb-1.5">
+                          Policy Number
+                        </label>
+                        <input
+                          type="text"
+                          value={editForm.patient_policy_number}
+                          onChange={e => setEditForm(f => ({ ...f, patient_policy_number: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-text/30"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
               ) : (
+                /* VIEW MODE PREVIEW */
                 <div className="p-6 sm:p-8 flex flex-col gap-6">
 
                   {/* ── Header: Clinic + Invoice meta ── */}
@@ -1707,21 +1961,40 @@ function RevenuePage() {
 
             {/* Footer */}
             <div className="p-4 border-t border-border shrink-0 flex gap-3 print:hidden">
-              <button
-                id="send-invoice-modal-btn"
-                onClick={() => handleSendInvoice(viewingInvoice.id)}
-                className="flex items-center justify-center gap-2 border border-border text-text/70 hover:text-primary hover:border-primary/30 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors"
-              >
-                <Send className="w-4 h-4" />
-                Send Invoice
-              </button>
-              <div className="flex-1" />
-              <button
-                onClick={() => setViewingInvoice(null)}
-                className="bg-primary text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors"
-              >
-                Close
-              </button>
+              {isEditingInvoice ? (
+                <>
+                  <button
+                    onClick={handleCancelEdit}
+                    className="flex-1 border border-border text-text/70 hover:text-text py-2.5 rounded-xl text-sm font-medium transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveEdit}
+                    className="flex-1 bg-primary text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+                  >
+                    Save Changes
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    id="send-invoice-modal-btn"
+                    onClick={() => handleSendInvoice(viewingInvoice.id)}
+                    className="flex items-center justify-center gap-2 border border-border text-text/70 hover:text-primary hover:border-primary/30 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors"
+                  >
+                    <Send className="w-4 h-4" />
+                    Send Invoice
+                  </button>
+                  <div className="flex-1" />
+                  <button
+                    onClick={() => { setViewingInvoice(null); setIsEditingInvoice(false); }}
+                    className="bg-primary text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors"
+                  >
+                    Close
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
