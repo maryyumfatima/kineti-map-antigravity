@@ -22,6 +22,7 @@ import { Route as BrandingRouteImport } from './routes/branding'
 import { Route as BillingRouteImport } from './routes/billing'
 import { Route as AvailabilityRouteImport } from './routes/availability'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PayTokenRouteImport } from './routes/pay.$token'
 import { Route as PatientsPatientIdRouteImport } from './routes/patients.$patientId'
 import { Route as BookSlugRouteImport } from './routes/book.$slug'
 import { Route as AiSoapNotesRouteImport } from './routes/ai.soap-notes'
@@ -92,6 +93,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PayTokenRoute = PayTokenRouteImport.update({
+  id: '/pay/$token',
+  path: '/pay/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PatientsPatientIdRoute = PatientsPatientIdRouteImport.update({
   id: '/$patientId',
   path: '/$patientId',
@@ -130,6 +136,7 @@ export interface FileRoutesByFullPath {
   '/ai/soap-notes': typeof AiSoapNotesRoute
   '/book/$slug': typeof BookSlugRoute
   '/patients/$patientId': typeof PatientsPatientIdRoute
+  '/pay/$token': typeof PayTokenRoute
   '/dashboard/patients/$id': typeof DashboardPatientsIdRoute
 }
 export interface FileRoutesByTo {
@@ -149,6 +156,7 @@ export interface FileRoutesByTo {
   '/ai/soap-notes': typeof AiSoapNotesRoute
   '/book/$slug': typeof BookSlugRoute
   '/patients/$patientId': typeof PatientsPatientIdRoute
+  '/pay/$token': typeof PayTokenRoute
   '/dashboard/patients/$id': typeof DashboardPatientsIdRoute
 }
 export interface FileRoutesById {
@@ -169,6 +177,7 @@ export interface FileRoutesById {
   '/ai/soap-notes': typeof AiSoapNotesRoute
   '/book/$slug': typeof BookSlugRoute
   '/patients/$patientId': typeof PatientsPatientIdRoute
+  '/pay/$token': typeof PayTokenRoute
   '/dashboard/patients/$id': typeof DashboardPatientsIdRoute
 }
 export interface FileRouteTypes {
@@ -190,6 +199,7 @@ export interface FileRouteTypes {
     | '/ai/soap-notes'
     | '/book/$slug'
     | '/patients/$patientId'
+    | '/pay/$token'
     | '/dashboard/patients/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -209,6 +219,7 @@ export interface FileRouteTypes {
     | '/ai/soap-notes'
     | '/book/$slug'
     | '/patients/$patientId'
+    | '/pay/$token'
     | '/dashboard/patients/$id'
   id:
     | '__root__'
@@ -228,6 +239,7 @@ export interface FileRouteTypes {
     | '/ai/soap-notes'
     | '/book/$slug'
     | '/patients/$patientId'
+    | '/pay/$token'
     | '/dashboard/patients/$id'
   fileRoutesById: FileRoutesById
 }
@@ -247,6 +259,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   AiSoapNotesRoute: typeof AiSoapNotesRoute
   BookSlugRoute: typeof BookSlugRoute
+  PayTokenRoute: typeof PayTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -342,6 +355,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pay/$token': {
+      id: '/pay/$token'
+      path: '/pay/$token'
+      fullPath: '/pay/$token'
+      preLoaderRoute: typeof PayTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/patients/$patientId': {
       id: '/patients/$patientId'
       path: '/$patientId'
@@ -413,6 +433,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   AiSoapNotesRoute: AiSoapNotesRoute,
   BookSlugRoute: BookSlugRoute,
+  PayTokenRoute: PayTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

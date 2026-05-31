@@ -1,11 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { DashboardLayout } from '../components/DashboardLayout'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 import {
   CheckCircle, DollarSign, FileText, Plus, Send, Eye, X,
-  Search, ChevronRight, Loader2, Receipt,
+  ChevronRight, Loader2, Receipt, Printer, Building2, ExternalLink,
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -58,9 +58,28 @@ type InvoiceRow = {
   notes: string | null
   created_at: string
   manual_patient_name: string | null
-  patients?: { full_name: string | null }
+  payment_link_token?: string | null
+  patients?: { full_name: string | null; phone_number?: string | null }
 }
 
+type InvoiceItem = {
+  id: string
+  description: string
+  quantity: number
+  unit_price: number
+  line_total: number
+}
+
+type ClinicInfo = {
+  id: string
+  name: string
+  logo_url: string | null
+  contact_email: string | null
+  contact_phone: string | null
+  contact_address: string | null
+  brand_color: string | null
+  currency: string
+}
 
 type PatientResult = {
   id: string
@@ -171,6 +190,9 @@ function RevenuePage() {
 
   // view modal
   const [viewingInvoice, setViewingInvoice] = useState<InvoiceRow | null>(null)
+  const [viewingClinic, setViewingClinic] = useState<ClinicInfo | null>(null)
+  const [viewingItems, setViewingItems] = useState<InvoiceItem[]>([])
+  const [viewLoading, setViewLoading] = useState(false)
 
   // ─────────────────────────────────────────────────────────────────────────
   useEffect(() => { fetchData() }, [])
@@ -227,7 +249,7 @@ function RevenuePage() {
     try {
       const { data, error } = await supabase
         .from('invoices')
-        .select('*, patients(full_name)')
+        .select('*, patients(full_name, phone_number)')
         .eq('clinic_id', cid)
         .order('created_at', { ascending: false })
       if (error) throw error
@@ -236,6 +258,33 @@ function RevenuePage() {
       toast.error('Failed to load invoices')
     } finally {
       setInvoicesLoading(false)
+    }
+  }
+
+  const openViewInvoice = async (inv: InvoiceRow) => {
+    setViewingInvoice(inv)
+    setViewingItems([])
+    setViewingClinic(null)
+    if (!clinicId) return
+    setViewLoading(true)
+    try {
+      const [itemsRes, clinicRes] = await Promise.all([
+        supabase
+          .from('invoice_items')
+          .select('id, description, quantity, unit_price, line_total')
+          .eq('invoice_id', inv.id),
+        supabase
+          .from('clinics')
+          .select('id, name, logo_url, contact_email, contact_phone, contact_address, brand_color, currency')
+          .eq('id', clinicId)
+          .single(),
+      ])
+      if (itemsRes.data) setViewingItems(itemsRes.data as InvoiceItem[])
+      if (clinicRes.data) setViewingClinic(clinicRes.data as ClinicInfo)
+    } catch {
+      toast.error('Failed to load invoice details')
+    } finally {
+      setViewLoading(false)
     }
   }
 
@@ -666,7 +715,7 @@ function RevenuePage() {
                           </button>
                           <button
                             id={`view-invoice-${inv.id}`}
-                            onClick={() => setViewingInvoice(inv)}
+                            onClick={() => openViewInvoice(inv)}
                             className="flex items-center gap-1 text-xs font-medium text-text/60 hover:text-primary border border-border hover:border-primary/30 px-2.5 py-1 rounded-lg transition-colors"
                           >
                             <Eye className="w-3 h-3" />
@@ -1130,97 +1179,222 @@ function RevenuePage() {
       {/* ═══════════════════════════════════════════════════════════════════ */}
       {viewingInvoice && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm"
           onClick={e => { if (e.target === e.currentTarget) setViewingInvoice(null) }}
         >
-          <div className="relative bg-card w-full max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl border border-border flex flex-col max-h-[80vh]">
+          <div className="relative bg-card w-full max-w-2xl rounded-t-2xl sm:rounded-2xl shadow-2xl border border-border flex flex-col max-h-[92vh]">
 
-            <div className="flex items-center gap-3 p-5 border-b border-border shrink-0">
+            {/* Modal toolbar */}
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-border shrink-0">
               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                 <FileText className="w-4 h-4 text-primary" />
               </div>
               <div className="flex-1">
-                <h3 className="font-bold text-text font-bricolage font-mono">{viewingInvoice.invoice_number}</h3>
-                <div className="mt-0.5">
-                  <StatusBadge status={viewingInvoice.status} />
-                </div>
+                <span className="font-mono font-bold text-text">{viewingInvoice.invoice_number}</span>
+                <span className="ml-2"><StatusBadge status={viewingInvoice.status} /></span>
               </div>
               <button
+                id="print-invoice-btn"
+                onClick={() => window.print()}
+                className="flex items-center gap-1.5 text-xs font-medium text-text/60 hover:text-primary border border-border hover:border-primary/30 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                Print
+              </button>
+              <button
                 onClick={() => setViewingInvoice(null)}
-                className="text-text/40 hover:text-text transition-colors p-1 rounded-lg hover:bg-background/50"
+                className="text-text/40 hover:text-text transition-colors p-1 rounded-lg hover:bg-background/50 ml-1"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="overflow-y-auto flex-1 p-5 flex flex-col gap-4">
-              <div className="bg-background/60 rounded-xl border border-border divide-y divide-border text-sm">
-                <div className="flex justify-between px-4 py-3">
-                  <span className="text-text/50">Patient</span>
-                  <span className="font-medium text-text">
-                    {viewingInvoice.patient_id === null ? (viewingInvoice.manual_patient_name ?? '—') : (viewingInvoice.patients?.full_name ?? '—')}
-                  </span>
+            {/* Invoice preview body */}
+            <div id="invoice-print-area" className="overflow-y-auto flex-1">
+              {viewLoading ? (
+                <div className="flex items-center justify-center gap-2 py-16 text-sm text-text/50">
+                  <Loader2 className="w-5 h-5 animate-spin" /> Loading invoice…
                 </div>
-                <div className="flex justify-between px-4 py-3">
-                  <span className="text-text/50">Amount</span>
-                  <span className="font-semibold text-text">
-                    {fmtCurrency(viewingInvoice.total_amount, viewingInvoice.currency)}
-                  </span>
-                </div>
-                <div className="flex justify-between px-4 py-3">
-                  <span className="text-text/50">Currency</span>
-                  <span className="text-text">{viewingInvoice.currency}</span>
-                </div>
-                <div className="flex justify-between px-4 py-3">
-                  <span className="text-text/50">Issued</span>
-                  <span className="text-text">
-                    {formatLocalTime(viewingInvoice.created_at, 'GB', 'MMM d, yyyy', 'Europe/London')}
-                  </span>
-                </div>
-                <div className="flex justify-between px-4 py-3">
-                  <span className="text-text/50">Due</span>
-                  <span className={`font-medium ${
-                    viewingInvoice.due_date && new Date(viewingInvoice.due_date) < new Date()
-                      ? 'text-alert'
-                      : 'text-text'
-                  }`}>
-                    {viewingInvoice.due_date
-                      ? formatLocalTime(viewingInvoice.due_date, 'GB', 'MMM d, yyyy', 'Europe/London')
-                      : '—'}
-                  </span>
-                </div>
-                {viewingInvoice.subtotal !== viewingInvoice.total_amount && (
-                  <>
-                    <div className="flex justify-between px-4 py-3">
-                      <span className="text-text/50">Subtotal</span>
-                      <span className="text-text">{fmtCurrency(viewingInvoice.subtotal, viewingInvoice.currency)}</span>
+              ) : (
+                <div className="p-6 sm:p-8 flex flex-col gap-6">
+
+                  {/* ── Header: Clinic + Invoice meta ── */}
+                  <div className="flex items-start justify-between gap-4">
+                    {/* Clinic branding */}
+                    <div className="flex items-start gap-3">
+                      {viewingClinic?.logo_url ? (
+                        <img
+                          src={viewingClinic.logo_url}
+                          alt={viewingClinic.name}
+                          className="w-14 h-14 rounded-xl object-cover border border-border shadow-sm shrink-0"
+                        />
+                      ) : (
+                        <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                          <Building2 className="w-7 h-7 text-primary/60" />
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-bold text-text font-bricolage text-lg leading-tight">
+                          {viewingClinic?.name ?? '—'}
+                        </p>
+                        {viewingClinic?.contact_address && (
+                          <p className="text-xs text-text/50 mt-0.5 max-w-[220px]">{viewingClinic.contact_address}</p>
+                        )}
+                        {viewingClinic?.contact_phone && (
+                          <p className="text-xs text-text/50">{viewingClinic.contact_phone}</p>
+                        )}
+                        {viewingClinic?.contact_email && (
+                          <p className="text-xs text-text/50">{viewingClinic.contact_email}</p>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex justify-between px-4 py-3">
-                      <span className="text-text/50">Tax</span>
-                      <span className="text-text">{fmtCurrency(viewingInvoice.tax_amount, viewingInvoice.currency)}</span>
+                    {/* Powered by */}
+                    <div className="text-right shrink-0">
+                      <p className="text-[10px] text-text/30 font-medium uppercase tracking-widest">Powered by KinetiMap</p>
                     </div>
-                  </>
-                )}
-                {viewingInvoice.notes && (
-                  <div className="px-4 py-3">
-                    <span className="text-text/50 block mb-1">Notes</span>
-                    <span className="text-text text-sm">{viewingInvoice.notes}</span>
                   </div>
-                )}
-              </div>
+
+                  {/* ── Two-column: Patient info | Invoice details ── */}
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Patient */}
+                    <div className="bg-background/60 rounded-xl border border-border p-4">
+                      <p className="text-xs font-semibold text-text/40 uppercase tracking-wide mb-2">Bill To</p>
+                      <p className="font-semibold text-text">
+                        {viewingInvoice.patient_id === null
+                          ? (viewingInvoice.manual_patient_name ?? '—')
+                          : (viewingInvoice.patients?.full_name ?? '—')}
+                      </p>
+                      {viewingInvoice.patients?.phone_number && (
+                        <p className="text-sm text-text/50 mt-0.5">{viewingInvoice.patients.phone_number}</p>
+                      )}
+                    </div>
+                    {/* Invoice meta */}
+                    <div className="bg-background/60 rounded-xl border border-border p-4 flex flex-col gap-1.5 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-text/50">Invoice #</span>
+                        <span className="font-mono font-semibold text-primary">{viewingInvoice.invoice_number}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-text/50">Issued</span>
+                        <span className="text-text">{formatLocalTime(viewingInvoice.created_at, 'GB', 'MMM d, yyyy', 'Europe/London')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-text/50">Due Date</span>
+                        <span className={`font-medium ${
+                          viewingInvoice.due_date && new Date(viewingInvoice.due_date) < new Date()
+                            ? 'text-alert' : 'text-text'
+                        }`}>
+                          {viewingInvoice.due_date
+                            ? formatLocalTime(viewingInvoice.due_date, 'GB', 'MMM d, yyyy', 'Europe/London')
+                            : '—'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center mt-0.5">
+                        <span className="text-text/50">Status</span>
+                        <StatusBadge status={viewingInvoice.status} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Line items table ── */}
+                  <div className="rounded-xl border border-border overflow-hidden">
+                    <table className="w-full text-sm text-left border-collapse">
+                      <thead>
+                        <tr className="bg-primary/5 border-b border-border text-xs font-semibold text-text/60 uppercase tracking-wide">
+                          <th className="px-4 py-3">Description</th>
+                          <th className="px-4 py-3 text-center">Qty</th>
+                          <th className="px-4 py-3 text-right">Unit Price</th>
+                          <th className="px-4 py-3 text-right">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {viewingItems.length === 0 ? (
+                          <tr>
+                            <td colSpan={4} className="px-4 py-6 text-center text-text/40 italic text-sm">
+                              No line items
+                            </td>
+                          </tr>
+                        ) : (
+                          viewingItems.map(item => (
+                            <tr key={item.id} className="hover:bg-background/40 transition-colors">
+                              <td className="px-4 py-3 text-text font-medium">{item.description}</td>
+                              <td className="px-4 py-3 text-center text-text/70">{item.quantity}</td>
+                              <td className="px-4 py-3 text-right text-text/70">{fmtCurrency(item.unit_price, viewingInvoice.currency)}</td>
+                              <td className="px-4 py-3 text-right font-semibold text-text">{fmtCurrency(item.line_total, viewingInvoice.currency)}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* ── Totals ── */}
+                  <div className="flex justify-end">
+                    <div className="w-64 flex flex-col gap-1.5 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-text/50">Subtotal</span>
+                        <span className="text-text">{fmtCurrency(viewingInvoice.subtotal, viewingInvoice.currency)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-text/50">Tax</span>
+                        <span className="text-text">{fmtCurrency(viewingInvoice.tax_amount, viewingInvoice.currency)}</span>
+                      </div>
+                      <div className="flex justify-between items-center pt-2 border-t border-border mt-1">
+                        <span className="font-bold text-text">Total</span>
+                        <span className="text-xl font-bold text-primary font-bricolage">
+                          {fmtCurrency(viewingInvoice.total_amount, viewingInvoice.currency)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Notes ── */}
+                  {viewingInvoice.notes && (
+                    <div className="bg-background/60 rounded-xl border border-border p-4">
+                      <p className="text-xs font-semibold text-text/40 uppercase tracking-wide mb-1.5">Notes</p>
+                      <p className="text-sm text-text/80 leading-relaxed">{viewingInvoice.notes}</p>
+                    </div>
+                  )}
+
+                  {/* ── Payment link ── */}
+                  {viewingInvoice.payment_link_token && (
+                    <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-center gap-3">
+                      <div className="flex-1">
+                        <p className="text-xs font-semibold text-primary/80 uppercase tracking-wide mb-0.5">Payment Link</p>
+                        <p className="text-sm text-text/70 font-mono break-all">
+                          {window.location.origin}/pay/{viewingInvoice.payment_link_token}
+                        </p>
+                      </div>
+                      <a
+                        href={`/pay/${viewingInvoice.payment_link_token}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 shrink-0"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        Open
+                      </a>
+                    </div>
+                  )}
+
+                </div>
+              )}
             </div>
 
-            <div className="p-5 border-t border-border shrink-0 flex gap-3">
+            {/* Footer */}
+            <div className="p-4 border-t border-border shrink-0 flex gap-3">
               <button
+                id="send-invoice-modal-btn"
                 onClick={() => handleSendInvoice(viewingInvoice.id)}
-                className="flex-1 flex items-center justify-center gap-2 border border-border text-text/70 hover:text-primary hover:border-primary/30 py-2.5 rounded-xl text-sm font-medium transition-colors"
+                className="flex items-center justify-center gap-2 border border-border text-text/70 hover:text-primary hover:border-primary/30 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors"
               >
                 <Send className="w-4 h-4" />
                 Send Invoice
               </button>
+              <div className="flex-1" />
               <button
                 onClick={() => setViewingInvoice(null)}
-                className="flex-1 bg-primary text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors"
+                className="bg-primary text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors"
               >
                 Close
               </button>
