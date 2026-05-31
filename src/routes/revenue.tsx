@@ -331,7 +331,7 @@ function RevenuePage() {
         .eq('status', 'completed')
         .order('appointment_time', { ascending: false })
       if (error) throw error
-      setCompletedBookings(data ?? [])
+      setCompletedBookings((data as unknown as CompletedBooking[]) ?? [])
     } catch {
       toast.error('Failed to load bookings')
     } finally {
@@ -350,12 +350,9 @@ function RevenuePage() {
   const handleSelectBooking = (b: CompletedBooking) => {
     setSelectedBooking(b)
     const typeLabel = APPT_TYPE_LABELS[b.appointment_type ?? ''] ?? b.appointment_type ?? 'Session'
-    const dateStr = b.appointment_time
-      ? formatLocalTime(b.appointment_time, 'GB', 'MMM d, yyyy', 'Europe/London')
-      : ''
     const days = clinicInfo?.payment_terms_days ?? 30
     setInvoiceForm({
-      description: `${typeLabel}${dateStr ? ' — ' + dateStr : ''}`,
+      description: typeLabel,
       amount: b.appointment_price != null ? String(b.appointment_price) : '',
       due_date: defaultDueDate(days),
       patient_insurance_name: '',
@@ -1511,15 +1508,16 @@ function RevenuePage() {
                         <p className="font-bold text-text font-bricolage text-lg leading-tight">
                           {viewingClinic?.name ?? '—'}
                         </p>
-                        {viewingClinic?.contact_address && (
-                          <p className="text-xs text-text/50 mt-0.5 max-w-[220px]">{viewingClinic.contact_address}</p>
-                        )}
-                        {viewingClinic?.contact_phone && (
-                          <p className="text-xs text-text/50">{viewingClinic.contact_phone}</p>
-                        )}
-                        {viewingClinic?.contact_email && (
-                          <p className="text-xs text-text/50">{viewingClinic.contact_email}</p>
-                        )}
+                        <div className="flex flex-col gap-0.5 mt-0.5 max-w-[220px]">
+                          {viewingClinic?.contact_address && (
+                            <p className="text-xs text-text/50">{viewingClinic.contact_address}</p>
+                          )}
+                          {(viewingClinic?.contact_phone || viewingClinic?.contact_email) && (
+                            <p className="text-xs text-text/50">
+                              {[viewingClinic.contact_phone, viewingClinic.contact_email].filter(Boolean).join(' · ')}
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
                     {/* Powered by */}
@@ -1548,18 +1546,6 @@ function RevenuePage() {
                         <span className="text-text/50">Invoice #</span>
                         <span className="font-mono font-semibold text-primary">{viewingInvoice.invoice_number}</span>
                       </div>
-                      {(viewingInvoice.override_therapist_name || viewingInvoice.bookings?.clinic_users?.name) && (
-                        <div className="flex justify-between">
-                          <span className="text-text/50">Treated by</span>
-                          <span className="text-text">{viewingInvoice.override_therapist_name || viewingInvoice.bookings?.clinic_users?.name}</span>
-                        </div>
-                      )}
-                      {viewingInvoice.bookings?.appointment_time && (
-                        <div className="flex justify-between">
-                          <span className="text-text/50">Session Date</span>
-                          <span className="text-text">{formatLocalTime(viewingInvoice.bookings.appointment_time, 'GB', 'MMM d, yyyy', 'Europe/London')}</span>
-                        </div>
-                      )}
                       <div className="flex justify-between">
                         <span className="text-text/50">Issued</span>
                         <span className="text-text">{formatLocalTime(viewingInvoice.created_at, 'GB', 'MMM d, yyyy', 'Europe/London')}</span>
@@ -1581,6 +1567,22 @@ function RevenuePage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* ── Treatment Details ── */}
+                  {(viewingInvoice.override_therapist_name || viewingInvoice.bookings?.clinic_users?.name || viewingInvoice.bookings?.appointment_time) && (
+                    <div className="grid grid-cols-2 gap-4 px-1 mb-4 text-sm">
+                      <div className="text-text/60">
+                        {(viewingInvoice.override_therapist_name || viewingInvoice.bookings?.clinic_users?.name) && (
+                          <>Treating therapist: <span className="text-text font-medium">{viewingInvoice.override_therapist_name || viewingInvoice.bookings?.clinic_users?.name}</span> {(viewingInvoice.override_therapist_email || viewingInvoice.bookings?.clinic_users?.email) && `(${viewingInvoice.override_therapist_email || viewingInvoice.bookings?.clinic_users?.email})`}</>
+                        )}
+                      </div>
+                      <div className="text-text/60 text-right">
+                        {viewingInvoice.bookings?.appointment_time && (
+                          <>Session date: <span className="text-text font-medium">{formatLocalTime(viewingInvoice.bookings.appointment_time, 'GB', 'MMM d, yyyy', 'Europe/London')}</span></>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Insurance Section */}
                   {viewingInvoice.patient_insurance_name && (
@@ -1667,14 +1669,16 @@ function RevenuePage() {
                   )}
 
                   {/* ── Payment link ── */}
-                  {viewingInvoice.payment_link_token && (
-                    <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-center gap-3 print:hidden">
-                      <div className="flex-1">
-                        <p className="text-xs font-semibold text-primary/80 uppercase tracking-wide mb-0.5">Payment Link</p>
-                        <p className="text-sm text-text/70 font-mono break-all">
-                          {window.location.origin}/pay/{viewingInvoice.payment_link_token}
-                        </p>
-                      </div>
+                  <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-center gap-3 print:hidden">
+                    <div className="flex-1">
+                      <p className="text-xs font-semibold text-primary/80 uppercase tracking-wide mb-0.5">Payment Link</p>
+                      <p className="text-sm text-text/70 font-mono break-all">
+                        {viewingInvoice.payment_link_token 
+                          ? `${window.location.origin}/pay/${viewingInvoice.payment_link_token}`
+                          : 'Generating link…'}
+                      </p>
+                    </div>
+                    {viewingInvoice.payment_link_token && (
                       <a
                         href={`/pay/${viewingInvoice.payment_link_token}`}
                         target="_blank"
@@ -1684,8 +1688,8 @@ function RevenuePage() {
                         <ExternalLink className="w-3.5 h-3.5" />
                         Open
                       </a>
-                    </div>
-                  )}
+                    )}
+                  </div>
 
                   {/* Legal footer */}
                   <div className="mt-6 border-t border-border pt-4 text-[10px] text-text/40 flex flex-col gap-1 leading-relaxed">
