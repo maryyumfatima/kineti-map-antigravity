@@ -60,6 +60,8 @@ type InvoiceRow = {
   manual_patient_name: string | null
   payment_link_token?: string | null
   patients?: { full_name: string | null; phone_number?: string | null }
+  patient_insurance_name?: string | null
+  patient_policy_number?: string | null
 }
 
 type InvoiceItem = {
@@ -79,6 +81,10 @@ type ClinicInfo = {
   contact_address: string | null
   brand_color: string | null
   currency: string
+  is_vat_registered?: boolean
+  vat_number?: string | null
+  vat_rate?: number
+  payment_terms_days?: number
 }
 
 type PatientResult = {
@@ -98,6 +104,8 @@ type InvoiceFormState = {
   description: string
   amount: string
   due_date: string
+  patient_insurance_name?: string
+  patient_policy_number?: string
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -139,9 +147,9 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   cancelled: { label: 'Cancelled', cls: 'bg-text/5 text-text/40 border-text/10' },
 }
 
-function defaultDueDate() {
+function defaultDueDate(days = 30) {
   const d = new Date()
-  d.setDate(d.getDate() + 30)
+  d.setDate(d.getDate() + days)
   return d.toISOString().slice(0, 10)
 }
 
@@ -155,6 +163,9 @@ function RevenuePage() {
   const [upcomingCount, setUpcomingCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [markingId, setMarkingId] = useState<string | null>(null)
+
+  // ── clinic compliance settings ────────────────────────────────────────────
+  const [clinicInfo, setClinicInfo] = useState<ClinicInfo | null>(null)
 
   // ── invoice list state ────────────────────────────────────────────────────
   const [invoices, setInvoices] = useState<InvoiceRow[]>([])
@@ -178,6 +189,8 @@ function RevenuePage() {
     description: '',
     amount: '',
     due_date: defaultDueDate(),
+    patient_insurance_name: '',
+    patient_policy_number: '',
   })
   const [manualForm, setManualForm] = useState({
     patient_name: '',
@@ -185,7 +198,10 @@ function RevenuePage() {
     amount: '',
     due_date: defaultDueDate(),
     notes: '',
+    patient_insurance_name: '',
+    patient_policy_number: '',
   })
+  const [showInsuranceFields, setShowInsuranceFields] = useState(false)
   const [submittingInvoice, setSubmittingInvoice] = useState(false)
 
   // view modal
@@ -226,7 +242,7 @@ function RevenuePage() {
           .eq('status', 'upcoming'),
         supabase
           .from('clinics')
-          .select('currency')
+          .select('id, name, logo_url, contact_email, contact_phone, contact_address, brand_color, currency, is_vat_registered, vat_number, vat_rate, payment_terms_days')
           .eq('id', cid)
           .single(),
       ])
@@ -234,7 +250,10 @@ function RevenuePage() {
       if (ledgerRes.error) throw ledgerRes.error
       setLedger(ledgerRes.data ?? [])
       setUpcomingCount(upcomingRes.count ?? 0)
-      if (clinicRes.data?.currency) setClinicCurrency(clinicRes.data.currency)
+      if (clinicRes.data) {
+        setClinicInfo(clinicRes.data as ClinicInfo)
+        if (clinicRes.data.currency) setClinicCurrency(clinicRes.data.currency)
+      }
 
       await fetchInvoices(cid)
     } catch {
@@ -275,7 +294,7 @@ function RevenuePage() {
           .eq('invoice_id', inv.id),
         supabase
           .from('clinics')
-          .select('id, name, logo_url, contact_email, contact_phone, contact_address, brand_color, currency')
+          .select('id, name, logo_url, contact_email, contact_phone, contact_address, brand_color, currency, is_vat_registered, vat_number, vat_rate, payment_terms_days')
           .eq('id', clinicId)
           .single(),
       ])
@@ -322,10 +341,13 @@ function RevenuePage() {
     const dateStr = b.appointment_time
       ? formatLocalTime(b.appointment_time, 'GB', 'MMM d, yyyy', 'Europe/London')
       : ''
+    const days = clinicInfo?.payment_terms_days ?? 30
     setInvoiceForm({
       description: `${typeLabel}${dateStr ? ' — ' + dateStr : ''}`,
       amount: b.appointment_price != null ? String(b.appointment_price) : '',
-      due_date: defaultDueDate(),
+      due_date: defaultDueDate(days),
+      patient_insurance_name: '',
+      patient_policy_number: '',
     })
     setModalStep(3)
   }
@@ -337,6 +359,12 @@ function RevenuePage() {
       if (isNaN(amount) || amount <= 0) { toast.error('Enter a valid amount'); return }
       if (!manualForm.patient_name.trim()) { toast.error('Patient name is required'); return }
       if (!manualForm.description.trim()) { toast.error('Service description is required'); return }
+
+      const subtotal = amount
+      const isVat = clinicInfo?.is_vat_registered ?? false
+      const vatRate = clinicInfo?.vat_rate ?? 20
+      const taxAmount = isVat ? subtotal * (vatRate / 100) : 0
+      const totalAmount = isVat ? subtotal + taxAmount : subtotal
 
       setSubmittingInvoice(true)
       try {
@@ -357,12 +385,14 @@ function RevenuePage() {
             manual_patient_name: manualForm.patient_name.trim(),
             invoice_number: invoiceNum,
             status: 'draft',
-            subtotal: amount,
-            tax_amount: 0,
-            total_amount: amount,
+            subtotal: subtotal,
+            tax_amount: taxAmount,
+            total_amount: totalAmount,
             currency: clinicCurrency,
             due_date: manualForm.due_date || null,
             notes: manualForm.notes.trim() || null,
+            patient_insurance_name: manualForm.patient_insurance_name?.trim() || null,
+            patient_policy_number: manualForm.patient_policy_number?.trim() || null,
           })
           .select()
           .single()
@@ -376,8 +406,8 @@ function RevenuePage() {
             clinic_id: clinicId,
             description: manualForm.description.trim(),
             quantity: 1,
-            unit_price: amount,
-            line_total: amount,
+            unit_price: subtotal,
+            line_total: subtotal,
           })
         if (itemError) throw itemError
 
@@ -397,6 +427,12 @@ function RevenuePage() {
     if (isNaN(amount) || amount <= 0) { toast.error('Enter a valid amount'); return }
     if (!invoiceForm.description.trim()) { toast.error('Description is required'); return }
 
+    const subtotal = amount
+    const isVat = clinicInfo?.is_vat_registered ?? false
+    const vatRate = clinicInfo?.vat_rate ?? 20
+    const taxAmount = isVat ? subtotal * (vatRate / 100) : 0
+    const totalAmount = isVat ? subtotal + taxAmount : subtotal
+
     setSubmittingInvoice(true)
     try {
       // 1. Generate invoice number via RPC
@@ -415,12 +451,14 @@ function RevenuePage() {
           booking_id: selectedBooking?.id ?? null,
           invoice_number: invoiceNum,
           status: 'draft',
-          subtotal: amount,
-          tax_amount: 0,
-          total_amount: amount,
+          subtotal: subtotal,
+          tax_amount: taxAmount,
+          total_amount: totalAmount,
           currency: clinicCurrency,
           due_date: invoiceForm.due_date || null,
           notes: null,
+          patient_insurance_name: invoiceForm.patient_insurance_name?.trim() || null,
+          patient_policy_number: invoiceForm.patient_policy_number?.trim() || null,
         })
         .select()
         .single()
@@ -434,8 +472,8 @@ function RevenuePage() {
           clinic_id: clinicId,
           description: invoiceForm.description,
           quantity: 1,
-          unit_price: amount,
-          line_total: amount,
+          unit_price: subtotal,
+          line_total: subtotal,
         })
       if (itemError) throw itemError
 
@@ -460,14 +498,25 @@ function RevenuePage() {
     setSelectedPatient(null)
     setSelectedBooking(null)
     setCompletedBookings([])
-    setInvoiceForm({ description: '', amount: '', due_date: defaultDueDate() })
+    const days = clinicInfo?.payment_terms_days ?? 30
+    const dDate = defaultDueDate(days)
+    setInvoiceForm({
+      description: '',
+      amount: '',
+      due_date: dDate,
+      patient_insurance_name: '',
+      patient_policy_number: '',
+    })
     setManualForm({
       patient_name: '',
       description: '',
       amount: '',
-      due_date: defaultDueDate(),
+      due_date: dDate,
       notes: '',
+      patient_insurance_name: '',
+      patient_policy_number: '',
     })
+    setShowInsuranceFields(false)
   }
 
   // ─── Data marks ───────────────────────────────────────────────────────────
@@ -649,7 +698,13 @@ function RevenuePage() {
             )}
             <button
               id="new-invoice-btn"
-              onClick={() => setShowInvoiceModal(true)}
+              onClick={() => {
+                const days = clinicInfo?.payment_terms_days ?? 30
+                const dDate = defaultDueDate(days)
+                setInvoiceForm(f => ({ ...f, due_date: dDate }))
+                setManualForm(f => ({ ...f, due_date: dDate }))
+                setShowInvoiceModal(true)
+              }}
               className="flex items-center gap-1.5 text-xs font-semibold bg-primary text-white px-3 py-1.5 rounded-lg hover:bg-primary/90 transition-colors shadow-sm"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -1018,15 +1073,74 @@ function RevenuePage() {
                         />
                       </div>
 
+                      {/* Collapsible Insurance Section */}
+                      <div className="border border-border rounded-xl overflow-hidden bg-background/30">
+                        <button
+                          type="button"
+                          onClick={() => setShowInsuranceFields(!showInsuranceFields)}
+                          className="w-full flex items-center justify-between px-4 py-3 text-xs font-semibold text-text/60 uppercase tracking-wide hover:bg-background/50 transition-colors"
+                        >
+                          <span>Private insurance (optional)</span>
+                          <span className="text-text/40">{showInsuranceFields ? 'Hide' : 'Show'}</span>
+                        </button>
+                        {showInsuranceFields && (
+                          <div className="p-4 border-t border-border flex flex-col gap-4 bg-background/20">
+                            <div>
+                              <label className="block text-xs font-semibold text-text/60 uppercase tracking-wide mb-1.5">
+                                Insurance provider name
+                              </label>
+                              <input
+                                type="text"
+                                value={invoiceForm.patient_insurance_name || ''}
+                                onChange={e => setInvoiceForm(f => ({ ...f, patient_insurance_name: e.target.value }))}
+                                placeholder="e.g. Bupa, AXA, Vitality"
+                                className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-text/30"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-text/60 uppercase tracking-wide mb-1.5">
+                                Policy number
+                              </label>
+                              <input
+                                type="text"
+                                value={invoiceForm.patient_policy_number || ''}
+                                onChange={e => setInvoiceForm(f => ({ ...f, patient_policy_number: e.target.value }))}
+                                placeholder="Policy number"
+                                className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-text/30"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
                       {/* Total preview */}
-                      {invoiceForm.amount && !isNaN(parseFloat(invoiceForm.amount)) && (
-                        <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
-                          <span className="text-sm font-medium text-text/70">Total</span>
-                          <span className="text-lg font-bold text-primary font-bricolage">
-                            {fmtCurrency(parseFloat(invoiceForm.amount), clinicCurrency)}
-                          </span>
-                        </div>
-                      )}
+                      {invoiceForm.amount && !isNaN(parseFloat(invoiceForm.amount)) && (() => {
+                        const amt = parseFloat(invoiceForm.amount)
+                        const isVat = clinicInfo?.is_vat_registered ?? false
+                        const vatRate = clinicInfo?.vat_rate ?? 20
+                        const tax = isVat ? amt * (vatRate / 100) : 0
+                        const tot = isVat ? amt + tax : amt
+                        return (
+                          <div className="flex flex-col gap-1.5 bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-medium text-text/50">Subtotal</span>
+                              <span className="text-sm font-medium text-text/70">{fmtCurrency(amt, clinicCurrency)}</span>
+                            </div>
+                            {isVat && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-medium text-text/50">VAT ({vatRate}%)</span>
+                                <span className="text-sm font-medium text-text/70">{fmtCurrency(tax, clinicCurrency)}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between pt-1.5 border-t border-primary/20 mt-0.5">
+                              <span className="text-sm font-semibold text-text/70">Total</span>
+                              <span className="text-lg font-bold text-primary font-bricolage">
+                                {fmtCurrency(tot, clinicCurrency)}
+                              </span>
+                            </div>
+                          </div>
+                        )
+                      })()}
                     </div>
                   )}
                 </>
@@ -1115,15 +1229,74 @@ function RevenuePage() {
                     />
                   </div>
 
+                  {/* Collapsible Insurance Section */}
+                  <div className="border border-border rounded-xl overflow-hidden bg-background/30">
+                    <button
+                      type="button"
+                      onClick={() => setShowInsuranceFields(!showInsuranceFields)}
+                      className="w-full flex items-center justify-between px-4 py-3 text-xs font-semibold text-text/60 uppercase tracking-wide hover:bg-background/50 transition-colors"
+                    >
+                      <span>Private insurance (optional)</span>
+                      <span className="text-text/40">{showInsuranceFields ? 'Hide' : 'Show'}</span>
+                    </button>
+                    {showInsuranceFields && (
+                      <div className="p-4 border-t border-border flex flex-col gap-4 bg-background/20">
+                        <div>
+                          <label className="block text-xs font-semibold text-text/60 uppercase tracking-wide mb-1.5">
+                            Insurance provider name
+                          </label>
+                          <input
+                            type="text"
+                            value={manualForm.patient_insurance_name || ''}
+                            onChange={e => setManualForm(f => ({ ...f, patient_insurance_name: e.target.value }))}
+                            placeholder="e.g. Bupa, AXA, Vitality"
+                            className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-text/30"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-text/60 uppercase tracking-wide mb-1.5">
+                            Policy number
+                          </label>
+                          <input
+                            type="text"
+                            value={manualForm.patient_policy_number || ''}
+                            onChange={e => setManualForm(f => ({ ...f, patient_policy_number: e.target.value }))}
+                            placeholder="Policy number"
+                            className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-text/30"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Total preview */}
-                  {manualForm.amount && !isNaN(parseFloat(manualForm.amount)) && (
-                    <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
-                      <span className="text-sm font-medium text-text/70">Total</span>
-                      <span className="text-lg font-bold text-primary font-bricolage">
-                        {fmtCurrency(parseFloat(manualForm.amount), clinicCurrency)}
-                      </span>
-                    </div>
-                  )}
+                  {manualForm.amount && !isNaN(parseFloat(manualForm.amount)) && (() => {
+                    const amt = parseFloat(manualForm.amount)
+                    const isVat = clinicInfo?.is_vat_registered ?? false
+                    const vatRate = clinicInfo?.vat_rate ?? 20
+                    const tax = isVat ? amt * (vatRate / 100) : 0
+                    const tot = isVat ? amt + tax : amt
+                    return (
+                      <div className="flex flex-col gap-1.5 bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-text/50">Subtotal</span>
+                          <span className="text-sm font-medium text-text/70">{fmtCurrency(amt, clinicCurrency)}</span>
+                        </div>
+                        {isVat && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium text-text/50">VAT ({vatRate}%)</span>
+                            <span className="text-sm font-medium text-text/70">{fmtCurrency(tax, clinicCurrency)}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between pt-1.5 border-t border-primary/20 mt-0.5">
+                          <span className="text-sm font-semibold text-text/70">Total</span>
+                          <span className="text-lg font-bold text-primary font-bricolage">
+                            {fmtCurrency(tot, clinicCurrency)}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })()}
                 </div>
               )}
             </div>
@@ -1283,7 +1456,7 @@ function RevenuePage() {
                         <span className={`font-medium ${
                           viewingInvoice.due_date && new Date(viewingInvoice.due_date) < new Date()
                             ? 'text-alert' : 'text-text'
-                        }`}>
+                         }`}>
                           {viewingInvoice.due_date
                             ? formatLocalTime(viewingInvoice.due_date, 'GB', 'MMM d, yyyy', 'Europe/London')
                             : '—'}
@@ -1295,6 +1468,16 @@ function RevenuePage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Insurance Section */}
+                  {viewingInvoice.patient_insurance_name && (
+                    <div className="bg-background/60 rounded-xl border border-border p-4 text-sm">
+                      <span className="text-xs font-semibold text-text/40 uppercase tracking-wide block mb-1">Insurance details</span>
+                      <p className="text-text font-medium">
+                        Submitted to <span className="font-semibold">{viewingInvoice.patient_insurance_name}</span> — Policy: <span className="font-mono">{viewingInvoice.patient_policy_number ?? '—'}</span>
+                      </p>
+                    </div>
+                  )}
 
                   {/* ── Line items table ── */}
                   <div className="rounded-xl border border-border overflow-hidden">
@@ -1335,10 +1518,24 @@ function RevenuePage() {
                         <span className="text-text/50">Subtotal</span>
                         <span className="text-text">{fmtCurrency(viewingInvoice.subtotal, viewingInvoice.currency)}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-text/50">Tax</span>
-                        <span className="text-text">{fmtCurrency(viewingInvoice.tax_amount, viewingInvoice.currency)}</span>
-                      </div>
+                      {viewingClinic?.is_vat_registered ? (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-text/50">VAT ({viewingClinic.vat_rate}%):</span>
+                            <span className="text-text">{fmtCurrency(viewingInvoice.tax_amount, viewingInvoice.currency)}</span>
+                          </div>
+                          {viewingClinic.vat_number && (
+                            <div className="text-[10px] text-text/40 text-right">
+                              VAT Reg No: {viewingClinic.vat_number}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="flex justify-between">
+                          <span className="text-text/50">VAT:</span>
+                          <span className="text-text text-text/40 italic">Not applicable</span>
+                        </div>
+                      )}
                       <div className="flex justify-between items-center pt-2 border-t border-border mt-1">
                         <span className="font-bold text-text">Total</span>
                         <span className="text-xl font-bold text-primary font-bricolage">
@@ -1376,6 +1573,16 @@ function RevenuePage() {
                       </a>
                     </div>
                   )}
+
+                  {/* Legal footer */}
+                  <div className="mt-6 border-t border-border pt-4 text-[10px] text-text/40 flex flex-col gap-1 leading-relaxed">
+                    <p>Payment due within {viewingClinic?.payment_terms_days ?? 30} days.</p>
+                    <p>Late payments may incur interest at 8% per annum in accordance with the Late Payment of Commercial Debts Act 1998.</p>
+                    <p>All services provided under the clinic's professional indemnity insurance cover.</p>
+                    {viewingClinic?.is_vat_registered && viewingClinic?.vat_number && (
+                      <p>This is a valid VAT invoice under UK law. VAT Registration No: {viewingClinic.vat_number}</p>
+                    )}
+                  </div>
 
                 </div>
               )}

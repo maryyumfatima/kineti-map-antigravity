@@ -30,6 +30,8 @@ type InvoiceData = {
   notes: string | null
   created_at: string
   manual_patient_name: string | null
+  patient_insurance_name: string | null
+  patient_policy_number: string | null
   patients: { full_name: string | null; phone_number: string | null } | null
   clinics: {
     name: string
@@ -39,6 +41,10 @@ type InvoiceData = {
     contact_address: string | null
     brand_color: string | null
     currency: string
+    is_vat_registered: boolean
+    vat_number: string | null
+    vat_rate: number
+    payment_terms_days: number
   } | null
   invoice_items: InvoiceItem[]
 }
@@ -84,7 +90,7 @@ function PaymentPage() {
         .select(`
           *,
           patients(full_name, phone_number),
-          clinics(name, logo_url, contact_email, contact_phone, contact_address, brand_color, currency),
+          clinics(name, logo_url, contact_email, contact_phone, contact_address, brand_color, currency, is_vat_registered, vat_number, vat_rate, payment_terms_days),
           invoice_items(id, description, quantity, unit_price, line_total)
         `)
         .eq('payment_link_token', token)
@@ -145,6 +151,7 @@ function PaymentPage() {
   const isPaid = invoice.status === 'paid'
   const patientName = invoice.manual_patient_name ?? patient?.full_name ?? '—'
   const statusStyle = STATUS_STYLES[invoice.status] ?? STATUS_STYLES.draft
+  const isOverdue = invoice.status === 'overdue' || (invoice.due_date && new Date(invoice.due_date) < new Date() && !isPaid)
 
   return (
     <>
@@ -237,6 +244,16 @@ function PaymentPage() {
                 </div>
               </div>
 
+              {/* Insurance details */}
+              {invoice.patient_insurance_name && (
+                <div className="bg-gray-50 rounded-xl border border-gray-100 p-4 text-sm">
+                  <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1">Insurance details</span>
+                  <p className="text-gray-700 font-medium">
+                    Submitted to <span className="font-semibold text-gray-900">{invoice.patient_insurance_name}</span> — Policy: <span className="font-mono text-gray-900">{invoice.patient_policy_number ?? '—'}</span>
+                  </p>
+                </div>
+              )}
+
               {/* ── Line items table ── */}
               <div className="rounded-xl border border-gray-100 overflow-hidden">
                 <table className="w-full text-sm text-left border-collapse">
@@ -279,10 +296,24 @@ function PaymentPage() {
                     <span className="text-gray-400">Subtotal</span>
                     <span className="text-gray-700">{fmtCurrency(invoice.subtotal, invoice.currency)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Tax</span>
-                    <span className="text-gray-700">{fmtCurrency(invoice.tax_amount, invoice.currency)}</span>
-                  </div>
+                  {clinic?.is_vat_registered ? (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">VAT ({clinic.vat_rate}%):</span>
+                        <span className="text-gray-700">{fmtCurrency(invoice.tax_amount, invoice.currency)}</span>
+                      </div>
+                      {clinic.vat_number && (
+                        <div className="text-[10px] text-gray-400 text-right">
+                          VAT Reg No: {clinic.vat_number}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">VAT:</span>
+                      <span className="text-gray-400 italic">Not applicable</span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center pt-3 border-t border-gray-100 mt-1">
                     <span className="font-bold text-gray-900">Total Due</span>
                     <span className="text-2xl font-bold" style={{ color: brandColor }}>
@@ -300,38 +331,68 @@ function PaymentPage() {
                 </div>
               )}
 
+              {/* Legal footer */}
+              <div className="mt-6 border-t border-gray-100 pt-4 text-[10px] text-gray-400 flex flex-col gap-1 leading-relaxed">
+                <p>Payment due within {clinic?.payment_terms_days ?? 30} days of invoice date.</p>
+                <p>Late payments may incur interest at 8% per annum.</p>
+                <p>All services are provided under professional indemnity cover.</p>
+                {clinic?.is_vat_registered && clinic?.vat_number && (
+                  <p>VAT Registration No: {clinic.vat_number} — Valid UK tax invoice</p>
+                )}
+              </div>
+
               {/* ── CTA ── */}
               {isPaid ? (
-                <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-5 py-4">
-                  <CheckCircle className="w-6 h-6 text-green-600 shrink-0" />
-                  <div>
-                    <p className="font-semibold text-green-800">Payment Received</p>
-                    <p className="text-sm text-green-600 mt-0.5">Thank you — this invoice has been fully paid.</p>
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-5 py-4">
+                    <CheckCircle className="w-6 h-6 text-green-600 shrink-0" />
+                    <div>
+                      <p className="font-semibold text-green-800">Payment received ✓</p>
+                      <p className="text-sm text-green-600 mt-0.5">Thank you — this invoice has been fully paid.</p>
+                    </div>
+                  </div>
+                  <div className="flex print:hidden">
+                    <button
+                      id="print-invoice-public-btn"
+                      onClick={() => window.print()}
+                      className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors text-sm font-medium"
+                    >
+                      <Printer className="w-4 h-4" />
+                      Print Invoice
+                    </button>
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col sm:flex-row gap-3 print:hidden">
-                  <button
-                    id="pay-now-btn"
-                    onClick={handlePayNow}
-                    disabled={payLoading}
-                    className="flex-1 flex items-center justify-center gap-2 text-white font-bold py-4 rounded-xl transition-all active:scale-[0.98] disabled:opacity-60 shadow-md hover:shadow-lg"
-                    style={{ background: brandColor }}
-                  >
-                    {payLoading ? (
-                      <><Loader2 className="w-5 h-5 animate-spin" /> Processing…</>
-                    ) : (
-                      <><CreditCard className="w-5 h-5" /> Pay {fmtCurrency(invoice.total_amount, invoice.currency)}</>
-                    )}
-                  </button>
-                  <button
-                    id="print-invoice-public-btn"
-                    onClick={() => window.print()}
-                    className="flex items-center justify-center gap-2 px-5 py-4 rounded-xl border border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors text-sm font-medium"
-                  >
-                    <Printer className="w-4 h-4" />
-                    Print
-                  </button>
+                <div className="flex flex-col gap-3 print:hidden">
+                  {isOverdue && (
+                    <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-800 text-sm font-medium">
+                      <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                      <span>This invoice is overdue</span>
+                    </div>
+                  )}
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      id="pay-now-btn"
+                      onClick={handlePayNow}
+                      disabled={payLoading}
+                      className="flex-1 flex items-center justify-center gap-2 text-white font-bold py-4 rounded-xl transition-all active:scale-[0.98] disabled:opacity-60 shadow-md hover:shadow-lg"
+                      style={{ background: brandColor }}
+                    >
+                      {payLoading ? (
+                        <><Loader2 className="w-5 h-5 animate-spin" /> Processing…</>
+                      ) : (
+                        <><CreditCard className="w-5 h-5" /> Pay {fmtCurrency(invoice.total_amount, invoice.currency)}</>
+                      )}
+                    </button>
+                    <button
+                      id="print-invoice-public-btn"
+                      onClick={() => window.print()}
+                      className="flex items-center justify-center gap-2 px-5 py-4 rounded-xl border border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors text-sm font-medium"
+                    >
+                      <Printer className="w-4 h-4" />
+                      Print
+                    </button>
+                  </div>
                 </div>
               )}
 
