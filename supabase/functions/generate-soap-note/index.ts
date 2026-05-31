@@ -1,4 +1,6 @@
+// @ts-nocheck
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
 
 const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY')!
 
@@ -239,7 +241,7 @@ Deno.serve(async (req: Request) => {
     const orderedNotes = (priorNotes || []).reverse()
 
     // Fetch pain_data from bookings linked to those notes
-    const bookingIds = orderedNotes.map(n => n.booking_id).filter(Boolean)
+    const bookingIds = orderedNotes.map((n: any) => n.booking_id).filter(Boolean)
     let painByBooking: Record<string, unknown> = {}
 
     if (bookingIds.length > 0) {
@@ -252,7 +254,7 @@ Deno.serve(async (req: Request) => {
         console.error('Bookings fetch error:', bookingsError)
       } else {
         painByBooking = Object.fromEntries(
-          (bookings || []).map(b => [b.id, b.pain_data])
+          (bookings || []).map((b: any) => [b.id, b.pain_data])
         )
       }
     }
@@ -289,7 +291,7 @@ Deno.serve(async (req: Request) => {
 
       // Older notes (truncated)
       const older = orderedNotes.slice(0, -1)
-      older.forEach((note, idx) => {
+      older.forEach((note: any, idx: number) => {
         const date = new Date(note.created_at).toLocaleDateString('en-GB')
         const painLine = getPainScoreText(painByBooking[note.booking_id])
         patientContext += `\nSession ${idx + 1} (${date}): ${painLine}
