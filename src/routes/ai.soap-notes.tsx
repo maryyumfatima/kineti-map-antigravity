@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { formatLocalTime } from '../lib/date'
 import { generateSoapNoteFromAudio } from '../lib/groq'
+import { PatientSelector } from '../components/PatientSelector'
 
 export const Route = createFileRoute('/ai/soap-notes')({
   component: AISoapNotesPage,
@@ -165,7 +166,6 @@ function AISoapNotesPage() {
   const country = 'GB'
   
   // State
-  const [patients, setPatients] = useState<Patient[]>([])
   const [selectedPatientId, setSelectedPatientId] = useState('')
   const [selectedLanguage, setSelectedLanguage] = useState('en')
   const [inputMode, setInputMode] = useState<'ai' | 'manual'>('ai')
@@ -193,7 +193,6 @@ function AISoapNotesPage() {
 
   // Initialization
   useEffect(() => {
-    fetchPatients()
     fetchCredits()
   }, [])
 
@@ -221,14 +220,6 @@ function AISoapNotesPage() {
   }, [inputMode, isGenerating, isSaving, selectedPatientId, generatedNote, additionalNotes])
 
   // Data Fetching
-  const fetchPatients = async () => {
-    const { data } = await supabase
-      .from('patients')
-      .select('id, full_name')
-      .eq('is_deleted', false)
-      .order('full_name')
-    if (data) setPatients(data)
-  }
 
   const fetchCredits = async () => {
     try {
@@ -621,15 +612,11 @@ function AISoapNotesPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                 <div>
                   <label className="block text-xs font-bold text-text/40 uppercase tracking-widest mb-2">Select Patient</label>
-                  <select 
-                    value={selectedPatientId} 
-                    onChange={e => setSelectedPatientId(e.target.value)}
-                    className={inputClass}
-                    aria-label="Select patient"
-                  >
-                    <option value="">Select a patient...</option>
-                    {patients.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
-                  </select>
+                  <PatientSelector
+                    clinicId={clinicId || null}
+                    selectedPatientId={selectedPatientId || null}
+                    onSelect={(p) => setSelectedPatientId(p.id)}
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-text/40 uppercase tracking-widest mb-2">Documentation Language</label>

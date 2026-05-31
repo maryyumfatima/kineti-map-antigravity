@@ -11,6 +11,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts'
 import { formatLocalTime, getZonedDate } from '../lib/date'
+import { PatientSelector } from '../components/PatientSelector'
 
 export const Route = createFileRoute('/revenue')({
   component: RevenuePage,
@@ -145,12 +146,8 @@ function RevenuePage() {
   const [modalStep, setModalStep] = useState<1 | 2 | 3>(1)
   const [invoiceType, setInvoiceType] = useState<'booking' | 'manual'>('booking')
 
-  // step 1 — patient search
-  const [patientSearch, setPatientSearch] = useState('')
-  const [patientResults, setPatientResults] = useState<PatientResult[]>([])
-  const [searchingPatients, setSearchingPatients] = useState(false)
+  // step 1 — patient selection
   const [selectedPatient, setSelectedPatient] = useState<PatientResult | null>(null)
-  const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // step 2 — booking selection
   const [completedBookings, setCompletedBookings] = useState<CompletedBooking[]>([])
@@ -178,23 +175,7 @@ function RevenuePage() {
   // ─────────────────────────────────────────────────────────────────────────
   useEffect(() => { fetchData() }, [])
 
-  // ── Patient search debounce & immediate load ──────────────────────────────
-  useEffect(() => {
-    if (!showInvoiceModal || !clinicId) return
 
-    if (!patientSearch.trim()) {
-      fetchPatients('')
-      if (searchDebounce.current) clearTimeout(searchDebounce.current)
-      return
-    }
-
-    if (searchDebounce.current) clearTimeout(searchDebounce.current)
-    searchDebounce.current = setTimeout(() => {
-      fetchPatients(patientSearch.trim())
-    }, 350)
-
-    return () => { if (searchDebounce.current) clearTimeout(searchDebounce.current) }
-  }, [patientSearch, showInvoiceModal, clinicId])
 
   // ─── Data fetchers ────────────────────────────────────────────────────────
 
@@ -258,33 +239,7 @@ function RevenuePage() {
     }
   }
 
-  const fetchPatients = async (query: string) => {
-    if (!clinicId) return
-    setSearchingPatients(true)
-    try {
-      let q = supabase
-        .from('patients')
-        .select('id, full_name, phone_number, last_booked_at')
-        .eq('clinic_id', clinicId)
-        .is('is_deleted', null)
 
-      if (query.trim()) {
-        const term = query.trim()
-        q = q.or(`full_name.ilike.%${term}%,phone_number.ilike.%${term}%`)
-      }
-
-      const { data, error } = await q
-        .order('last_booked_at', { ascending: false, nullsFirst: false })
-        .limit(50)
-
-      if (error) throw error
-      setPatientResults(data ?? [])
-    } catch {
-      toast.error('Failed to load patients')
-    } finally {
-      setSearchingPatients(false)
-    }
-  }
 
   const fetchCompletedBookings = async (patientId: string) => {
     setBookingsLoading(true)
@@ -306,8 +261,6 @@ function RevenuePage() {
 
   const handleSelectPatient = (p: PatientResult) => {
     setSelectedPatient(p)
-    setPatientSearch('')
-    setPatientResults([])
     setSelectedBooking(null)
     setCompletedBookings([])
     setModalStep(2)
@@ -455,8 +408,6 @@ function RevenuePage() {
     setShowInvoiceModal(false)
     setInvoiceType('booking')
     setModalStep(1)
-    setPatientSearch('')
-    setPatientResults([])
     setSelectedPatient(null)
     setSelectedBooking(null)
     setCompletedBookings([])
@@ -868,48 +819,13 @@ function RevenuePage() {
                 <>
                   {/* ── Step 1: Patient search ── */}
                   {modalStep === 1 && (
-                    <div className="flex flex-col gap-4">
-                      <p className="text-sm text-text/70">Search by patient name or phone number.</p>
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text/40 pointer-events-none" />
-                        <input
-                          id="patient-search-input"
-                          autoFocus
-                          type="text"
-                          value={patientSearch}
-                          onChange={e => setPatientSearch(e.target.value)}
-                          placeholder="Search patient…"
-                          className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-border bg-background text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-text/30"
-                        />
-                        {searchingPatients && (
-                          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-text/40" />
-                        )}
-                      </div>
-
-                      {patientResults.length > 0 && (
-                        <div className="rounded-xl border border-border overflow-y-auto max-h-[250px] divide-y divide-border">
-                          {patientResults.map(p => (
-                            <button
-                              key={p.id}
-                              id={`patient-result-${p.id}`}
-                              onClick={() => handleSelectPatient(p)}
-                              className="w-full flex items-center justify-between px-4 py-3 hover:bg-background/60 transition-colors text-left group"
-                            >
-                              <div>
-                                <p className="text-sm font-medium text-text">{p.full_name ?? '—'}</p>
-                                {p.phone_number && (
-                                  <p className="text-xs text-text/50 mt-0.5">{p.phone_number}</p>
-                                )}
-                              </div>
-                              <ChevronRight className="w-4 h-4 text-text/30 group-hover:text-primary transition-colors" />
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      {!searchingPatients && patientResults.length === 0 && (
-                        <p className="text-sm text-text/40 text-center py-4">No patients found.</p>
-                      )}
+                    <div className="flex flex-col gap-4 pb-32">
+                      <p className="text-sm text-text/70">Select a patient to begin.</p>
+                      <PatientSelector
+                        clinicId={clinicId}
+                        selectedPatientId={selectedPatient?.id ?? null}
+                        onSelect={handleSelectPatient}
+                      />
                     </div>
                   )}
 
