@@ -154,11 +154,11 @@ function PaymentPage() {
         <meta name="robots" content="noindex" />
       </Helmet>
 
-      <div className="min-h-screen bg-[#EDF6F9] py-10 px-4 sm:px-6 font-sans">
-        <div className="max-w-2xl mx-auto">
+      <div className="min-h-screen bg-[#EDF6F9] py-10 px-4 sm:px-6 font-sans print:bg-white print:py-0 print:px-0">
+        <div className="max-w-2xl mx-auto print:max-w-none">
 
           {/* ── Invoice card ── */}
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden print:shadow-none print:border-none">
 
             {/* Brand stripe */}
             <div className="h-1.5 w-full" style={{ background: brandColor }} />
@@ -310,7 +310,7 @@ function PaymentPage() {
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-col sm:flex-row gap-3 print:hidden">
                   <button
                     id="pay-now-btn"
                     onClick={handlePayNow}
@@ -339,7 +339,7 @@ function PaymentPage() {
           </div>
 
           {/* ── Footer ── */}
-          <div className="mt-8 flex items-center justify-center gap-2 text-xs text-gray-400">
+          <div className="mt-8 flex items-center justify-center gap-2 text-xs text-gray-400 print:hidden">
             <img src="/logo.svg" alt="KinetiMap" className="h-5 w-auto opacity-60" />
             <span>Secure invoice by <strong className="text-gray-500">KinetiMap</strong></span>
           </div>

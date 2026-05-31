@@ -1185,7 +1185,7 @@ function RevenuePage() {
           <div className="relative bg-card w-full max-w-2xl rounded-t-2xl sm:rounded-2xl shadow-2xl border border-border flex flex-col max-h-[92vh]">
 
             {/* Modal toolbar */}
-            <div className="flex items-center gap-3 px-5 py-4 border-b border-border shrink-0">
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-border shrink-0 print:hidden">
               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                 <FileText className="w-4 h-4 text-primary" />
               </div>
@@ -1358,7 +1358,7 @@ function RevenuePage() {
 
                   {/* ── Payment link ── */}
                   {viewingInvoice.payment_link_token && (
-                    <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-center gap-3">
+                    <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-center gap-3 print:hidden">
                       <div className="flex-1">
                         <p className="text-xs font-semibold text-primary/80 uppercase tracking-wide mb-0.5">Payment Link</p>
                         <p className="text-sm text-text/70 font-mono break-all">
@@ -1382,7 +1382,7 @@ function RevenuePage() {
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-border shrink-0 flex gap-3">
+            <div className="p-4 border-t border-border shrink-0 flex gap-3 print:hidden">
               <button
                 id="send-invoice-modal-btn"
                 onClick={() => handleSendInvoice(viewingInvoice.id)}
