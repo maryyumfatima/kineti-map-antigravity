@@ -29,13 +29,27 @@ export function RefundPage() {
 
       <h2>3. Multi-Month &amp; Yearly Plans</h2>
       <p>
-        3-month, 6-month, and yearly plans are billed upfront as a single payment at the discounted rate. The following refund terms apply:
+        3-month and 6-month plans are billed upfront as a single payment at the discounted rate. Annual subscriptions follow stricter refund conditions due to the significant upfront discount applied.
       </p>
+      <p><strong>3-month &amp; 6-month plans — within 30 days of payment:</strong></p>
       <ul>
-        <li><strong>Within 30 days of payment:</strong> you are eligible for a <strong>full refund</strong> of the amount paid, no questions asked. Contact us at <a href="mailto:support@kinetimap.app">support@kinetimap.app</a> to request your refund.</li>
-        <li><strong>After 30 days:</strong> no refunds are issued for the remaining period. Your access will continue until the end of the billing term.</li>
-        <li>Refunds are processed back to the original payment method within 5–10 business days.</li>
+        <li>You are eligible for a <strong>full refund</strong>, no questions asked</li>
+        <li>Contact us at <a href="mailto:support@kinetimap.app">support@kinetimap.app</a> to request your refund</li>
+        <li>After 30 days, no refunds are issued — access continues until the end of the billing term</li>
       </ul>
+      <p><strong>Annual subscriptions</strong> may be refunded within <strong>7 days of purchase</strong>, provided <em>all</em> of the following conditions are met:</p>
+      <ul>
+        <li>No AI SOAP credits have been used</li>
+        <li>Fewer than 5 WhatsApp journeys have been sent</li>
+        <li>A written refund request is submitted to <a href="mailto:support@kinetimap.app">support@kinetimap.app</a></li>
+      </ul>
+      <p>
+        After 7 days, or if the service has been actively used, annual subscriptions are <strong>non-refundable</strong>. You may cancel at any time to prevent future renewals — your access will continue until the end of the current annual period.
+      </p>
+      <p>
+        Approved refunds are processed back to the original payment method within 5–10 business days.
+      </p>
+
 
       <h2>4. AI Booster Packs</h2>
       <p>
