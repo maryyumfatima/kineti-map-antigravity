@@ -52,7 +52,7 @@ interface DeliveryStatus {
 
 // ─── Main handler ─────────────────────────────────────────────────────────────
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -106,24 +106,73 @@ serve(async (req) => {
               .maybeSingle()
 
             if (patient) {
+              // Look up most recent outbound whatsapp_messages row
+              const { data: lastOutbound } = await supabase
+                .from('whatsapp_messages')
+                .select('context_type, context_booking_id')
+                .eq('patient_id', patient.id)
+                .neq('status', 'received')
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle()
+
+              const contextType = lastOutbound?.context_type
+              const contextBookingId = lastOutbound?.context_booking_id
+              const replyText = msg.text?.body?.trim()?.toUpperCase()
+
+              let logMessageType = 'inbound'
+              let logContextType = null
+              let logContextBookingId = null
+
+              if (contextType === 'appointment_reminder' && replyText === 'CONFIRM') {
+                console.log('[webhook] Patient confirmed appointment:', msg.from)
+                if (contextBookingId) {
+                  await supabase.from('bookings').update({ confirmed_by_patient: true }).eq('id', contextBookingId)
+                }
+
+                logMessageType = 'inbound'
+                logContextType = 'appointment_reminder'
+                logContextBookingId = contextBookingId
+
+                // Send text reply
+                fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-whatsapp`, {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    to: msg.from,
+                    type: 'text',
+                    textBody: '✅ Great! Your appointment is confirmed. See you then!',
+                    patientId: patient.id,
+                    clinicId: patient.clinic_id,
+                    messageType: 'confirm_acknowledgement',
+                    context_type: 'confirm_acknowledgement',
+                    context_booking_id: contextBookingId
+                  }),
+                }).catch(e => console.error('Failed to send confirmation ack:', e))
+
+              } else if (contextType === 'feedback_request') {
+                logMessageType = 'feedback_reply'
+                logContextType = 'feedback'
+                logContextBookingId = contextBookingId
+              }
+
               // Log the inbound message
               await supabase.from('whatsapp_messages').insert({
                 patient_id:     patient.id,
                 clinic_id:      patient.clinic_id,
-                message_type:   'inbound',
+                message_type:   logMessageType,
                 status:         'received',
                 scheduled_for:  new Date(Number(msg.timestamp) * 1000).toISOString(),
                 meta_message_id: msg.id,
                 inbound_text:   msg.text?.body ?? null,
-              }).then(({ error }) => {
+                context_type:   logContextType,
+                context_booking_id: logContextBookingId,
+              }).then(({ error }: { error: any }) => {
                 if (error) console.warn('[webhook] DB log inbound error:', error.message)
               })
-            }
-
-            // Auto-respond to CONFIRM keyword (best-effort)
-            if (msg.text?.body?.trim()?.toUpperCase() === 'CONFIRM') {
-              console.log('[webhook] Patient confirmed appointment:', msg.from)
-              // Could call send-whatsapp here to send a confirmation acknowledgement
             }
           }
 
@@ -139,7 +188,7 @@ serve(async (req) => {
                 read_at:          status.status === 'read' ? new Date().toISOString() : undefined,
               })
               .eq('meta_message_id', status.id)
-              .then(({ error }) => {
+              .then(({ error }: { error: any }) => {
                 if (error) console.warn('[webhook] DB status update error:', error.message)
               })
           }

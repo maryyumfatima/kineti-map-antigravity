@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
-import { Check, Minus, AlertTriangle, ShieldCheck, MessageCircle, Users, X, Sparkles, Loader2 } from 'lucide-react'
+import { Check, Minus, AlertTriangle, ShieldCheck, MessageCircle, Users, X, Sparkles, Loader2, Plus, ChevronDown } from 'lucide-react'
 
 export const Route = createFileRoute('/billing')({
   component: BillingPage,
@@ -46,59 +46,91 @@ const PLANS = [
   {
     id: 'essentials',
     name: 'Essentials',
-    price: '£49',
+    basePrice: 49,
     practitioners: '1',
-    journeys: '300',
+    journeys: '500',
     aiSoap: '200 / mo',
-    aiPainTrend: 'Included',
-    description: 'Solo physio, 8-10 patients/day',
-    aiFollowUp: false,
-    aiDischarge: false,
+    summary: 'Daily & Monthly',
+    migration: 'Self-service CSV data migration (free)',
+    support: 'Standard',
     multiLocation: false,
-    priority: false,
+    trial: '14-day free trial',
+    features: [
+      '1 Practitioner',
+      '500 WhatsApp Journeys/month',
+      '200 AI SOAP Credits/month',
+      'Daily & Monthly Summary',
+      'Self-service CSV data migration (free)',
+      '14-day free trial',
+      'Standard support',
+    ],
   },
   {
     id: 'growth',
     name: 'Growth',
-    price: '£89',
-    practitioners: '2–3',
-    journeys: '1,000',
-    aiSoap: '600 / mo',
-    aiPainTrend: 'Included',
-    description: '2-3 practitioners, comfortable',
-    aiFollowUp: true,
-    aiDischarge: true,
+    basePrice: 89,
+    practitioners: '3',
+    journeys: '1500',
+    aiSoap: '800 / mo',
+    summary: 'Daily & Monthly',
+    migration: 'Guided data migration included',
+    support: 'Priority',
     multiLocation: false,
-    priority: false,
+    trial: '14-day free trial',
+    features: [
+      '3 Practitioners',
+      '1500 WhatsApp Journeys/month',
+      '800 AI SOAP Credits/month',
+      'Daily & Monthly Summary',
+      'Guided data migration included',
+      '14-day free trial',
+      'Priority support',
+    ],
   },
   {
     id: 'scale',
     name: 'Scale',
-    price: '£179',
-    practitioners: 'Unlimited',
-    journeys: '3,000',
-    aiSoap: '1,500 / mo',
-    aiPainTrend: 'Included',
-    description: 'Large clinic, multi-location',
-    aiFollowUp: true,
-    aiDischarge: true,
+    basePrice: 179,
+    practitioners: '8',
+    journeys: '4000',
+    aiSoap: '2000 / mo',
+    summary: 'Daily & Monthly',
+    migration: 'Full concierge data migration included',
+    support: 'Priority',
     multiLocation: true,
-    priority: false,
+    trial: '14-day free trial',
+    features: [
+      '8 Practitioners',
+      '4000 WhatsApp Journeys/month',
+      '2000 AI SOAP Credits/month',
+      'Daily & Monthly Summary',
+      'Multi-location support',
+      'Full concierge data migration included',
+      '14-day free trial',
+      'Priority support',
+    ],
   },
   {
     id: 'enterprise',
     name: 'Enterprise',
-    price: 'Custom',
+    basePrice: 0,
     practitioners: 'Unlimited',
-    journeys: 'Unlimited',
+    journeys: 'Custom',
     aiSoap: 'Custom',
-    aiPainTrend: 'Unlimited',
-    description: 'Negotiate per contract',
-    aiFollowUp: true,
-    aiDischarge: true,
+    summary: 'Scale features',
+    migration: 'Full concierge data migration included',
+    support: 'Dedicated',
     multiLocation: true,
-    priority: true,
-  },
+    trial: '14-day free trial',
+    features: [
+      'Unlimited Practitioners',
+      'Custom WhatsApp Journeys',
+      'Custom AI SOAP Credits',
+      'Everything in Scale',
+      'Dedicated support',
+      'Contact us button'
+    ]
+  }
 ]
 
 const AI_PACKS = [
@@ -113,6 +145,32 @@ const PLAN_PRICES: Record<string, string> = {
   scale: '£179/mo',
   enterprise: 'Custom',
   trial: 'Free Trial',
+}
+
+const getPlanPrice = (basePrice: number, period: string) => {
+  if (basePrice === 0) return { monthlyEquiv: 'Custom', totalBill: 'Custom', detail: '' }
+  let discount = 0
+  let months = 1
+  let detail = 'billed monthly'
+  if (period === '3month') {
+    discount = 0.10
+    months = 3
+    detail = 'billed £' + (basePrice * (1 - discount) * months).toFixed(2).replace('.00', '') + ' quarterly'
+  } else if (period === '6month') {
+    discount = 0.16
+    months = 6
+    detail = 'billed £' + (basePrice * (1 - discount) * months).toFixed(2).replace('.00', '') + ' semi-annually'
+  } else if (period === 'yearly') {
+    discount = 0.25
+    months = 12
+    detail = 'billed £' + (basePrice * (1 - discount) * months).toFixed(2).replace('.00', '') + ' annually'
+  }
+  const monthlyEquiv = basePrice * (1 - discount)
+  return {
+    monthlyEquiv: `£${monthlyEquiv.toFixed(2).replace('.00', '')}`,
+    totalBill: `£${(monthlyEquiv * months).toFixed(2).replace('.00', '')}`,
+    detail,
+  }
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -152,6 +210,7 @@ function BillingPage() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
   const [selectedPlanId, setSelectedPlanId] = useState<string>('essentials')
   const [selectedPriceLabel, setSelectedPriceLabel] = useState<string>('£49')
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | '3month' | '6month' | 'yearly'>('monthly')
 
   const region = getRegionInfo()
 
@@ -206,11 +265,12 @@ function BillingPage() {
   const handleUpgrade = (planId?: string) => {
     const targetPlanId = planId || 'essentials'
     if (targetPlanId === 'enterprise') {
-      toast.info("Please email partners@kinetimap.co.uk to request custom volume pricing and setup.", { duration: 5000 })
+      window.location.href = "mailto:support@kinetimap.app?subject=KinetiMap Enterprise Pricing Inquiry"
       return
     }
     const planConfig = PLANS.find(p => p.id === targetPlanId)
-    const priceLabel = planConfig ? planConfig.price : '£49'
+    const priceInfo = getPlanPrice(planConfig ? planConfig.basePrice : 49, billingPeriod)
+    const priceLabel = priceInfo.monthlyEquiv
 
     setSelectedPlanId(targetPlanId)
     setSelectedPriceLabel(priceLabel)
@@ -229,9 +289,9 @@ function BillingPage() {
   const days = clinic?.trial_ends_at ? daysRemaining(clinic.trial_ends_at) : 0
   const trialDaysUsed = 14 - days
   const journeysUsed = clinic?.whatsapp_journeys_used ?? 0
-  const journeysLimit = isTrial ? 20 : (clinic?.whatsapp_journeys_limit ?? 300)
+  const journeysLimit = isTrial ? 20 : (clinic?.whatsapp_journeys_limit ?? 500)
   const aiCreditsUsed = clinic?.ai_credits_used ?? 0
-  const aiCreditsLimit = isTrial ? 5 : (plan === 'essentials' ? 200 : plan === 'growth' ? 600 : plan === 'scale' ? 1500 : 999999)
+  const aiCreditsLimit = isTrial ? 5 : (plan === 'essentials' ? 200 : plan === 'growth' ? 800 : plan === 'scale' ? 2000 : 999999)
   const maxPract = clinic?.max_practitioners ?? 1
 
 
@@ -239,15 +299,15 @@ function BillingPage() {
 
   // Feature rows for comparison table
   const featureRows = [
-    { label: 'Price / month', values: PLANS.map(p => p.price) },
+    { label: 'Price / month', values: PLANS.map(p => getPlanPrice(p.basePrice, billingPeriod).monthlyEquiv) },
     { label: 'Practitioners', values: PLANS.map(p => p.practitioners) },
     { label: 'WhatsApp Journeys', values: PLANS.map(p => p.journeys) },
     { label: 'AI SOAP Notes', values: PLANS.map(p => p.aiSoap) },
-    { label: 'AI Pain Trend Summary', values: PLANS.map(p => p.aiPainTrend) },
-    { label: 'AI Follow-up Suggestions', values: PLANS.map(p => p.aiFollowUp), bool: true },
-    { label: 'AI Discharge Letter', values: PLANS.map(p => p.aiDischarge), bool: true },
+    { label: 'Daily & Monthly Summary', values: PLANS.map(p => p.summary) },
+    { label: 'Data Migration', values: PLANS.map(p => p.migration) },
     { label: 'Multi-location', values: PLANS.map(p => p.multiLocation), bool: true },
-    { label: 'Priority Support', values: PLANS.map(p => p.priority), bool: true },
+    { label: 'Support', values: PLANS.map(p => p.support) },
+    { label: 'Free Trial', values: PLANS.map(p => p.trial) },
   ]
 
   return (
@@ -409,6 +469,98 @@ function BillingPage() {
           </div>
         </div>
 
+        {/* ══ SECTION 2.7 — Dynamic Pricing Cards Grid & Billing Switcher ══ */}
+        <div className="space-y-6 pt-4">
+          <div className="text-center max-w-2xl mx-auto space-y-2">
+            <h2 className="text-2xl font-bold font-bricolage text-text">Choose the right plan for your clinic</h2>
+            <p className="text-sm text-text/60">
+              14-day free trial on all plans. No credit card required.
+            </p>
+          </div>
+
+          <div className="flex justify-center">
+            <div className="bg-white border border-border p-1 rounded-full flex shadow-sm">
+              {[
+                { id: 'monthly', label: 'Monthly' },
+                { id: '3month', label: '3 Months (10% off)' },
+                { id: '6month', label: '6 Months (16% off)' },
+                { id: 'yearly', label: 'Yearly (25% off)' },
+              ].map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => setBillingPeriod(p.id as any)}
+                  type="button"
+                  className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${billingPeriod === p.id ? 'bg-primary text-white shadow-md' : 'text-text/60 hover:text-text'}`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {PLANS.map(p => {
+              const isCurrent = plan === p.id
+              const priceInfo = getPlanPrice(p.basePrice, billingPeriod)
+              
+              return (
+                <div 
+                  key={p.id} 
+                  className={`bg-card border rounded-2xl p-6 shadow-sm flex flex-col justify-between transition-all hover:translate-y-[-4px] hover:shadow-md ${isCurrent ? 'border-primary ring-1 ring-primary/20 bg-primary/[0.01]' : 'border-border'}`}
+                >
+                  <div>
+                    <div className="flex justify-between items-start mb-4">
+                      <h3 className="font-bold text-lg font-bricolage text-text">{p.name}</h3>
+                      {isCurrent && (
+                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-primary text-white">Current Plan</span>
+                      )}
+                    </div>
+                    
+                    <div className="mb-6">
+                      <span className="text-3xl font-bold font-bricolage text-text">
+                        {priceInfo.monthlyEquiv}
+                      </span>
+                      {p.basePrice > 0 && (
+                        <span className="text-xs text-text/50 ml-1">/ month</span>
+                      )}
+                      {priceInfo.detail && (
+                        <p className="text-[11px] text-text/40 mt-1">{priceInfo.detail}</p>
+                      )}
+                    </div>
+                    
+                    <ul className="space-y-2.5 mb-8">
+                      {p.features.map((f, i) => (
+                        <li key={i} className="text-xs text-text/70 flex items-start gap-2">
+                          <Check className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                          <span>{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  
+                  <div>
+                    {isCurrent ? (
+                      <button 
+                        disabled
+                        className="w-full bg-primary/10 text-primary border border-primary/20 text-xs font-bold py-2.5 rounded-xl cursor-default"
+                      >
+                        Current Plan
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleUpgrade(p.id)}
+                        className={`w-full text-xs font-bold py-2.5 rounded-xl transition-all cursor-pointer ${p.id === 'enterprise' ? 'bg-background hover:bg-border border border-border text-text' : 'bg-primary hover:opacity-90 text-white shadow-md shadow-primary/10'}`}
+                      >
+                        {p.id === 'enterprise' ? 'Contact Us' : 'Upgrade Plan'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
         {/* ══ SECTION 3 — Plan Comparison Table ══ */}
         <div className={card}>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
@@ -423,17 +575,20 @@ function BillingPage() {
               <thead>
                 <tr>
                   <th className="text-left p-3 text-text/50 font-medium w-44">Feature</th>
-                  {PLANS.map(p => (
-                    <th key={p.id} className={`p-3 text-center ${plan === p.id ? 'border-x-2 border-t-2 border-primary rounded-t-lg bg-primary/5' : ''}`}>
-                      <div className="font-bold text-text font-bricolage">{p.name}</div>
-                      <div className={`text-xs font-normal mt-0.5 ${plan === p.id ? 'text-primary font-semibold' : 'text-text/50'}`}>
-                        {p.price}{p.id !== 'enterprise' ? '/mo' : ''}
-                      </div>
-                      {plan === p.id && (
-                        <span className="inline-block mt-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary text-white">Current</span>
-                      )}
-                    </th>
-                  ))}
+                  {PLANS.map(p => {
+                    const priceInfo = getPlanPrice(p.basePrice, billingPeriod)
+                    return (
+                      <th key={p.id} className={`p-3 text-center ${plan === p.id ? 'border-x-2 border-t-2 border-primary rounded-t-lg bg-primary/5' : ''}`}>
+                        <div className="font-bold text-text font-bricolage">{p.name}</div>
+                        <div className={`text-xs font-normal mt-0.5 ${plan === p.id ? 'text-primary font-semibold' : 'text-text/50'}`}>
+                          {priceInfo.monthlyEquiv}{p.id !== 'enterprise' ? '/mo' : ''}
+                        </div>
+                        {plan === p.id && (
+                          <span className="inline-block mt-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary text-white">Current</span>
+                        )}
+                      </th>
+                    )
+                  })}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -466,7 +621,7 @@ function BillingPage() {
                       ) : (
                         <button
                           onClick={() => handleUpgrade(p.id)}
-                          className="w-full bg-primary hover:opacity-90 text-white text-xs font-semibold py-1.5 rounded-lg transition-colors"
+                          className="w-full bg-primary hover:opacity-90 text-white text-xs font-semibold py-1.5 rounded-lg transition-colors cursor-pointer"
                         >
                           {p.id === 'enterprise' ? 'Contact Us' : 'Upgrade'}
                         </button>
@@ -492,6 +647,9 @@ function BillingPage() {
             </p>
           </div>
         </div>
+
+        {/* ══ FAQ Section ══ */}
+        <FAQSection />
       </div>
 
       {/* ══ Mock Checkout Modal ══ */}
@@ -502,6 +660,7 @@ function BillingPage() {
         priceLabel={selectedPriceLabel}
         clinicId={clinicId}
         onSuccess={() => fetchData(region)}
+        billingPeriod={billingPeriod}
       />
     </DashboardLayout>
   )
@@ -514,6 +673,7 @@ function MockCheckoutModal({
   priceLabel,
   clinicId,
   onSuccess,
+  billingPeriod,
 }: {
   isOpen: boolean
   onClose: () => void
@@ -521,6 +681,7 @@ function MockCheckoutModal({
   priceLabel: string
   clinicId: string | null
   onSuccess: () => void
+  billingPeriod: string
 }) {
   const [cardNumber, setCardNumber] = useState('')
   const [cardName, setCardName] = useState('')
@@ -537,6 +698,9 @@ function MockCheckoutModal({
   }, [])
 
   const planName = planId.charAt(0).toUpperCase() + planId.slice(1)
+  const planConfig = PLANS.find(p => p.id === planId)
+  const priceInfo = getPlanPrice(planConfig ? planConfig.basePrice : 0, billingPeriod)
+  const frequencyLabel = billingPeriod === 'monthly' ? 'Monthly' : billingPeriod === '3month' ? '3 Months' : billingPeriod === '6month' ? '6 Months' : 'Yearly'
 
   // Card formatting
   const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -584,14 +748,17 @@ function MockCheckoutModal({
     // Stage 2: Activating in DB
     try {
       let maxPract = 1
-      let journeysLimit = 300
+      let journeysLimit = 500
 
       if (planId === 'growth') {
         maxPract = 3
-        journeysLimit = 1000
+        journeysLimit = 1500
       } else if (planId === 'scale') {
-        maxPract = 9999
-        journeysLimit = 3000
+        maxPract = 8
+        journeysLimit = 4000
+      } else if (planId === 'enterprise') {
+        maxPract = 999999
+        journeysLimit = 999999
       }
 
       const { error } = await supabase
@@ -656,11 +823,16 @@ function MockCheckoutModal({
             <div className="py-4 border-y border-border space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-text/60">Subscription Frequency</span>
-                <span className="font-semibold text-text">Monthly</span>
+                <span className="font-semibold text-text">{frequencyLabel}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-text/60">Amount due today</span>
-                <span className="font-semibold text-text">{priceLabel}/mo</span>
+                <span className="font-semibold text-text">
+                  £{priceInfo.totalBill}
+                  {billingPeriod !== 'monthly' && (
+                    <span className="text-xs font-normal text-text/50 block">({priceInfo.monthlyEquiv}/mo equiv)</span>
+                  )}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-text/60">Tax (0% VAT)</span>
@@ -672,9 +844,9 @@ function MockCheckoutModal({
               <h4 className="text-xs font-bold text-text/40 uppercase tracking-widest">Included Features</h4>
               <ul className="space-y-2">
                 {[
-                  `Up to ${planId === 'essentials' ? '1 Practitioner' : planId === 'growth' ? '3 Practitioners' : 'Unlimited Practitioners'}`,
-                  `Up to ${planId === 'essentials' ? '300' : planId === 'growth' ? '1,000' : '3,000'} WhatsApp Journeys / mo`,
-                  `Up to ${planId === 'essentials' ? '200' : planId === 'growth' ? '600' : '1,500'} AI SOAP notes / mo`,
+                  `Up to ${planId === 'essentials' ? '1 Practitioner' : planId === 'growth' ? '3 Practitioners' : planId === 'scale' ? '8 Practitioners' : 'Unlimited Practitioners'}`,
+                  `Up to ${planId === 'essentials' ? '500' : planId === 'growth' ? '1,500' : planId === 'scale' ? '4,000' : 'Custom'} WhatsApp Journeys / mo`,
+                  `Up to ${planId === 'essentials' ? '200' : planId === 'growth' ? '800' : planId === 'scale' ? '2,000' : 'Custom'} AI SOAP Credits / mo`,
                   'AI Clinical Insights & Continuity Summary',
                   'Cancel or change tier at any time',
                 ].map((feat, idx) => (
@@ -860,12 +1032,65 @@ function MockCheckoutModal({
                 disabled={isPaying}
                 className="w-full btn-premium bg-primary text-white font-bold py-3 rounded-xl shadow-lg shadow-primary/20 hover:opacity-95 transition-all text-sm"
               >
-                Pay & Subscribe ({priceLabel})
+                Pay & Subscribe (£{priceInfo.totalBill})
               </button>
             </form>
           )}
         </div>
 
+      </div>
+    </div>
+  )
+}
+
+function FAQSection() {
+  const [openIndex, setOpenIndex] = useState<number | null>(null)
+
+  const faqs = [
+    {
+      q: "Can I migrate my existing patient data?",
+      a: "Yes! Essentials users get a self-service CSV template. Growth includes guided migration and Scale includes full concierge migration. All migrations completed within 3-5 business days."
+    },
+    {
+      q: "What happens if I exceed my WhatsApp journeys or AI credits?",
+      a: "You can purchase AI Booster Packs anytime. WhatsApp journey top-ups coming soon."
+    },
+    {
+      q: "Can I cancel anytime?",
+      a: "Monthly plans cancel anytime. Yearly plans refundable within 30 days of purchase."
+    }
+  ]
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-6 card-shadow mt-6">
+      <h2 className="text-xl font-bold text-text font-bricolage mb-6">Frequently Asked Questions</h2>
+      <div className="space-y-4">
+        {faqs.map((faq, idx) => {
+          const isOpen = openIndex === idx
+          return (
+            <div key={idx} className="border-b border-border last:border-0 pb-4 last:pb-0">
+              <button
+                onClick={() => setOpenIndex(isOpen ? null : idx)}
+                type="button"
+                className="w-full flex items-center justify-between text-left font-semibold text-text hover:text-primary transition-colors py-2 cursor-pointer"
+              >
+                <span>{faq.q}</span>
+                <span className="ml-4 shrink-0">
+                  {isOpen ? (
+                    <Minus className="w-4 h-4 text-primary" />
+                  ) : (
+                    <Plus className="w-4 h-4 text-text/40" />
+                  )}
+                </span>
+              </button>
+              {isOpen && (
+                <p className="text-sm text-text/60 mt-2 leading-relaxed animate-in fade-in slide-in-from-top-1 duration-200">
+                  {faq.a}
+                </p>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )

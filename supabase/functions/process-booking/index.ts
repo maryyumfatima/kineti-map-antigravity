@@ -10,56 +10,10 @@ const corsHeaders = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Format a UTC ISO string for display in a given IANA timezone */
-function formatInTZ(utcIso: string, timezone: string): { date: string; time: string } {
-  try {
-    const d = new Date(utcIso)
-    const date = new Intl.DateTimeFormat('en-GB', {
-      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-      timeZone: timezone,
-    }).format(d)
-    const time = new Intl.DateTimeFormat('en-GB', {
-      hour: 'numeric', minute: '2-digit', hour12: true,
-      timeZone: timezone,
-      timeZoneName: 'short',
-    }).format(d)
-    return { date, time }
-  } catch {
-    // Fallback if timezone is invalid
-    const d = new Date(utcIso)
-    return {
-      date: d.toDateString(),
-      time: d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-    }
-  }
-}
-
-/** Dispatch a WhatsApp message via the send-whatsapp Edge Function */
-async function dispatchWhatsApp(supabaseUrl: string, serviceKey: string, payload: Record<string, unknown>) {
-  try {
-    const res = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${serviceKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    })
-    const json = await res.json()
-    if (!res.ok) {
-      console.warn('[process-booking] send-whatsapp failed (non-fatal):', JSON.stringify(json))
-    } else {
-      console.log('[process-booking] WhatsApp confirmation sent. ID:', json.messageId)
-    }
-  } catch (e) {
-    // Never let a WhatsApp failure break the booking
-    console.warn('[process-booking] WhatsApp dispatch error (non-fatal):', e)
-  }
-}
-
 // ─── Main handler ─────────────────────────────────────────────────────────────
 
-serve(async (req) => {
+serve(async (req: Request) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -155,21 +109,15 @@ serve(async (req) => {
 
     if (bookingErr) throw bookingErr
 
-    // 6. Send WhatsApp booking confirmation (fire-and-forget)
-    const { date: apptDate, time: apptTime } = formatInTZ(selectedSlot, clinicTimezone)
-    const bookingLink = clinicSlug ? `https://kinetimap.app/book/${clinicSlug}` : 'https://kinetimap.app'
-
-    await dispatchWhatsApp(SUPABASE_URL, SERVICE_ROLE_KEY, {
-      to:          whatsapp,
-      type:        'template',
-      template: {
-        templateName:  'booking_confirmation',
-        languageCode:  'en',
-        parameters:    [fullName, clinicName, apptDate, apptTime, 'our clinic'],
-      },
-      patientId:   patientId,
-      clinicId:    clinicId,
-      messageType: 'booking_confirmation',
+    // 6. Queue WhatsApp booking confirmation
+    await supabase.from('whatsapp_messages').insert({
+      clinic_id: booking.clinic_id,
+      patient_id: booking.patient_id,
+      message_type: 'booking_confirmation',
+      status: 'queued',
+      scheduled_for: new Date().toISOString(),
+      context_type: 'booking_confirmation',
+      context_booking_id: booking.id,
     })
 
     return new Response(

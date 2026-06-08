@@ -137,7 +137,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { transcript, patient_id, booking_id, clinic_id } = await req.json()
+    const { transcript, patient_id, booking_id, clinic_id, file_path } = await req.json()
 
     if (!transcript?.trim()) {
       return new Response(
@@ -447,6 +447,16 @@ ${previousSoapNote}`
     if (draftInsertError) {
       console.error('Database draft insert error:', draftInsertError)
       throw new Error(`Failed to save AI SOAP draft to DB: ${draftInsertError.message}`)
+    }
+
+    if (file_path) {
+      const { error: deleteError } = await supabase.storage
+        .from('audio-recordings')
+        .remove([file_path])
+
+      if (deleteError) {
+        console.error('Failed to delete audio file:', deleteError)
+      }
     }
 
     return new Response(

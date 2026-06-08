@@ -13,6 +13,7 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SessionsRouteImport } from './routes/sessions'
 import { Route as RevenueRouteImport } from './routes/revenue'
+import { Route as PractitionersRouteImport } from './routes/practitioners'
 import { Route as PatientsRouteImport } from './routes/patients'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as LoginRouteImport } from './routes/login'
@@ -46,6 +47,11 @@ const SessionsRoute = SessionsRouteImport.update({
 const RevenueRoute = RevenueRouteImport.update({
   id: '/revenue',
   path: '/revenue',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PractitionersRoute = PractitionersRouteImport.update({
+  id: '/practitioners',
+  path: '/practitioners',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PatientsRoute = PatientsRouteImport.update({
@@ -129,6 +135,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/patients': typeof PatientsRouteWithChildren
+  '/practitioners': typeof PractitionersRoute
   '/revenue': typeof RevenueRoute
   '/sessions': typeof SessionsRoute
   '/settings': typeof SettingsRoute
@@ -149,6 +156,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/patients': typeof PatientsRouteWithChildren
+  '/practitioners': typeof PractitionersRoute
   '/revenue': typeof RevenueRoute
   '/sessions': typeof SessionsRoute
   '/settings': typeof SettingsRoute
@@ -170,6 +178,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/patients': typeof PatientsRouteWithChildren
+  '/practitioners': typeof PractitionersRoute
   '/revenue': typeof RevenueRoute
   '/sessions': typeof SessionsRoute
   '/settings': typeof SettingsRoute
@@ -192,6 +201,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/patients'
+    | '/practitioners'
     | '/revenue'
     | '/sessions'
     | '/settings'
@@ -212,6 +222,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/patients'
+    | '/practitioners'
     | '/revenue'
     | '/sessions'
     | '/settings'
@@ -232,6 +243,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/patients'
+    | '/practitioners'
     | '/revenue'
     | '/sessions'
     | '/settings'
@@ -253,6 +265,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
   PatientsRoute: typeof PatientsRouteWithChildren
+  PractitionersRoute: typeof PractitionersRoute
   RevenueRoute: typeof RevenueRoute
   SessionsRoute: typeof SessionsRoute
   SettingsRoute: typeof SettingsRoute
@@ -290,6 +303,13 @@ declare module '@tanstack/react-router' {
       path: '/revenue'
       fullPath: '/revenue'
       preLoaderRoute: typeof RevenueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/practitioners': {
+      id: '/practitioners'
+      path: '/practitioners'
+      fullPath: '/practitioners'
+      preLoaderRoute: typeof PractitionersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/patients': {
@@ -427,6 +447,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
   PatientsRoute: PatientsRouteWithChildren,
+  PractitionersRoute: PractitionersRoute,
   RevenueRoute: RevenueRoute,
   SessionsRoute: SessionsRoute,
   SettingsRoute: SettingsRoute,

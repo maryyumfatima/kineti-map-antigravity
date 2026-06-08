@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  UserCog,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
@@ -28,6 +29,7 @@ const navItems = [
   { name: 'Branding', path: '/branding', icon: Palette },
   { name: 'Billing', path: '/billing', icon: CreditCard },
   { name: 'Settings', path: '/settings', icon: Settings },
+  { name: 'Practitioners', path: '/practitioners', icon: UserCog },
 ]
 
 interface SidebarProps {

@@ -30,6 +30,11 @@ interface SendPayload {
   patientId?: string
   clinicId?: string
   messageType?: string
+  context_type?: string
+  context_booking_id?: string
+  messageId?: string
+  retryCount?: number
+  maxRetries?: number
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -77,7 +82,8 @@ function buildRequestBody(payload: SendPayload): Record<string, unknown> {
 
 // ─── Main handler ─────────────────────────────────────────────────────────────
 
-serve(async (req) => {
+serve(async (req: Request) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -120,8 +126,44 @@ serve(async (req) => {
 
     const metaJson = await metaRes.json()
 
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
     if (!metaRes.ok) {
       console.error('[send-whatsapp] Meta API error:', JSON.stringify(metaJson))
+      const errorCode = metaJson?.error?.code || metaRes.status
+      
+      if (payload.messageId) {
+        let nextStatus = 'failed'
+        let failureReason = `${errorCode}`
+        const currentRetry = payload.retryCount ?? 0
+        const maxRetries = payload.maxRetries ?? 3
+        let nextRetryAt = null
+        let newRetryCount = currentRetry
+
+        if (errorCode === 131026) {
+          nextStatus = 'failed'
+          failureReason = '131026_invalid_phone'
+        } else if (errorCode === 131056 || errorCode === 500 || metaRes.status >= 500) {
+          if (currentRetry >= maxRetries) {
+            nextStatus = 'failed'
+          } else {
+            nextStatus = 'retry_pending'
+            newRetryCount = currentRetry + 1
+            nextRetryAt = new Date(Date.now() + 5 * 60 * 1000).toISOString()
+          }
+        }
+
+        await supabase.from('whatsapp_messages').update({
+          status: nextStatus,
+          failure_reason: failureReason,
+          retry_count: newRetryCount,
+          next_retry_at: nextRetryAt
+        }).eq('id', payload.messageId)
+      }
+
       throw new Error(`Meta API error ${metaRes.status}: ${JSON.stringify(metaJson?.error ?? metaJson)}`)
     }
 
@@ -129,12 +171,14 @@ serve(async (req) => {
     console.log('[send-whatsapp] Sent successfully. Meta message ID:', metaMessageId)
 
     // 2. Log to whatsapp_messages table (best-effort — don't fail the request on DB error)
-    if (payload.patientId && payload.clinicId) {
-      const supabase = createClient(
-        Deno.env.get('SUPABASE_URL') ?? '',
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-      )
-
+    if (payload.messageId) {
+      // Update existing queue item
+      await supabase.from('whatsapp_messages').update({
+        status: 'sent',
+        meta_message_id: metaMessageId
+      }).eq('id', payload.messageId)
+    } else if (payload.patientId && payload.clinicId) {
+      // Insert new log for synchronous calls
       const { error: logErr } = await supabase.from('whatsapp_messages').insert({
         patient_id:       payload.patientId,
         clinic_id:        payload.clinicId,
@@ -146,6 +190,8 @@ serve(async (req) => {
           ? payload.template.parameters
           : null,
         meta_message_id:  metaMessageId,
+        context_type:     payload.context_type,
+        context_booking_id: payload.context_booking_id
       })
 
       if (logErr) {
