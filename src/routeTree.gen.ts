@@ -9,10 +9,13 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SessionsRouteImport } from './routes/sessions'
 import { Route as RevenueRouteImport } from './routes/revenue'
+import { Route as RefundRouteImport } from './routes/refund'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PractitionersRouteImport } from './routes/practitioners'
 import { Route as PatientsRouteImport } from './routes/patients'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
@@ -29,6 +32,11 @@ import { Route as BookSlugRouteImport } from './routes/book.$slug'
 import { Route as AiSoapNotesRouteImport } from './routes/ai.soap-notes'
 import { Route as DashboardPatientsIdRouteImport } from './routes/dashboard.patients.$id'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
@@ -47,6 +55,16 @@ const SessionsRoute = SessionsRouteImport.update({
 const RevenueRoute = RevenueRouteImport.update({
   id: '/revenue',
   path: '/revenue',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RefundRoute = RefundRouteImport.update({
+  id: '/refund',
+  path: '/refund',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PractitionersRoute = PractitionersRouteImport.update({
@@ -136,10 +154,13 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/patients': typeof PatientsRouteWithChildren
   '/practitioners': typeof PractitionersRoute
+  '/privacy': typeof PrivacyRoute
+  '/refund': typeof RefundRoute
   '/revenue': typeof RevenueRoute
   '/sessions': typeof SessionsRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
+  '/terms': typeof TermsRoute
   '/ai/soap-notes': typeof AiSoapNotesRoute
   '/book/$slug': typeof BookSlugRoute
   '/patients/$patientId': typeof PatientsPatientIdRoute
@@ -157,10 +178,13 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/patients': typeof PatientsRouteWithChildren
   '/practitioners': typeof PractitionersRoute
+  '/privacy': typeof PrivacyRoute
+  '/refund': typeof RefundRoute
   '/revenue': typeof RevenueRoute
   '/sessions': typeof SessionsRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
+  '/terms': typeof TermsRoute
   '/ai/soap-notes': typeof AiSoapNotesRoute
   '/book/$slug': typeof BookSlugRoute
   '/patients/$patientId': typeof PatientsPatientIdRoute
@@ -179,10 +203,13 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/patients': typeof PatientsRouteWithChildren
   '/practitioners': typeof PractitionersRoute
+  '/privacy': typeof PrivacyRoute
+  '/refund': typeof RefundRoute
   '/revenue': typeof RevenueRoute
   '/sessions': typeof SessionsRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
+  '/terms': typeof TermsRoute
   '/ai/soap-notes': typeof AiSoapNotesRoute
   '/book/$slug': typeof BookSlugRoute
   '/patients/$patientId': typeof PatientsPatientIdRoute
@@ -202,10 +229,13 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/patients'
     | '/practitioners'
+    | '/privacy'
+    | '/refund'
     | '/revenue'
     | '/sessions'
     | '/settings'
     | '/signup'
+    | '/terms'
     | '/ai/soap-notes'
     | '/book/$slug'
     | '/patients/$patientId'
@@ -223,10 +253,13 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/patients'
     | '/practitioners'
+    | '/privacy'
+    | '/refund'
     | '/revenue'
     | '/sessions'
     | '/settings'
     | '/signup'
+    | '/terms'
     | '/ai/soap-notes'
     | '/book/$slug'
     | '/patients/$patientId'
@@ -244,10 +277,13 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/patients'
     | '/practitioners'
+    | '/privacy'
+    | '/refund'
     | '/revenue'
     | '/sessions'
     | '/settings'
     | '/signup'
+    | '/terms'
     | '/ai/soap-notes'
     | '/book/$slug'
     | '/patients/$patientId'
@@ -266,10 +302,13 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   PatientsRoute: typeof PatientsRouteWithChildren
   PractitionersRoute: typeof PractitionersRoute
+  PrivacyRoute: typeof PrivacyRoute
+  RefundRoute: typeof RefundRoute
   RevenueRoute: typeof RevenueRoute
   SessionsRoute: typeof SessionsRoute
   SettingsRoute: typeof SettingsRoute
   SignupRoute: typeof SignupRoute
+  TermsRoute: typeof TermsRoute
   AiSoapNotesRoute: typeof AiSoapNotesRoute
   BookSlugRoute: typeof BookSlugRoute
   PayTokenRoute: typeof PayTokenRoute
@@ -277,6 +316,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signup': {
       id: '/signup'
       path: '/signup'
@@ -303,6 +349,20 @@ declare module '@tanstack/react-router' {
       path: '/revenue'
       fullPath: '/revenue'
       preLoaderRoute: typeof RevenueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/refund': {
+      id: '/refund'
+      path: '/refund'
+      fullPath: '/refund'
+      preLoaderRoute: typeof RefundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/practitioners': {
@@ -448,10 +508,13 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   PatientsRoute: PatientsRouteWithChildren,
   PractitionersRoute: PractitionersRoute,
+  PrivacyRoute: PrivacyRoute,
+  RefundRoute: RefundRoute,
   RevenueRoute: RevenueRoute,
   SessionsRoute: SessionsRoute,
   SettingsRoute: SettingsRoute,
   SignupRoute: SignupRoute,
+  TermsRoute: TermsRoute,
   AiSoapNotesRoute: AiSoapNotesRoute,
   BookSlugRoute: BookSlugRoute,
   PayTokenRoute: PayTokenRoute,

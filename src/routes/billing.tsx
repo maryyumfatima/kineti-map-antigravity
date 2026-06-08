@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
-import { Check, Minus, AlertTriangle, ShieldCheck, MessageCircle, Users, X, Sparkles, Loader2, Plus, ChevronDown } from 'lucide-react'
+import { Check, Minus, AlertTriangle, ShieldCheck, MessageCircle, Users, X, Sparkles, Loader2, Plus } from 'lucide-react'
 
 export const Route = createFileRoute('/billing')({
   component: BillingPage,
@@ -670,7 +670,7 @@ function MockCheckoutModal({
   isOpen,
   onClose,
   planId,
-  priceLabel,
+  _priceLabel,
   clinicId,
   onSuccess,
   billingPeriod,

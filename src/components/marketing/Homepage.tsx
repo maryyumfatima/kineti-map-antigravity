@@ -17,6 +17,7 @@ export function Homepage() {
   // State for interactive features
   const [sandboxClinicName, setSandboxClinicName] = useState('Apex Physio')
   const [activeFaq, setActiveFaq] = useState<number | null>(null)
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | '3mo' | '6mo' | 'yearly'>('monthly')
   const [headerScrolled, setHeaderScrolled] = useState(false)
   const [session, setSession] = useState<Session | null>(null)
   const mainRef = useRef<HTMLDivElement>(null)
@@ -654,8 +655,8 @@ export function Homepage() {
       </section>
 
       {/* PRICING SECTION */}
-      <section id="pricing" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto reveal">
-        <div className="text-center max-w-3xl mx-auto mb-16 reveal">
+      <section id="pricing" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div className="text-center max-w-3xl mx-auto mb-10 reveal">
           <span className="text-[#006D77] text-xs sm:text-sm font-bold uppercase tracking-widest block mb-3">
             SIMPLE, TRANSPARENT PRICING
           </span>
@@ -663,173 +664,207 @@ export function Homepage() {
             Pricing that scales with your clinic — not your stress levels.
           </h2>
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#006D77]/10 border border-[#006D77]/20 text-[#006D77] text-xs sm:text-sm font-bold uppercase tracking-wide">
-            <Sparkles className="w-4 h-4" /> Try any plan free for 14 days. No credit card required.
+            <Sparkles className="w-4 h-4" /> 14 days free, no credit card required
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch mb-12 reveal">
-          {/* Card 1: Essentials */}
-          <div className="bg-white border border-[#E0EEF0] rounded-3xl p-8 flex flex-col justify-between shadow-sm relative hover:shadow-md transition-all text-left reveal">
-            <div>
-              <h3 className="font-bricolage font-bold text-2xl text-[#32323F] mb-1">Essentials</h3>
-              <p className="text-[#32323F]/50 text-sm font-medium mb-6">For solo practitioners</p>
-              
-              <div className="flex items-baseline mb-6">
-                <span className="text-4xl font-black font-bricolage text-[#006D77]">£49</span>
-                <span className="text-[#32323F]/50 font-semibold text-sm ml-2">/ month</span>
-              </div>
-
-              <div className="w-full h-px bg-[#E0EEF0] mb-6" />
-
-              <ul className="space-y-3.5 mb-8 font-semibold text-[#32323F]/80">
-                <li className="flex items-center gap-2.5 text-sm">
-                  <Check className="w-4.5 h-4.5 text-[#006D77] flex-shrink-0" strokeWidth={3} />
-                  <span>1 practitioner</span>
-                </li>
-                <li className="flex items-center gap-2.5 text-sm">
-                  <Check className="w-4.5 h-4.5 text-[#006D77] flex-shrink-0" strokeWidth={3} />
-                  <span>300 WhatsApp journeys / month</span>
-                </li>
-                <li className="flex items-center gap-2.5 text-sm">
-                  <Check className="w-4.5 h-4.5 text-[#006D77] flex-shrink-0" strokeWidth={3} />
-                  <span>200 AI SOAP notes / month</span>
-                </li>
-                <li className="flex items-center gap-2.5 text-sm">
-                  <Check className="w-4.5 h-4.5 text-[#006D77] flex-shrink-0" strokeWidth={3} />
-                  <span>Branded booking page</span>
-                </li>
-                <li className="flex items-center gap-2.5 text-sm">
-                  <Check className="w-4.5 h-4.5 text-[#006D77] flex-shrink-0" strokeWidth={3} />
-                  <span>GDPR-compliant patient records</span>
-                </li>
-                <li className="flex items-center gap-2.5 text-sm">
-                  <Check className="w-4.5 h-4.5 text-[#006D77] flex-shrink-0" strokeWidth={3} />
-                  <span>Email support</span>
-                </li>
-              </ul>
-            </div>
-
-            <Link 
-              to="/signup"
-              search={(prev) => ({ ...prev, plan: 'essentials' })}
-              className="w-full bg-[#006D77]/10 hover:bg-[#006D77]/20 text-[#006D77] font-bold text-center py-3.5 rounded-xl transition-all font-semibold"
-            >
-              Start 14-Day Free Trial
-            </Link>
-          </div>
-
-          {/* Card 2: Growth (MOST POPULAR) */}
-          <div className="bg-white border-2 border-[#006D77] rounded-3xl p-8 flex flex-col justify-between shadow-lg relative text-left ring-4 ring-[#006D77]/5 scale-100 lg:scale-[1.03] reveal">
-            {/* "Most Popular" Ribbon */}
-            <div className="absolute -top-4 right-8 bg-[#006D77] text-white text-xs font-extrabold uppercase tracking-widest px-4 py-1.5 rounded-full shadow-md">
-              Most Popular
-            </div>
-
-            <div>
-              <h3 className="font-bricolage font-bold text-2xl text-[#32323F] mb-1">Growth</h3>
-              <p className="text-[#32323F]/50 text-sm font-medium mb-6">For growing clinics</p>
-              
-              <div className="flex items-baseline mb-6">
-                <span className="text-4xl font-black font-bricolage text-[#006D77]">£89</span>
-                <span className="text-[#32323F]/50 font-semibold text-sm ml-2">/ month</span>
-              </div>
-
-              <div className="w-full h-px bg-[#E0EEF0] mb-6" />
-
-              <ul className="space-y-3.5 mb-8 font-semibold text-[#32323F]/80">
-                <li className="flex items-center gap-2.5 text-sm">
-                  <Check className="w-4.5 h-4.5 text-[#006D77] flex-shrink-0" strokeWidth={3} />
-                  <span>2–3 practitioners</span>
-                </li>
-                <li className="flex items-center gap-2.5 text-sm">
-                  <Check className="w-4.5 h-4.5 text-[#006D77] flex-shrink-0" strokeWidth={3} />
-                  <span>1,000 WhatsApp journeys / month</span>
-                </li>
-                <li className="flex items-center gap-2.5 text-sm">
-                  <Check className="w-4.5 h-4.5 text-[#006D77] flex-shrink-0" strokeWidth={3} />
-                  <span>600 AI SOAP notes / month</span>
-                </li>
-                <li className="flex items-center gap-2.5 text-sm text-[#006D77]">
-                  <Check className="w-4.5 h-4.5 text-[#006D77] flex-shrink-0" strokeWidth={3} />
-                  <span>AI-driven follow-up and discharge summaries</span>
-                </li>
-                <li className="flex items-center gap-2.5 text-sm">
-                  <Check className="w-4.5 h-4.5 text-[#006D77] flex-shrink-0" strokeWidth={3} />
-                  <span>Outcome measure tracking (PSFS, NPRS, Oswestry)</span>
-                </li>
-                <li className="flex items-center gap-2.5 text-sm">
-                  <Check className="w-4.5 h-4.5 text-[#006D77] flex-shrink-0" strokeWidth={3} />
-                  <span>Priority email support</span>
-                </li>
-              </ul>
-            </div>
-
-            <Link 
-              to="/signup"
-              search={(prev) => ({ ...prev, plan: 'growth' })}
-              className="w-full bg-[#006D77] hover:bg-[#005560] text-white font-bold text-center py-3.5 rounded-xl transition-all shadow-md"
-            >
-              Start 14-Day Free Trial
-            </Link>
-          </div>
-
-          {/* Card 3: Scale */}
-          <div className="bg-white border border-[#E0EEF0] rounded-3xl p-8 flex flex-col justify-between shadow-sm relative hover:shadow-md transition-all text-left reveal">
-            <div>
-              <h3 className="font-bricolage font-bold text-2xl text-[#32323F] mb-1">Scale</h3>
-              <p className="text-[#32323F]/50 text-sm font-medium mb-6">For established multi-practitioner clinics</p>
-              
-              <div className="flex items-baseline mb-6">
-                <span className="text-4xl font-black font-bricolage text-[#006D77]">£179</span>
-                <span className="text-[#32323F]/50 font-semibold text-sm ml-2">/ month</span>
-              </div>
-
-              <div className="w-full h-px bg-[#E0EEF0] mb-6" />
-
-              <ul className="space-y-3.5 mb-8 font-semibold text-[#32323F]/80">
-                <li className="flex items-center gap-2.5 text-sm">
-                  <Check className="w-4.5 h-4.5 text-[#006D77] flex-shrink-0" strokeWidth={3} />
-                  <span>Unlimited practitioners</span>
-                </li>
-                <li className="flex items-center gap-2.5 text-sm">
-                  <Check className="w-4.5 h-4.5 text-[#006D77] flex-shrink-0" strokeWidth={3} />
-                  <span>3,000 WhatsApp journeys / month</span>
-                </li>
-                <li className="flex items-center gap-2.5 text-sm">
-                  <Check className="w-4.5 h-4.5 text-[#006D77] flex-shrink-0" strokeWidth={3} />
-                  <span>1,500 AI SOAP notes / month</span>
-                </li>
-                <li className="flex items-center gap-2.5 text-sm">
-                  <Check className="w-4.5 h-4.5 text-[#006D77] flex-shrink-0" strokeWidth={3} />
-                  <span>Multi-location support</span>
-                </li>
-                <li className="flex items-center gap-2.5 text-sm">
-                  <Check className="w-4.5 h-4.5 text-[#006D77] flex-shrink-0" strokeWidth={3} />
-                  <span>Advanced analytics dashboard</span>
-                </li>
-                <li className="flex items-center gap-2.5 text-sm">
-                  <Check className="w-4.5 h-4.5 text-[#006D77] flex-shrink-0" strokeWidth={3} />
-                  <span>Dedicated phone support</span>
-                </li>
-              </ul>
-            </div>
-
-            <Link 
-              to="/signup"
-              search={(prev) => ({ ...prev, plan: 'scale' })}
-              className="w-full bg-[#006D77]/10 hover:bg-[#006D77]/20 text-[#006D77] font-bold text-center py-3.5 rounded-xl transition-all font-semibold"
-            >
-              Start 14-Day Free Trial
-            </Link>
+        {/* Billing period toggle */}
+        <div className="flex justify-center mb-12 reveal">
+          <div className="inline-flex bg-[#EDF6F9] border border-[#E0EEF0] rounded-2xl p-1 gap-1">
+            {([
+              { key: 'monthly', label: 'Monthly' },
+              { key: '3mo', label: '3 Months', badge: '10% off' },
+              { key: '6mo', label: '6 Months', badge: '16% off' },
+              { key: 'yearly', label: 'Yearly', badge: '25% off' },
+            ] as { key: 'monthly' | '3mo' | '6mo' | 'yearly'; label: string; badge?: string }[]).map((opt) => (
+              <button
+                key={opt.key}
+                onClick={() => setBillingPeriod(opt.key)}
+                className={`relative px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                  billingPeriod === opt.key
+                    ? 'bg-[#006D77] text-white shadow-md'
+                    : 'text-[#32323F]/60 hover:text-[#32323F]'
+                }`}
+              >
+                {opt.label}
+                {opt.badge && (
+                  <span className={`ml-1.5 text-[10px] font-extrabold uppercase ${
+                    billingPeriod === opt.key ? 'text-white/80' : 'text-[#006D77]'
+                  }`}>
+                    {opt.badge}
+                  </span>
+                )}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="text-center space-y-3 text-sm text-[#32323F]/60 font-semibold max-w-2xl mx-auto">
-          <p>
-            Need more? Custom Enterprise plans available for NHS contracts and multi-site groups. Contact us.
-          </p>
-          <div className="inline-block px-3 py-1 bg-[#006D77]/5 border border-[#006D77]/10 rounded-lg text-xs">
-            Add-on note: Need extra AI notes? Booster packs available: 100 for £8, 300 for £18, 500 for £25.
+        {/* Plan cards */}
+        {(() => {
+          const prices = {
+            monthly:  { essentials: 49,  growth: 89,  scale: 179, months: 1  },
+            '3mo':    { essentials: 44,  growth: 80,  scale: 161, months: 3  },
+            '6mo':    { essentials: 41,  growth: 74,  scale: 150, months: 6  },
+            yearly:   { essentials: 37,  growth: 67,  scale: 134, months: 12 },
+          }[billingPeriod]
+
+          const billedNote = (mo: number) =>
+            billingPeriod !== 'monthly'
+              ? `billed £${mo * prices.months} total`
+              : null
+
+          const CheckItem = ({ text, highlight = false }: { text: string; highlight?: boolean }) => (
+            <li className={`flex items-start gap-2.5 text-sm ${highlight ? 'text-[#006D77] font-bold' : 'text-[#32323F]/80 font-semibold'}` }>
+              <Check className="w-4 h-4 text-[#006D77] flex-shrink-0 mt-0.5" strokeWidth={3} />
+              <span>{text}</span>
+            </li>
+          )
+
+          return (
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-stretch mb-12 reveal">
+
+              {/* Essentials */}
+              <div className="bg-white border border-[#E0EEF0] rounded-3xl p-7 flex flex-col justify-between shadow-sm hover:shadow-md transition-all text-left">
+                <div>
+                  <h3 className="font-bricolage font-bold text-xl text-[#32323F] mb-0.5">Essentials</h3>
+                  <p className="text-[#32323F]/50 text-xs font-medium mb-5">For solo practitioners</p>
+                  <div className="flex items-baseline gap-1 mb-1">
+                    <span className="text-3xl font-black font-bricolage text-[#006D77]">£{prices.essentials}</span>
+                    <span className="text-[#32323F]/50 font-semibold text-sm">/mo</span>
+                  </div>
+                  {billedNote(prices.essentials) && (
+                    <p className="text-xs text-[#32323F]/40 font-medium mb-4">{billedNote(prices.essentials)}</p>
+                  )}
+                  <div className="w-full h-px bg-[#E0EEF0] my-5" />
+                  <ul className="space-y-3 mb-7">
+                    <CheckItem text="1 Practitioner + 1 Receptionist" />
+                    <CheckItem text="500 WhatsApp Journeys/month" />
+                    <CheckItem text="200 AI SOAP Credits/month" />
+                    <CheckItem text="Daily & Monthly Summary" />
+                    <CheckItem text="Self-service CSV migration (free)" />
+                    <CheckItem text="14-day free trial" />
+                    <CheckItem text="Standard support" />
+                  </ul>
+                </div>
+                <Link
+                  to="/signup"
+                  search={(prev) => ({ ...prev, plan: 'essentials' })}
+                  className="w-full bg-[#006D77]/10 hover:bg-[#006D77]/20 text-[#006D77] font-bold text-center py-3 rounded-xl transition-all text-sm"
+                >
+                  Start 14-Day Free Trial
+                </Link>
+              </div>
+
+              {/* Growth */}
+              <div className="bg-white border-2 border-[#006D77] rounded-3xl p-7 flex flex-col justify-between shadow-lg relative text-left ring-4 ring-[#006D77]/5 lg:scale-[1.02]">
+                <div className="absolute -top-4 right-6 bg-[#006D77] text-white text-[10px] font-extrabold uppercase tracking-widest px-3 py-1.5 rounded-full shadow-md">
+                  Most Popular
+                </div>
+                <div>
+                  <h3 className="font-bricolage font-bold text-xl text-[#32323F] mb-0.5">Growth</h3>
+                  <p className="text-[#32323F]/50 text-xs font-medium mb-5">For growing clinics</p>
+                  <div className="flex items-baseline gap-1 mb-1">
+                    <span className="text-3xl font-black font-bricolage text-[#006D77]">£{prices.growth}</span>
+                    <span className="text-[#32323F]/50 font-semibold text-sm">/mo</span>
+                  </div>
+                  {billedNote(prices.growth) && (
+                    <p className="text-xs text-[#32323F]/40 font-medium mb-4">{billedNote(prices.growth)}</p>
+                  )}
+                  <div className="w-full h-px bg-[#E0EEF0] my-5" />
+                  <ul className="space-y-3 mb-7">
+                    <CheckItem text="3 Practitioners + 2 Receptionists" />
+                    <CheckItem text="1500 WhatsApp Journeys/month" />
+                    <CheckItem text="800 AI SOAP Credits/month" />
+                    <CheckItem text="Daily & Monthly Summary" />
+                    <CheckItem text="Guided data migration included" highlight />
+                    <CheckItem text="14-day free trial" />
+                    <CheckItem text="Priority support" />
+                  </ul>
+                </div>
+                <Link
+                  to="/signup"
+                  search={(prev) => ({ ...prev, plan: 'growth' })}
+                  className="w-full bg-[#006D77] hover:bg-[#005560] text-white font-bold text-center py-3 rounded-xl transition-all shadow-md text-sm"
+                >
+                  Start 14-Day Free Trial
+                </Link>
+              </div>
+
+              {/* Scale */}
+              <div className="bg-white border border-[#E0EEF0] rounded-3xl p-7 flex flex-col justify-between shadow-sm hover:shadow-md transition-all text-left">
+                <div>
+                  <h3 className="font-bricolage font-bold text-xl text-[#32323F] mb-0.5">Scale</h3>
+                  <p className="text-[#32323F]/50 text-xs font-medium mb-5">For established multi-practitioner clinics</p>
+                  <div className="flex items-baseline gap-1 mb-1">
+                    <span className="text-3xl font-black font-bricolage text-[#006D77]">£{prices.scale}</span>
+                    <span className="text-[#32323F]/50 font-semibold text-sm">/mo</span>
+                  </div>
+                  {billedNote(prices.scale) && (
+                    <p className="text-xs text-[#32323F]/40 font-medium mb-4">{billedNote(prices.scale)}</p>
+                  )}
+                  <div className="w-full h-px bg-[#E0EEF0] my-5" />
+                  <ul className="space-y-3 mb-7">
+                    <CheckItem text="8 Practitioners + Unlimited Staff" />
+                    <CheckItem text="4000 WhatsApp Journeys/month" />
+                    <CheckItem text="2000 AI SOAP Credits/month" />
+                    <CheckItem text="Daily & Monthly Summary" />
+                    <CheckItem text="Multi-location support" />
+                    <CheckItem text="Full concierge migration included" highlight />
+                    <CheckItem text="14-day free trial" />
+                    <CheckItem text="Priority support" />
+                  </ul>
+                </div>
+                <Link
+                  to="/signup"
+                  search={(prev) => ({ ...prev, plan: 'scale' })}
+                  className="w-full bg-[#006D77]/10 hover:bg-[#006D77]/20 text-[#006D77] font-bold text-center py-3 rounded-xl transition-all text-sm"
+                >
+                  Start 14-Day Free Trial
+                </Link>
+              </div>
+
+              {/* Enterprise */}
+              <div className="bg-[#32323F] border border-[#32323F]/80 rounded-3xl p-7 flex flex-col justify-between shadow-sm text-left">
+                <div>
+                  <h3 className="font-bricolage font-bold text-xl text-white mb-0.5">Enterprise</h3>
+                  <p className="text-white/50 text-xs font-medium mb-5">NHS contracts &amp; multi-site groups</p>
+                  <div className="flex items-baseline gap-1 mb-5">
+                    <span className="text-3xl font-black font-bricolage text-white">Custom</span>
+                  </div>
+                  <div className="w-full h-px bg-white/10 my-5" />
+                  <ul className="space-y-3 mb-7">
+                    {[
+                      'Unlimited Practitioners',
+                      'Custom WhatsApp Journeys',
+                      'Custom AI SOAP Credits',
+                      'Everything in Scale',
+                      'Dedicated support',
+                      'NHS contracts & multi-site groups',
+                    ].map((t) => (
+                      <li key={t} className="flex items-start gap-2.5 text-sm text-white/80 font-semibold">
+                        <Check className="w-4 h-4 text-white/60 flex-shrink-0 mt-0.5" strokeWidth={3} />
+                        <span>{t}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <a
+                  href="mailto:support@kinetimap.app"
+                  className="w-full bg-white/10 hover:bg-white/20 text-white font-bold text-center py-3 rounded-xl transition-all text-sm border border-white/20"
+                >
+                  Contact Us
+                </a>
+              </div>
+
+            </div>
+          )
+        })()}
+
+        {/* Booster packs note */}
+        <div className="text-center mt-2 reveal">
+          <div className="inline-block px-4 py-2 bg-[#006D77]/5 border border-[#006D77]/10 rounded-xl text-xs text-[#32323F]/60 font-semibold">
+            <Sparkles className="w-3 h-3 inline mr-1.5 text-[#006D77]" />
+            Need extra AI credits? Booster packs: 100&nbsp;/&nbsp;£8 · 300&nbsp;/&nbsp;£18 · 500&nbsp;/&nbsp;£25
           </div>
         </div>
       </section>
@@ -1028,9 +1063,10 @@ export function Homepage() {
           <div className="space-y-4 text-left">
             <h4 className="text-[#32323F] text-xs font-bold uppercase tracking-widest">Legal</h4>
             <ul className="space-y-2 text-sm font-semibold">
-              <li><a href="#" className="hover:text-[#006D77] transition-colors">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-[#006D77] transition-colors">Terms of Service</a></li>
-              <li><a href="#" className="hover:text-[#006D77] transition-colors">GDPR Data Requests</a></li>
+              <li><Link to="/privacy" className="hover:text-[#006D77] transition-colors">Privacy Policy</Link></li>
+              <li><Link to="/terms" className="hover:text-[#006D77] transition-colors">Terms of Service</Link></li>
+              <li><Link to="/refund" className="hover:text-[#006D77] transition-colors">Refund Policy</Link></li>
+              <li><a href="mailto:support@kinetimap.app" className="hover:text-[#006D77] transition-colors">GDPR Data Requests</a></li>
             </ul>
           </div>
         </div>
